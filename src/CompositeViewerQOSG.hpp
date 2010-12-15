@@ -4,7 +4,6 @@
 #include <QtCore/QTimer>
 #include <QtGui/QWidget>
 #include <osgViewer/CompositeViewer>
-#include <boost/thread/recursive_mutex.hpp>
 
 class QPaintEvent;
 
@@ -19,14 +18,7 @@ public:
 
     void paintEvent( QPaintEvent * /* event */ );
 
-    /**
-    * Is this mutex gets acquired, the rendere will
-    * not run and it is save to modify the scene graph
-    **/
-    boost::recursive_mutex &getRenderLock();
-
 protected:
-    boost::recursive_mutex _renderLock;
     QTimer _timer;
 
 }; // CompositeViewerQOSG

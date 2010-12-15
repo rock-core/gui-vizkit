@@ -11,18 +11,10 @@ CompositeViewerQOSG::CompositeViewerQOSG( QWidget * parent, Qt::WindowFlags f)
 
     connect(&_timer, SIGNAL(timeout()), this, SLOT(update()));
     _timer.start(10);  // Don't know why 10, but 1 was no faster.
-      
 }
 
 
 void CompositeViewerQOSG::paintEvent( QPaintEvent * /* event */ ) 
 { 
-    boost::recursive_mutex::scoped_lock lock(_renderLock);
-    
     frame();     
-}
-
-boost::recursive_mutex& CompositeViewerQOSG::getRenderLock()
-{
-    return _renderLock;
 }
