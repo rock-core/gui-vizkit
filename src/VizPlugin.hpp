@@ -2,7 +2,7 @@
 #define __VIZKIT_VIZPLUGIN_HPP__ 
 
 #include <osg/NodeCallback>
-#include <osg/Node>
+#include <osg/Group>
 
 #include <boost/thread/mutex.hpp>
 #include <yaml-cpp/yaml.h>
@@ -37,19 +37,19 @@ class VizPluginBase
 	void setDirty();
 
 	/** @return a pointer to the main node of the plugin */
-	osg::ref_ptr<osg::Group> getMainNode() const;
+	osg::ref_ptr<osg::Group> getVizNode() const;
 
 	/** @return the name of the plugin */
 	virtual const std::string getPluginName() const;
 
-	/** overide this method to save configuration data. Always call the
+	/** override this method to save configuration data. Always call the
 	 * superclass as well.
 	 * @param[out] emitter object which can be used to emit yaml structure
 	 *  containing configuration options
 	 */
 	virtual void saveData(YAML::Emitter& emitter) const {};
 
-	/** overide this method to load configuration data. Always call the
+	/** override this method to load configuration data. Always call the
 	 * superclass as well.
 	 * @param[in] yamlNode object which contains previously saved
 	 *  configuration options
@@ -61,6 +61,11 @@ class VizPluginBase
 	 * @param node contains a point to the node which can be modified.
 	 */
 	virtual void updateMainNode(osg::Group* node) = 0;
+
+	/** override this method to provide your own main node.
+	 * @return node derived from osg::Group
+	 */ 
+	virtual osg::ref_ptr<osg::Group> createMainNode();
 
 	/** lock this mutex outside updateMainNode if you update the internal
 	 * state of the visualization.
@@ -112,6 +117,12 @@ class VizPluginAdapter : public VizPlugin<T>
     protected:
 	virtual void operatorIntern( osg::Node* node, osg::NodeVisitor* nv ) = 0;
 
+	osg::ref_ptr<osg::Group> createMainNode()
+	{
+	    groupNode = new osg::Group();
+	    return groupNode;
+	}
+
 	void updateMainNode( osg::Group* node )
 	{
 	    // NULL for nodevisitor is ok here, since its not used anywhere
@@ -120,10 +131,11 @@ class VizPluginAdapter : public VizPlugin<T>
 
 	void setMainNode( osg::Node* node )
 	{
-	    this->getMainNode()->addChild( node );
+	    groupNode->addChild( node );
 	}
 
     protected:
+	osg::ref_ptr<osg::Group> groupNode;
 	osg::ref_ptr<osg::Node> ownNode;
 };
 

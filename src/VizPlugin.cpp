@@ -19,13 +19,13 @@ struct VizPluginBase::CallbackAdapter : public osg::NodeCallback
 VizPluginBase::VizPluginBase()
     : dirty( false )
 {
-    mainNode = new osg::Group();
+    mainNode = createMainNode();
     nodeCallback = new CallbackAdapter( this );
 
     mainNode->setUpdateCallback( nodeCallback );
 }
 
-osg::ref_ptr<osg::Group> VizPluginBase::getMainNode() const 
+osg::ref_ptr<osg::Group> VizPluginBase::getVizNode() const 
 {
     return mainNode;
 }
@@ -34,6 +34,11 @@ const std::string VizPluginBase::getPluginName() const
 {
     return "BaseDataNode";
 };
+
+osg::ref_ptr<osg::Group> VizPluginBase::createMainNode()
+{
+    return new osg::Group();
+}
 
 void VizPluginBase::updateCallback(osg::Node* node)
 {
