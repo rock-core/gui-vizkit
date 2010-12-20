@@ -19,15 +19,14 @@ struct VizPluginBase::CallbackAdapter : public osg::NodeCallback
 VizPluginBase::VizPluginBase()
     : dirty( false )
 {
-    mainNode = createMainNode();
+    vizNode = new osg::Group();
     nodeCallback = new CallbackAdapter( this );
-
-    mainNode->setUpdateCallback( nodeCallback );
+    vizNode->setUpdateCallback( nodeCallback );
 }
 
 osg::ref_ptr<osg::Group> VizPluginBase::getVizNode() const 
 {
-    return mainNode;
+    return vizNode;
 }
 
 const std::string VizPluginBase::getPluginName() const 
@@ -35,7 +34,7 @@ const std::string VizPluginBase::getPluginName() const
     return "BaseDataNode";
 };
 
-osg::ref_ptr<osg::Group> VizPluginBase::createMainNode()
+osg::ref_ptr<osg::Node> VizPluginBase::createMainNode()
 {
     return new osg::Group();
 }
@@ -44,9 +43,15 @@ void VizPluginBase::updateCallback(osg::Node* node)
 {
     boost::mutex::scoped_lock lockit(updateMutex);
 
+    if (!mainNode)
+    {
+        mainNode = createMainNode();
+        vizNode->addChild(mainNode);
+    }
+
     if( isDirty() )
     {
-	updateMainNode(node->asGroup());
+	updateMainNode(mainNode);
 	dirty = false;
     }
 }

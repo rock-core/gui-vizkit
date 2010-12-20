@@ -36,7 +36,8 @@ class VizPluginBase
 	/** mark the internal state as modified */
 	void setDirty();
 
-	/** @return a pointer to the main node of the plugin */
+	/** @return a pointer to the internal Group that is used to maintain the
+         * plugin's nodes */
 	osg::ref_ptr<osg::Group> getVizNode() const;
 
 	/** @return the name of the plugin */
@@ -60,12 +61,12 @@ class VizPluginBase
 	/** override this function to update the visualisation.
 	 * @param node contains a point to the node which can be modified.
 	 */
-	virtual void updateMainNode(osg::Group* node) = 0;
+	virtual void updateMainNode(osg::Node* node) = 0;
 
 	/** override this method to provide your own main node.
 	 * @return node derived from osg::Group
 	 */ 
-	virtual osg::ref_ptr<osg::Group> createMainNode();
+	virtual osg::ref_ptr<osg::Node> createMainNode();
 
 	/** lock this mutex outside updateMainNode if you update the internal
 	 * state of the visualization.
@@ -77,7 +78,8 @@ class VizPluginBase
 	osg::ref_ptr<osg::NodeCallback> nodeCallback;
 	void updateCallback(osg::Node* node);
 
-        osg::ref_ptr<osg::Group> mainNode;
+        osg::ref_ptr<osg::Node> mainNode;
+        osg::ref_ptr<osg::Group> vizNode;
 	bool dirty;
 };
 
@@ -117,13 +119,17 @@ class VizPluginAdapter : public VizPlugin<T>
     protected:
 	virtual void operatorIntern( osg::Node* node, osg::NodeVisitor* nv ) = 0;
 
-	osg::ref_ptr<osg::Group> createMainNode()
+        VizPluginAdapter()
+	    : groupNode(new osg::Group())
+        {
+        }
+
+	osg::ref_ptr<osg::Node> createMainNode()
 	{
-	    groupNode = new osg::Group();
 	    return groupNode;
 	}
 
-	void updateMainNode( osg::Group* node )
+	void updateMainNode( osg::Node* node )
 	{
 	    // NULL for nodevisitor is ok here, since its not used anywhere
 	    operatorIntern( node, NULL );
