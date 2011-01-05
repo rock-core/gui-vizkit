@@ -83,23 +83,29 @@ class VizPluginBase
 	bool dirty;
 };
 
-/** 
- * convinience class template that performs the locking of incoming data.
- * Derive from this class if you only have a single datatype to visualise, that
- * can be easily copied.
+template <typename T> class VizPlugin;
+
+/**
+ * Convenience template that adds type-specific handling to VizPluginBase
+ *
+ * Use this if you want a single visualization plugin to support multiple types
+ * at the same time:
+ *
+ * <code>
+ *
+ *   class MyVisualizer
+ *      : public VizPlugin<FirstType>,
+ *      , public VizPluginAddType<SecondType>
+ *   {
+ *      void updateDataIntern(FirstType const&);
+ *      void updateDataIntern(SecondType const&);
+ *   }
+ *
  */
-template <class T>
-class VizPlugin : public VizPluginBase
+template <typename T>
+class VizPluginAddType
 {
-    public:
-	/** updates the data to be visualised and marks the visualisation dirty
-	 * @param data const ref to data that is visualised
-	 */
-	void updateData(const T &data) {
-	    boost::mutex::scoped_lock lockit(this->updateMutex);
-	    setDirty();
-	    updateDataIntern(data);
-	};
+    template <typename Type> friend class VizPlugin;
 
     protected:
 	/** overide this method and set your internal state such that the next
@@ -107,7 +113,27 @@ class VizPlugin : public VizPluginBase
 	 * @param data data to be updated
 	 */
 	virtual void updateDataIntern(const T &data) = 0;
+};
 
+/** 
+ * convinience class template that performs the locking of incoming data.
+ * Derive from this class if you only have a single datatype to visualise, that
+ * can be easily copied.
+ */
+template <class T>
+class VizPlugin : public VizPluginBase,
+    public VizPluginAddType< T >
+{
+    public:
+	/** updates the data to be visualised and marks the visualisation dirty
+	 * @param data const ref to data that is visualised
+	 */
+        template<typename Type>
+	void updateData(const Type &data) {
+	    boost::mutex::scoped_lock lockit(this->updateMutex);
+	    this->setDirty();
+	    dynamic_cast<VizPluginAddType<Type>*>(this)->updateDataIntern(data);
+	};
 };
 
 /** @deprecated adapter item for legacy visualizations. Do not derive from this
