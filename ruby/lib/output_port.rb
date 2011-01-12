@@ -13,7 +13,7 @@ module Orocos
         widget = nil
       end
       if widget.is_a?(Qt::Widget)||!widget
-        QGui.connections << Vizkit::OQConnection.new(self, options,widget,&block)
+        Vizkit.connections << Vizkit::OQConnection.new(self, options,widget,&block)
       else
         return org_connect_to widget,options
       end
@@ -21,13 +21,13 @@ module Orocos
     end
 
     def disconnect_all
-      QGui.disconnect_from(self)
+      Vizkit.disconnect_from(self)
       org_disconnect_all
     end
 
     def disconnect_from(widget)
       if widget.is_a?(Qt::Widget)
-        QGui.disconnect_from(widget)
+        Vizkit.disconnect_from(widget)
       else
         org_disconnect_from(widget)
       end
