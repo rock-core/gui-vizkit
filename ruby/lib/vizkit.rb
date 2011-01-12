@@ -12,6 +12,12 @@ module Vizkit
     add_widget_for_methods("type",String) do |type|
       type
     end
+
+    #last one is the default for method widget_for(value) if there are more than one for
+    #the same type (here Orocos::OutputPort)
+    add_widget_for_methods("port_type",Orocos::OutputPort) do |port|
+      port.type_name
+    end
   end
 end
 
@@ -23,6 +29,20 @@ module Vizkit
 
   def self.default_loader
     @default_loader
+  end
+
+  def self.display value
+    case value
+    when Orocos::OutputPort
+      widget = @default_loader.widget_for(value)
+      if widget
+        value.connect_to widget
+        widget.show
+      end
+      return widget
+    else
+        raise "Cannot handle #{value.class}"
+    end
   end
 
   def self.connections
