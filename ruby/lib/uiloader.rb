@@ -241,8 +241,10 @@ end
 
     def register_widget_for(class_name,value,call_back_fcn=:update)
       #check if widget is available
-      raise "Widget #{class_name} is unknown to the loader." if !widget? class_name
-
+      if !widget? class_name
+        puts "Widget #{class_name} is unknown to the loader. Cannot extend it!" 
+        return nil
+      end
       @call_back_fcn_hash[class_name] ||= Hash.new
       @call_back_fcn_hash[class_name][value] = call_back_fcn
 
