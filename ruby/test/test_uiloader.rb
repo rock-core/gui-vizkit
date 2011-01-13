@@ -1,7 +1,7 @@
 #!/usr/bin/env ruby
 #
 
-require '../lib/uiloader.rb'
+require '../lib/vizkit/uiloader.rb'
 require 'test/unit'
     
 Qt::Application.new(ARGV)
