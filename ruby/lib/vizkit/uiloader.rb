@@ -1,6 +1,7 @@
 #!/usr/bin/env ruby
 
 require 'Qt4'
+require  File.join(File.dirname(__FILE__),'qt_bugfix')
 require 'qtuitools'
 require 'delegate'
 require 'rexml/document'
