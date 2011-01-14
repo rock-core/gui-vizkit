@@ -2,16 +2,10 @@
 
 module Vizkit
   class UiLoader
-    add_widget_for_methods("port",Orocos::OutputPort) do|port|
-      port.name
-    end
-    add_widget_for_methods("type",String) do |type|
+    define_widget_for_methods("type",String) do |type|
       type
     end
-
-    #last one is the default for method widget_for(value) if there are more than one for
-    #the same type (here Orocos::OutputPort)
-    add_widget_for_methods("port_type",Orocos::OutputPort) do |port|
+    define_widget_for_methods("port_type",Orocos::OutputPort,Orocos::Log::OutputPort) do |port|
       port.type_name
     end
   end
@@ -28,11 +22,12 @@ module Vizkit
   end
 
   def self.display value
+  def self.display value,options=Hash.new,&block
     case value
-    when Orocos::OutputPort
+    when Orocos::OutputPort, Orocos::Log::OutputPort
       widget = @default_loader.widget_for(value)
       if widget
-        value.connect_to widget
+        value.connect_to widget,options ,&block
         widget.show
       end
       return widget
@@ -52,7 +47,7 @@ module Vizkit
       $qApp.processEvents
   end
   
-  def self.load_ui(ui_file,parent = nil)
+  def self.load(ui_file,parent = nil)
     @default_loader.load(ui_file,parent)
   end
 
@@ -119,7 +114,9 @@ module Vizkit
     @connections = Array.new
   end
 
-  #cannot be derived from Qt::Object because 
+
+
+
   class OQConnection < Qt::Object
     #default values
     class << self
@@ -213,6 +210,22 @@ module Vizkit
     end
 
     alias :connected? :alive?
+  end
+
+  class OQLogConnection < OQConnection
+    def reconnect()
+      @reader =@port.reader @policy
+      if @reader
+         @timer_id = startTimer(1000/@update_frequency) if !@timer_id
+         return true
+      end
+      false
+      
+    end
+    
+    def alive?
+      return (nil != @timer_id)
+    end
   end
 
   @connections = Array.new
