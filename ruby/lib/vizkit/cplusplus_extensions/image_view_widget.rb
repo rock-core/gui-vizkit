@@ -17,6 +17,10 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "ImageView" do
         saveImage3(frame.frame_mode.to_s,frame.pixel_size,frame.size.width,frame.size.height,frame.image.to_byte_array[8..-1],path)
   end
 
+  def display2(frame_pair,port_name)
+    display(frame_pair.first,port_name)
+  end
+
   #diplay is called each time new data are available on the orocos output port
   #this functions translates the orocos data struct to the widget specific format
   def display(frame,port_name)
@@ -66,3 +70,4 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "ImageView" do
 end
 
 Vizkit::UiLoader.register_widget_for("ImageView","/base/samples/frame/Frame",:display)
+Vizkit::UiLoader.register_widget_for("ImageView","/base/samples/frame/FramePair",:display2)
