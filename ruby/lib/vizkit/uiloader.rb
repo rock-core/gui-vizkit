@@ -26,19 +26,21 @@ module Vizkit
         @current_loader_instance.extend_cplusplus_widget_class(class_name,&block)
       end
 
-      def add_widget_for_methods(name,klass,&map)
-        @widget_name_for_fct_hash[klass] = "widget_name_for_#{name}".to_sym
-        @widget_names_for_fct_hash[klass] = "widget_names_for_#{name}".to_sym
+      def define_widget_for_methods(name,*klasses,&map)
+        klasses.each do |klass|
+          @widget_name_for_fct_hash[klass] = "widget_name_for_#{name}".to_sym
+          @widget_names_for_fct_hash[klass] = "widget_names_for_#{name}".to_sym
+        end
         self.send(:define_method,"widget_for_#{name}") do|value,*parent|
-          raise "Wrong type!" if value.class != klass
+          raise "Wrong type!" if !klasses.include? value.class
           widget_for_value map.call(value)
         end
         self.send(:define_method,"widget_name_for_#{name}")do|value|
-          raise "Wrong type!" if value.class != klass
+          raise "Wrong type!" if !klasses.include? value.class
           name = widget_name_for_value map.call(value)
         end
          self.send(:define_method,"widget_names_for_#{name}") do|value|
-          raise "Wrong type!" if value.class != klass
+          raise "Wrong type!" if !klasses.include? value.class
           name = widget_names_for_value map.call(value)
         end
       end
@@ -55,11 +57,13 @@ module Vizkit
       @cplusplus_extension_hash = Hash.new
       @call_back_fcn_hash = Hash.new
 
-      load_cplusplus_extensions(File.join(File.dirname(__FILE__),"cplusplus_extensions"))
+
+      load_extensions(File.join(File.dirname(__FILE__),"cplusplus_extensions"))
+      load_extensions(File.join(File.dirname(__FILE__),"widgets"))
 
       paths = plugin_paths()
       paths.each do|path|
-        load_cplusplus_extensions(path)
+        load_extensions(path)
       end
       add_widget_accessor
     end
@@ -78,19 +82,24 @@ end
     def create_widget(class_name,parent=nil)
       klass = @ruby_widget_hash[class_name]
       if klass
-        widget = klass.new(parent) if klass
+        widget = klass.call(parent)
       else
         widget = super
         redefine_widget_class_name(widget,class_name)
+        extend_widget widget if widget
       end
-      extend_widget widget if widget
       widget
     end
 
     def load(ui_file,parent=nil)
       file = Qt::File.new(ui_file)
       file.open(Qt::File::ReadOnly)
-      form = __getobj__.load(file,parent)
+
+      #for getting relative images 
+      form = nil
+      Dir.chdir File.dirname(ui_file) do 
+        form = __getobj__.load(file,parent)
+      end
       mapping = map_objectName_className(ui_file)
       extend_all_widgets form,mapping if form
       form
@@ -194,11 +203,11 @@ end
 
     def add_plugin_path(path)
       super
-      load_cplusplus_extensions(path)
+      load_extensions(path)
       add_widget_accessor
     end
 
-    def load_cplusplus_extensions(*paths)
+    def load_extensions(*paths)
       paths.flatten!
       paths.each do |path|
         if ::File.file?(path) 
@@ -206,7 +215,7 @@ end
             Kernel.load path if !path.match(/.ui.rb$/) && ::File.extname(path) ==".rb"
         else
           if ::File.exist?(path)
-            load_cplusplus_extensions ::Dir.glob(::File.join(path,"**","*.rb"))
+            load_extensions ::Dir.glob(::File.join(path,"**","*.rb"))
           else
             raise "File does not exist: #{path.inspect}!"
           end
@@ -256,6 +265,7 @@ end
 
     def register_ruby_widget(class_name,widget_class)
       @ruby_widget_hash[class_name] = widget_class
+      add_widget_accessor
       self
     end
 
