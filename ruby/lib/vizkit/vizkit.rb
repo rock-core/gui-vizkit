@@ -21,7 +21,18 @@ module Vizkit
     @default_loader
   end
 
-  def self.display value
+  def self.control value, options=Hash.new,&block
+    case value
+    when Orocos::Log::Replay
+      widget = @default_loader.log_control
+      widget.control value
+      widget.show
+      return widget
+    else
+        raise "Cannot handle #{value.class}"
+    end
+  end
+
   def self.display value,options=Hash.new,&block
     case value
     when Orocos::OutputPort, Orocos::Log::OutputPort
