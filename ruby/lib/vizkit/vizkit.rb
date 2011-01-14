@@ -184,8 +184,8 @@ module Vizkit
     def timerEvent(event)
       reconnect(true) if auto_reconnect && alive?
       while(data = reader.read_new)
-        @block.call(data,@port.full_name) if @block
-        @call_back_fct.call data,@port.full_name if @call_back_fct
+        data = @block.call(data,@port.full_name) if @block
+        @call_back_fct.call data,@port.full_name if @call_back_fct && data
       end
     end
 
