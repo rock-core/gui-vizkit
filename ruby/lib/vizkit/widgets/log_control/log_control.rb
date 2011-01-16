@@ -30,7 +30,7 @@ class LogControl
 
       #add replayed streams to tree view 
       @tree_model = Qt::StandardItemModel.new
-      @tree_model.setHorizontalHeaderLabels(["Replayed Tasks","Type"])
+      @tree_model.setHorizontalHeaderLabels(["Replayed Tasks","Information"])
       @root_item = @tree_model.invisibleRootItem
       treeView.setModel(@tree_model)
       treeView.setAlternatingRowColors(true)
@@ -41,6 +41,7 @@ class LogControl
       
       @log_replay.tasks.each_value do |task|
         item, item2 = get_item(task.name,task.name, @root_item)
+        item2.setText(task.file_path)
         #setting ports
         task.each_port do |port|
           key = task.name+"_"+ port.name
@@ -48,6 +49,16 @@ class LogControl
           @mapping[item2] = port
           @mapping[item3] = port
           item3.setText(port.type_name.to_s)
+
+          item4, item5 = get_item(key,"Samples", item2)
+          item5.setText(port.number_of_samples.to_s)
+
+          item4, item5 = get_item(key,"Filer", item2)
+          if port.filter
+            item5.setText("yes")
+          else
+            item5.setText("no")
+          end
         end
       end
       treeView.resizeColumnToContents(0)
