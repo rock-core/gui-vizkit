@@ -22,25 +22,32 @@ module Vizkit
   end
 
   def self.control value, options=Hash.new,&block
+    widget = nil
     case value
     when Orocos::Log::Replay
       widget = @default_loader.log_control
-      widget.control value
-      widget.show
-      return widget
+    when Orocos::TaskContext
+      @task_inspector ||= @default_loader.task_inspector
+      widget = @task_inspector
     else
         raise "Cannot handle #{value.class}"
     end
+    widget.control value, options
+    widget.show
+    widget
   end
 
   def self.display value,options=Hash.new,&block
     case value
     when Orocos::OutputPort, Orocos::Log::OutputPort
       widget = @default_loader.widget_for(value)
-      if widget
-        value.connect_to widget,options ,&block
-        widget.show
+      unless widget
+        @struct_viewer ||= @default_loader.struct_viewer
+        Vizkit.connect(@struct_viewer) unless @struct_viewer.visible
+        widget = @struct_viewer
       end
+      value.connect_to widget,options ,&block
+      widget.show
       return widget
     else
         raise "Cannot handle #{value.class}"
@@ -62,7 +69,7 @@ module Vizkit
     @default_loader.load(ui_file,parent)
   end
 
-  def self.disconnect_from(port)
+  def self.disconnect_from(handle)
     case port
       when Qt::Widget:
           @connections.delete_if do |connection|
@@ -111,7 +118,7 @@ module Vizkit
  #if the connection is not responding
   def self.connect(widget)
     @connections.each do |connection|
-      if widget.findChild(Qt::Widget,connection.widget.objectName)
+      if connection.widget && widget.findChild(Qt::Widget,connection.widget.objectName.to_s)
         connection.connect
       end
     end
@@ -124,9 +131,6 @@ module Vizkit
     end
     @connections = Array.new
   end
-
-
-
 
   class OQConnection < Qt::Object
     #default values
@@ -169,6 +173,7 @@ module Vizkit
       else
         @call_back_fct = nil
       end
+
       connect
       self
     end
@@ -182,7 +187,11 @@ module Vizkit
     end
 
     def timerEvent(event)
-      reconnect(true) if auto_reconnect && alive?
+      #call disconnect if widget is no longer visible
+      #this could lead to some problems if the widget wants to
+      #log the data 
+      disconnect if @widget && !@widget.visible
+      reconnect(true) if auto_reconnect && !alive?
       while(data = reader.read_new)
         data = @block.call(data,@port.full_name) if @block
         @call_back_fct.call data,@port.full_name if @call_back_fct && data
@@ -212,6 +221,8 @@ module Vizkit
       false
     end
 
+    #shadows the connect methods from base object
+    #we should use an other name 
     def connect()
       reconnect if !connected?
     end
@@ -231,12 +242,21 @@ module Vizkit
          return true
       end
       false
-      
+    end
+
+    def disconnect()
+      if @timer_id
+        killTimer(@timer_id)
+        @widget.disconnected(@port.full_name) if @widget.respond_to?:disconnected
+        @timer_id = nil
+      end
     end
     
     def alive?
       return (nil != @timer_id)
     end
+
+    alias :connected? :alive?
   end
 
   @connections = Array.new
