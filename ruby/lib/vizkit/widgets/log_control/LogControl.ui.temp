@@ -7,8 +7,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>508</width>
-    <height>260</height>
+    <width>307</width>
+    <height>339</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -26,7 +26,7 @@
      <property name="minimumSize">
       <size>
        <width>0</width>
-       <height>100</height>
+       <height>140</height>
       </size>
      </property>
      <widget class="QPushButton" name="bback">
@@ -116,7 +116,7 @@
        <rect>
         <x>0</x>
         <y>70</y>
-        <width>481</width>
+        <width>281</width>
         <height>29</height>
        </rect>
       </property>
@@ -215,9 +215,9 @@
      <widget class="QLCDNumber" name="lcd_index">
       <property name="geometry">
        <rect>
-        <x>330</x>
-        <y>10</y>
-        <width>71</width>
+        <x>40</x>
+        <y>100</y>
+        <width>101</width>
         <height>18</height>
        </rect>
       </property>
@@ -310,8 +310,8 @@
      <widget class="QLabel" name="label_4">
       <property name="geometry">
        <rect>
-        <x>290</x>
-        <y>12</y>
+        <x>0</x>
+        <y>102</y>
         <width>34</width>
         <height>16</height>
        </rect>
@@ -328,8 +328,8 @@
      <widget class="QLabel" name="label_2">
       <property name="geometry">
        <rect>
-        <x>290</x>
-        <y>30</y>
+        <x>0</x>
+        <y>120</y>
         <width>28</width>
         <height>16</height>
        </rect>
@@ -346,9 +346,9 @@
      <widget class="QLabel" name="timestamp">
       <property name="geometry">
        <rect>
-        <x>330</x>
-        <y>30</y>
-        <width>151</width>
+        <x>40</x>
+        <y>120</y>
+        <width>241</width>
         <height>16</height>
        </rect>
       </property>
@@ -377,9 +377,9 @@
      <widget class="QLCDNumber" name="lcd_speed">
       <property name="geometry">
        <rect>
-        <x>440</x>
-        <y>10</y>
-        <width>41</width>
+        <x>190</x>
+        <y>100</y>
+        <width>91</width>
         <height>18</height>
        </rect>
       </property>
@@ -453,15 +453,12 @@
         </disabled>
        </palette>
       </property>
-      <property name="numDigits">
-       <number>3</number>
-      </property>
      </widget>
      <widget class="QLabel" name="label_3">
       <property name="geometry">
        <rect>
-        <x>403</x>
-        <y>13</y>
+        <x>151</x>
+        <y>102</y>
         <width>34</width>
         <height>16</height>
        </rect>
@@ -473,55 +470,6 @@
       </property>
       <property name="text">
        <string>Speed:</string>
-      </property>
-     </widget>
-     <widget class="QLabel" name="label_5">
-      <property name="geometry">
-       <rect>
-        <x>290</x>
-        <y>50</y>
-        <width>28</width>
-        <height>16</height>
-       </rect>
-      </property>
-      <property name="font">
-       <font>
-        <pointsize>8</pointsize>
-       </font>
-      </property>
-      <property name="text">
-       <string>Port:</string>
-      </property>
-     </widget>
-     <widget class="QLabel" name="last_port">
-      <property name="geometry">
-       <rect>
-        <x>330</x>
-        <y>50</y>
-        <width>151</width>
-        <height>16</height>
-       </rect>
-      </property>
-      <property name="maximumSize">
-       <size>
-        <width>252</width>
-        <height>250</height>
-       </size>
-      </property>
-      <property name="font">
-       <font>
-        <family>Times New Roman</family>
-        <pointsize>8</pointsize>
-       </font>
-      </property>
-      <property name="frameShape">
-       <enum>QFrame::Box</enum>
-      </property>
-      <property name="lineWidth">
-       <number>1</number>
-      </property>
-      <property name="text">
-       <string/>
       </property>
      </widget>
     </widget>
