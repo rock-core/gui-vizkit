@@ -40,6 +40,7 @@ class LogControl
       @mapping = Hash.new
       
       @log_replay.tasks.each_value do |task|
+        next if !task.used?
         item, item2 = get_item(task.name,task.name, @root_item)
         item2.setText(task.file_path)
         #setting ports
@@ -53,7 +54,7 @@ class LogControl
           item4, item5 = get_item(key,"Samples", item2)
           item5.setText(port.number_of_samples.to_s)
 
-          item4, item5 = get_item(key,"Filer", item2)
+          item4, item5 = get_item(key,"Filter", item2)
           if port.filter
             item5.setText("yes")
           else
