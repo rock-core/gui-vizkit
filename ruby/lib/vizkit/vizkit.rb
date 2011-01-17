@@ -38,22 +38,33 @@ module Vizkit
   end
 
   def self.display value,options=Hash.new,&block
-    case value
-    when Orocos::OutputPort, Orocos::Log::OutputPort
-      widget = @default_loader.widget_for(value)
-      if widget 
-        widget.setAttribute(Qt::WA_QuitOnClose, false)
-      else
-        @struct_viewer ||= @default_loader.struct_viewer
-        Vizkit.connect(@struct_viewer) unless @struct_viewer.visible
-        widget = @struct_viewer
+    #if value is a array
+    if value.is_a? Array
+      result = Array.new
+      value.each do |val|
+        result << display(val, options, &block)
       end
-      value.connect_to widget,options ,&block
-      widget.show
-      return widget
-    else
-        raise "Cannot handle #{value.class}"
+      return result
+    else 
+      #if value is not a array 
+      case value
+      when Orocos::OutputPort, Orocos::Log::OutputPort
+        widget = @default_loader.widget_for(value)
+        if widget 
+          widget.setAttribute(Qt::WA_QuitOnClose, false)
+        else
+          @struct_viewer ||= @default_loader.struct_viewer
+          Vizkit.connect(@struct_viewer) unless @struct_viewer.visible
+          widget = @struct_viewer
+        end
+        value.connect_to widget,options ,&block
+        widget.show
+        return widget
+      else
+          raise "Cannot handle #{value.class}"
+      end
     end
+    nil
   end
 
   def self.connections
