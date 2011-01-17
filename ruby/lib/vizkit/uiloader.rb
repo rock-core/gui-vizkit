@@ -217,7 +217,7 @@ end
           if ::File.exist?(path)
             load_extensions ::Dir.glob(::File.join(path,"**","*.rb"))
           else
-            raise "File does not exist: #{path.inspect}!"
+            warn "Qt designer plugin file or directory does not exist: #{path.inspect}!"
           end
         end
       end
