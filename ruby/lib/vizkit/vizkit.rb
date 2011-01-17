@@ -41,7 +41,9 @@ module Vizkit
     case value
     when Orocos::OutputPort, Orocos::Log::OutputPort
       widget = @default_loader.widget_for(value)
-      unless widget
+      if widget 
+        widget.setAttribute(Qt::WA_QuitOnClose, false)
+      else
         @struct_viewer ||= @default_loader.struct_viewer
         Vizkit.connect(@struct_viewer) unless @struct_viewer.visible
         widget = @struct_viewer
