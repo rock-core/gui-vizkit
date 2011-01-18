@@ -1,8 +1,5 @@
 #!/usr/bin/env ruby
 
-require File.join(File.dirname(__FILE__),'task_inspector_window.ui')
-
-
 class TaskInspector < Qt::Widget
   slots 'refresh()','set_task_attribute(const QModelIndex&)'
   attr_reader :multi  #widget supports displaying of multi tasks
@@ -10,6 +7,7 @@ class TaskInspector < Qt::Widget
 
   def initialize(parent=nil)
     super
+    load File.join(File.dirname(__FILE__),'task_inspector_window.ui.rb')
     @window = Ui_Form.new
     @window.setupUi(self)
     @tree_model = Qt::StandardItemModel.new
