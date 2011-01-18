@@ -1,38 +1,23 @@
 #!/usr/bin/env ruby
 
-require File.join(File.dirname(__FILE__),'struct_viewer_window.ui')
-
-class DefaultDecoder
-  #decoder for /base/samples/frame/Frame image
-  def _base_samples_frame_Frame_image(data)
-    return "Image data size = " + data.image.size.to_s
-  end
-
-  #decoder for /base/samples/frame/Frame field attribute
-  def _base_samples_frame_Frame_attributes(data)
-    text = String.new
-    data.attributes.to_a.each do |element| 
-      text += "#{element.name_}=#{element.data_}; "
-    end
-    return text
-  end
-
-  #decoder for /can/Messages field data
-  def _can_Message_data(data)
-    text = String.new("hex: ")
-    data.data.to_a[0..data.size-1].each do |c|
-      text << c.to_s(16)
-      text << " " 
-    end
-    return text
-  end
-end
-
 class StructViewer < Qt::Widget
-  attr_accessor :decoder
+  MAX_ARRAY_FIELDS = 30
+
+  def self.child_items(parent_item,row)
+      item = parent_item.child(row)
+      item2 = parent_item.child(row,1)
+      unless item
+        item = Qt::StandardItem.new(name.to_s)
+        parent_item.appendRow(item)
+        item2 = Qt::StandardItem.new
+        parent_item.setChild(item.row,1,item2)
+      end
+      [item,item2]
+  end
+
   def initialize(parent=nil)
     super
-    @decoder = DefaultDecoder.new
+    load File.join(File.dirname(__FILE__),'struct_viewer_window.ui.rb')
     @window = Ui_Form.new
     @window.setupUi(self)
     @tree_model = Qt::StandardItemModel.new
@@ -52,7 +37,7 @@ class StructViewer < Qt::Widget
      name = port_name
      if @hash.has_key?(name)
       item = @hash[name]
-      add_compound_type(data,item,name)
+      add_object(data,item)
      else
       item = Qt::StandardItem.new(name)
       item.setBackground(@brush)
@@ -62,44 +47,46 @@ class StructViewer < Qt::Widget
       @hash[name]=item
       @root_item.appendRow(item)
       @root_item.setChild(item.row,1,item2)
-      add_compound_type(data,item,name)
+      add_object(data,item)
       @window.treeView.resizeColumnToContents(0)
      end
   end
 
-  def add_compound_type(object, parent_item,id)
-    if !object.kind_of?(Typelib::CompoundType)
-      puts "Can not visualize #{object.name}. It is not a Typelib::CompoundType"
-      return
-    end
-    struct = object.public_methods(false).sort
-    struct.each do |method_name|
-      next if method_name.to_s.match('=$')
-      result = object.method(method_name).call
-      _id = id +"_"+ method_name.to_s
-      if @hash.has_key?(_id)
-        item = @hash[_id]
-        item2 = parent_item.child(item.row,1)
-      else
-        item = Qt::StandardItem.new(method_name.to_s)
-        @hash[_id]=item
-        parent_item.appendRow(item)
-        item2 = Qt::StandardItem.new
-        parent_item.setChild(item.row,1,item2)
+  def add_object(object, parent_item)
+    if object.kind_of?(Typelib::CompoundType)
+      row = 0;
+      object.each_field do |name,value|
+        item, item2 = StructViewer.child_items(parent_item,row)
+        item.setText name
+        item2.setText value.class.name
+        add_object(value,item)
+        # item.setBackground(@brush)
+        # item2.setBackground(@brush)
+        row += 1
       end
-      if result.kind_of?(Typelib::CompoundType)
-        item.setBackground(@brush)
-        item2.setBackground(@brush)
-        add_compound_type(result,item,_id)
+      #delete all other rows
+      parent_item.removeRows(row,parent_item.rowCount-row) if row < parent_item.rowCount
+
+    elsif object.is_a?(Array) || (object.kind_of?(Typelib::Type) && object.respond_to?(:each))
+      if object.size > MAX_ARRAY_FIELDS
+        item2 = parent_item.parent.child(parent_item.row,parent_item.column+1)
+        item2.setText "#{object.size} fields ..."
       else
-        _method = (@act_data_type.gsub("/","_")+"_"+method_name.to_s).to_sym
-        if decoder.respond_to?(_method)
-          item2.setText(decoder.method(_method).call(@act_data))
-        else
-          item2.setText(result.to_s)
+        row = 0
+        object.each_with_index do |val,row|
+          item,item2 = StructViewer.child_items(parent_item,row)
+          item2.setText val.class.name
+          item.setText "[#{row}]"
+          add_object val,item
         end
+        #delete all other rows
+        row += 1
+        parent_item.removeRows(row,parent_item.rowCount-row) if row < parent_item.rowCount
       end
-    end
+    else
+      item2 = parent_item.parent.child(parent_item.row,parent_item.column+1)
+      item2.setText(object.to_s)
+      end
   end
 end
 
