@@ -1,0 +1,18 @@
+#!/usr/bin/env ruby
+#
+require 'vizkit'
+
+if ARGV.empty?
+  puts
+  puts "Programm for replaying log files"
+  puts "Usage:"
+  puts "replay logfile1, logfile2, ..."
+  puts
+  exit 1
+end
+
+log = Orocos::Log::Replay.open(ARGV)
+log.track true
+Vizkit.control log
+Vizkit.exec
+
