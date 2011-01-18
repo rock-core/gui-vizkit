@@ -6,6 +6,7 @@ class LogControl
       raise "Cannot control #{replay.class}" if !replay.instance_of?(Orocos::Log::Replay)
       @log_replay = replay
       @replay_on = false 
+      @slider_pressed = false
       @user_speed = @log_replay.speed
 
       dir = File.dirname(__FILE__)
@@ -22,6 +23,7 @@ class LogControl
       bstop.connect(SIGNAL('clicked()'),self,:bstop_clicked)
       bplay.connect(SIGNAL('clicked()'),self,:bplay_clicked)
       treeView.connect(SIGNAL('doubleClicked(const QModelIndex&)'),self,:tree_double_clicked)
+      slider.connect(SIGNAL(:sliderPressed)) {@slider_pressed = true;}
 
       @log_replay.align unless @log_replay.aligned?
       return if !@log_replay.replay?
@@ -92,11 +94,12 @@ class LogControl
     end
 
     def display_info
-      slider.setSliderPosition(@log_replay.sample_index)
+
+      slider.setSliderPosition(@log_replay.sample_index) unless @slider_pressed
       if @log_replay.time
         timestamp.text = @log_replay.time.strftime("%a %D %H:%M:%S.#{@log_replay.time.usec.to_s}")
         lcd_speed.display(@log_replay.actual_speed)
-        last_port.text = @log_replay.current_port.full_name
+        last_port.text = @log_replay.current_port.full_name if @log_replay.current_port
       else
         timestamp.text = "0"
       end
@@ -129,7 +132,9 @@ class LogControl
     end
 
     def slider_released
+      @slider_pressed = false
       return if !@log_replay.replay?
+      @log_replay.reset_time_sync
       @log_replay.seek(slider.value)
       display_info
     end
