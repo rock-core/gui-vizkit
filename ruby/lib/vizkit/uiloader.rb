@@ -150,7 +150,7 @@ end
       #warning: ruby objects have the wrong parent
       children = widget.findChildren(Qt::Object)
       children.each do |child|
-          if child.objectName
+          if child.objectName && child.objectName.size > 0
             extend_widget child, mapping
             (class << widget; self;end).send(:define_method,child.objectName){child}
           end
