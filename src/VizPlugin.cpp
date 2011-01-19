@@ -31,7 +31,7 @@ osg::ref_ptr<osg::Group> VizPluginBase::getVizNode() const
 
 const std::string VizPluginBase::getPluginName() const 
 {
-    return "BaseDataNode";
+    return "VizPlugin";
 };
 
 osg::ref_ptr<osg::Node> VizPluginBase::createMainNode()

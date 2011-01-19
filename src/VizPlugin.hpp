@@ -40,7 +40,8 @@ class VizPluginBase
          * plugin's nodes */
 	osg::ref_ptr<osg::Group> getVizNode() const;
 
-	/** @return the name of the plugin */
+	/** @return the name of the plugin, it's needed to save the 
+         *  configuration data in a YAML file */
 	virtual const std::string getPluginName() const;
 
 	/** override this method to save configuration data. Always call the
