@@ -82,7 +82,7 @@ module Vizkit
   end
 
   def self.disconnect_from(handle)
-    case port
+    case handle
       when Qt::Widget:
           @connections.delete_if do |connection|
             if widget.findChild(Qt::Widget,connection.widget.objectName)
@@ -93,14 +93,14 @@ module Vizkit
           end
       when Orocos::OutputPort:
           @connections.delete_if do |connection|
-            if connection.port == port
+            if connection.port == handle
                connection.disconnect
                return true
             end
             false
           end
       else
-        raise "Cannot handle #{port.class}"
+        raise "Cannot handle #{handle.class}"
     end
   end
 
