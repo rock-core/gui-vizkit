@@ -30,7 +30,7 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "ImageView" do
     end
 
     if !defined? @init
-#      setOpenGL(true)
+      setOpenGL(true)
       @options ||= default_options
       @time_overlay_object = addText(-150,-5,0,"time")
       @time_overlay_object.setColor(Qt::Color.new(255,255,0))
