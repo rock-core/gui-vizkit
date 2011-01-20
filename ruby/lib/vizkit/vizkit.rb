@@ -8,6 +8,9 @@ module Vizkit
     define_widget_for_methods("port_type",Orocos::OutputPort,Orocos::Log::OutputPort) do |port|
       port.type_name
     end
+    define_widget_for_methods("task_control",Orocos::TaskContext) do |task|
+      task.model.name
+    end
   end
 end
 
@@ -27,8 +30,11 @@ module Vizkit
     when Orocos::Log::Replay
       widget = @default_loader.log_control
     when Orocos::TaskContext
-      @task_inspector ||= @default_loader.task_inspector
-      widget = @task_inspector
+      widget = @default_loader.widget_for_task_control value
+      unless widget
+        @task_inspector ||= @default_loader.task_inspector
+        widget = @task_inspector
+      end
     else
         raise "Cannot handle #{value.class}"
     end

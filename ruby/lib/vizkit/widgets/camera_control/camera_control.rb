@@ -157,3 +157,4 @@ class CameraControlWidget < Qt::Widget
 end
 
 Vizkit::UiLoader.register_ruby_widget "CameraControl", CameraControlWidget.method(:new)
+Vizkit::UiLoader.register_widget_for "CameraControl", "camera::CameraTask", :control
