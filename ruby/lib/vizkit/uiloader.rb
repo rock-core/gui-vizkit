@@ -27,9 +27,11 @@ module Vizkit
       end
 
       def define_widget_for_methods(name,*klasses,&map)
-        klasses.each do |klass|
-          @widget_name_for_fct_hash[klass] = "widget_name_for_#{name}".to_sym
-          @widget_names_for_fct_hash[klass] = "widget_names_for_#{name}".to_sym
+        if klasses.last != :no_auto     #widget can not be reached via widget_for value if no_auto is set
+          klasses.each do |klass|
+            @widget_name_for_fct_hash[klass] = "widget_name_for_#{name}".to_sym
+            @widget_names_for_fct_hash[klass] = "widget_names_for_#{name}".to_sym
+          end
         end
         self.send(:define_method,"widget_for_#{name}") do|value,*parent|
           raise "Wrong type!" if !klasses.include? value.class
