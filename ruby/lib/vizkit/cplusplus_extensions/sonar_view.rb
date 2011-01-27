@@ -27,6 +27,7 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "SonarView" do
       @time_overlay_object.setRenderOnOpenGl(true)
       @time_overlay_object.setBackgroundColor(Qt::Color.new(0,0,0,40))
       @init = true
+      setOpenGL true
     end
 
     if @options[:time_overlay] == true
