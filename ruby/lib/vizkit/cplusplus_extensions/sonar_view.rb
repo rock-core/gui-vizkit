@@ -37,7 +37,6 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "SonarView" do
       end
       @time_overlay_object.setText(time.strftime("%b %d %Y %H:%M:%S"))
     end
-    puts sonar_scan.bearing 
     setSonarScan(sonar_scan.scanData.to_byte_array[8..-1],sonar_scan.scanData.size,sonar_scan.bearing,true)
     update2
   end
