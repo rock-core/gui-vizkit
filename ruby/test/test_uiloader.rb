@@ -45,7 +45,7 @@ class LoaderUiTest < Test::Unit::TestCase
   end
 
   def test_loader_register_ruby_widget
-    Vizkit::UiLoader.register_ruby_widget("object",Qt::Object)
+    Vizkit::UiLoader.register_ruby_widget("object",Qt::Object.method(:new))
     assert @loader.create_widget("object")
     assert @loader.available_widgets.find{|p| p == "object"}
     assert @loader.widget? "object"
