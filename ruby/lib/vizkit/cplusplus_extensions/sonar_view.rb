@@ -31,16 +31,27 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "SonarView" do
     end
 
     if @options[:time_overlay] == true
-      if sonar_scan.stamp.instance_of?(Time)
-        time = sonar_scan.stamp
-      else
-        time = Time.at(frame.time.seconds,frame.time.microseconds)
-      end
-      @time_overlay_object.setText(time.strftime("%b %d %Y %H:%M:%S"))
-    end
-    setSonarScan(sonar_scan.scanData.to_byte_array[8..-1],sonar_scan.scanData.size,sonar_scan.bearing,true)
-    update2
+        if sonar_scan.class.name == "/base/samples/SonarScan"
+	      if sonar_scan.time.instance_of?(Time)
+	        time = sonar_scan.time
+        elsif sonar_scan.class.name == "/base/samples/SonarScan"
+	      if sonar_scan.stamp.instance_of?(Time)
+	        time = sonar_scan.stamp
+	end
+	      else
+	        time = Time.at(frame.time.seconds,frame.time.microseconds)
+	      end
+	      @time_overlay_object.setText(time.strftime("%b %d %Y %H:%M:%S"))
+	    end
+            if sonar_scan.class.name == "/base/samples/SonarScan"
+	    	setSonarScan(sonar_scan.scanData.to_byte_array[8..-1],sonar_scan.scanData.size,sonar_scan.angle,false)
+	    elsif
+		    setSonarScan(sonar_scan.scanData.to_byte_array[8..-1],sonar_scan.scanData.size,sonar_scan.bearing,true)
+	    end
+	    update2
+	end
   end
 end
 
 Vizkit::UiLoader.register_widget_for("SonarView","/sensorData/Sonar",:display)
+Vizkit::UiLoader.register_widget_for("SonarView","/base/samples/SonarScan",:display)
