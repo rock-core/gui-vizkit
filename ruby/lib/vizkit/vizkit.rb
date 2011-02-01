@@ -77,36 +77,46 @@ module Vizkit
   end
 
   def self.exec
-      $qApp.exec
+    # the garbage collector has to be called manually for now 
+    # because ruby does not now how many objects were created from 
+    # the typelib side 
+     gc_timer = Qt::Timer.new
+     gc_timer.connect(SIGNAL(:timeout)) do 
+       GC.start
+     end
+     gc_timer.start(2000)
+     $qApp.exec
+     gc_timer.stop
+
   end
   def self.process_events()
-      $qApp.processEvents
+    $qApp.processEvents
   end
-  
+
   def self.load(ui_file,parent = nil)
     @default_loader.load(ui_file,parent)
   end
 
   def self.disconnect_from(handle)
     case handle
-      when Qt::Widget:
-          @connections.delete_if do |connection|
-            if widget.findChild(Qt::Widget,connection.widget.objectName)
-              connection.disconnect
-              return true
-            end
-            false
-          end
-      when Orocos::OutputPort:
-          @connections.delete_if do |connection|
-            if connection.port == handle
-               connection.disconnect
-               return true
-            end
-            false
-          end
-      else
-        raise "Cannot handle #{handle.class}"
+    when Qt::Widget:
+      @connections.delete_if do |connection|
+      if widget.findChild(Qt::Widget,connection.widget.objectName)
+        connection.disconnect
+        return true
+      end
+      false
+      end
+    when Orocos::OutputPort:
+      @connections.delete_if do |connection|
+      if connection.port == handle
+        connection.disconnect
+        return true
+      end
+      false
+      end
+    else
+      raise "Cannot handle #{handle.class}"
     end
   end
 
@@ -132,8 +142,8 @@ module Vizkit
     end
   end
 
- #connects all connection to the widget and its children
- #if the connection is not responding
+  #connects all connection to the widget and its children
+  #if the connection is not responding
   def self.connect(widget)
     @connections.each do |connection|
       if connection.widget && widget.findChild(Qt::Widget,connection.widget.objectName.to_s)
@@ -141,11 +151,11 @@ module Vizkit
       end
     end
   end
-  
+
   #disconnects all connections to widgets 
   def self.disconnect_all
     @connections.each do |connection|
-        connection.disconnect
+      connection.disconnect
     end
     @connections = Array.new
   end
@@ -184,7 +194,7 @@ module Vizkit
         if widget.respond_to?(:loader)
           @call_back_fct = widget.loader.call_back_fct widget.class_name,port.type_name
         end
-      
+
         @call_back_fct ||= :update if widget.respond_to?(:update)
         @call_back_fct = widget.method(@call_back_fct) if @call_back_fct
         raise "Widget #{widget.objectName}(#{widget.class_name}) has no call back function "if !@call_back_fct
@@ -209,7 +219,7 @@ module Vizkit
       #this could lead to some problems if the widget wants to
       #log the data 
       disconnect if @widget && !@widget.visible
-      reconnect(true) if auto_reconnect && !alive?
+      reconnect(true) if @auto_reconnect && !alive?
       while(data = reader.read_new)
         data = @block.call(data,@port.full_name) if @block
         @call_back_fct.call data,@port.full_name if @call_back_fct && data
@@ -228,13 +238,13 @@ module Vizkit
     def reconnect()
       disconnect
       if Orocos::TaskContext.reachable?(@port.task.name)
-         port = Orocos::TaskContext.get(@port.task.name).port(@port.name)
-         @port = port if port
-         @reader = @port.reader @policy
-         if @reader
-            @timer_id = startTimer(1000/@update_frequency) if !@timer_id
-            return true
-         end
+        port = Orocos::TaskContext.get(@port.task.name).port(@port.name)
+        @port = port if port
+        @reader = @port.reader @policy
+        if @reader
+          @timer_id = startTimer(1000/@update_frequency) if !@timer_id
+          return true
+        end
       end
       false
     end
@@ -256,8 +266,8 @@ module Vizkit
     def reconnect()
       @reader =@port.reader @policy
       if @reader
-         @timer_id = startTimer(1000/@update_frequency) if !@timer_id
-         return true
+        @timer_id = startTimer(1000/@update_frequency) if !@timer_id
+        return true
       end
       false
     end
@@ -269,7 +279,7 @@ module Vizkit
         @timer_id = nil
       end
     end
-    
+
     def alive?
       return (nil != @timer_id)
     end
