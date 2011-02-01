@@ -209,7 +209,7 @@ module Vizkit
       #this could lead to some problems if the widget wants to
       #log the data 
       disconnect if @widget && !@widget.visible
-      reconnect(true) if auto_reconnect && !alive?
+      reconnect(true) if @auto_reconnect && !alive?
       while(data = reader.read_new)
         data = @block.call(data,@port.full_name) if @block
         @call_back_fct.call data,@port.full_name if @call_back_fct && data

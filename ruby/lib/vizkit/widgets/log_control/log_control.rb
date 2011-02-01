@@ -82,6 +82,10 @@ class LogControl
         @widget_hash[port]=widget
       end
     end
+    
+    def playing?
+      @replay_on
+    end
 
     def get_item(key,name,root_item)
       item = Qt::StandardItem.new(name)
