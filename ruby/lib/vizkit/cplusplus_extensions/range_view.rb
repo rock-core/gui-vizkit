@@ -30,17 +30,18 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "RangeView" do
       setOpenGL true
     end
 
-    if @options[:time_overlay] == true
-      if range_scan.stamp.instance_of?(Time)
-        time = range_scan.time
-      else
-        time = Time.at(frame.time.seconds,frame.time.microseconds)
-      end
-      @time_overlay_object.setText(time.strftime("%b %d %Y %H:%M:%S"))
+    points = Array.new
+    angle = range_scan.start_angle
+    
+    range_scan.ranges.each do |point|
+	if point < range_scan.maxRange and point > range_scan.minRange 
+		points.push (point/1e3 * Math.cos(angle))
+		points.push (point/1e3 * Math.sin(angle))
+		points.push 0.0
+		angle = angle + range_scan.angular_resolution	
+	end
     end
-    setRangeScan2(sonar_scan)
-    #setSonarScan(sonar_scan.scanData.to_byte_array[8..-1],sonar_scan.scanData.size,sonar_scan.bearing,true)
-    update2
+    setRangeScan3(points)
   end
 end
 
