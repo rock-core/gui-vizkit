@@ -77,7 +77,17 @@ module Vizkit
   end
 
   def self.exec
-      $qApp.exec
+    # the garbage collector has to be called manually for now 
+    # because ruby does not now how many objects were created from 
+    # the typelib side 
+     gc_timer = Qt::Timer.new
+     gc_timer.connect(SIGNAL(:timeout)) do 
+       GC.start
+     end
+     gc_timer.start(10000)
+     $qApp.exec
+     gc_timer.stop
+
   end
   def self.process_events()
       $qApp.processEvents
