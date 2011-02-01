@@ -84,7 +84,7 @@ module Vizkit
      gc_timer.connect(SIGNAL(:timeout)) do 
        GC.start
      end
-     gc_timer.start(10000)
+     gc_timer.start(2000)
      $qApp.exec
      gc_timer.stop
 
