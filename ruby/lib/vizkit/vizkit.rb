@@ -178,11 +178,12 @@ module Vizkit
     def initialize(port,options,widget=nil,&block)
       super(widget,&nil)
 
-      this_options, @policy = Kernel.filter_options(options,[:update_frequency,:auto_reconnect])
+      this_options, @policy = Kernel.filter_options(options,[:update_frequency,:auto_reconnect,:callback])
       @port = port
       @widget = widget
       @update_frequency = this_options[:update_frequency] 
       @auto_reconnect = this_options[:auto_reconnect]
+      @callback_fct = this_options[:callback]
       @update_frequency ||= @@update_frequency
       @auto_reconnect ||= @@auto_reconnect
       @block = block
