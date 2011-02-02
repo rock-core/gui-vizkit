@@ -18,17 +18,17 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "ImageView" do
   end
 
   def display2(frame_pair,port_name)
-    display(frame_pair.first,port_name)
+    init
+    frame = @options[:display_first] == true ? frame_pair.first : frame_pair.second
+    display(frame,port_name)
   end
 
-  #diplay is called each time new data are available on the orocos output port
-  #this functions translates the orocos data struct to the widget specific format
-  def display(frame,port_name)
-    #check if type is frame_pair
-    if frame.respond_to?(:first)
-      frame = @options[:display_first] == true ? frame.first : frame.second
-    end
+  def options(hash = Hash.new)
+    init
+    @options.merge!(hash)
+  end
 
+  def init 
     if !defined? @init
       setOpenGL(true)
       @options ||= default_options
@@ -44,7 +44,12 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "ImageView" do
       @fps_overlay_object.setRenderOnOpenGl(true)
       @init = true
     end
+  end
 
+  #diplay is called each time new data are available on the orocos output port
+  #this functions translates the orocos data struct to the widget specific format
+  def display(frame,port_name)
+    init
     if @options[:time_overlay] == true
       if frame.time.instance_of?(Time)
         time = frame.time
