@@ -189,17 +189,18 @@ module Vizkit
       @reader = nil
       @timer_id = nil
 
-      #get call_back_fct
       if widget 
-        if widget.respond_to?(:loader)
-          @call_back_fct = widget.loader.call_back_fct widget.class_name,port.type_name
+        #try to find callback_fct for port
+        if !@callback_fct && widget.respond_to?(:loader)
+          @callback_fct = widget.loader.callback_fct widget.class_name,port.type_name
         end
 
-        @call_back_fct ||= :update if widget.respond_to?(:update)
-        @call_back_fct = widget.method(@call_back_fct) if @call_back_fct
-        raise "Widget #{widget.objectName}(#{widget.class_name}) has no call back function "if !@call_back_fct
+        #use default callback_fct
+        @callback_fct ||= :update if widget.respond_to?(:update)
+        @callback_fct = widget.method(@callback_fct) if @callback_fct
+        raise "Widget #{widget.objectName}(#{widget.class_name}) has no callback function "if !@callback_fct
       else
-        @call_back_fct = nil
+        @callback_fct = nil
       end
 
       connect
@@ -222,7 +223,7 @@ module Vizkit
       reconnect(true) if @auto_reconnect && !alive?
       while(data = reader.read_new)
         data = @block.call(data,@port.full_name) if @block
-        @call_back_fct.call data,@port.full_name if @call_back_fct && data
+        @callback_fct.call data,@port.full_name if @callback_fct && data
       end
     end
 

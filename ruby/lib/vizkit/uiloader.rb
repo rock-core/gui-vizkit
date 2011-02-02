@@ -16,8 +16,8 @@ module Vizkit
       attr_accessor :current_loader_instance
 
       #interface for ruby extensions
-      def register_widget_for(widget_name,value,call_back_fcn=:update)
-        @current_loader_instance.register_widget_for(widget_name,value,call_back_fcn)
+      def register_widget_for(widget_name,value,callback_fct=:update)
+        @current_loader_instance.register_widget_for(widget_name,value,callback_fct)
       end
       def register_ruby_widget(widget_name,widget_class)
         @current_loader_instance.register_ruby_widget(widget_name,widget_class)
@@ -57,7 +57,7 @@ module Vizkit
       @default_widget_for_hash = Hash.new
       @ruby_widget_hash = Hash.new
       @cplusplus_extension_hash = Hash.new
-      @call_back_fcn_hash = Hash.new
+      @callback_fct_hash = Hash.new
 
 
       load_extensions(File.join(File.dirname(__FILE__),"cplusplus_extensions"))
@@ -241,24 +241,24 @@ end
       available_widgets.include? class_name && !ruby_widget?(class_name)
     end
 
-    def call_back_fct(class_name,value)
-      @call_back_fcn_hash[class_name][value ]if @call_back_fcn_hash.has_key?(class_name)
+    def callback_fct(class_name,value)
+      @callback_fct_hash[class_name][value ]if @callback_fct_hash.has_key?(class_name)
     end
 
-    def register_default_widget_for(class_name,value,call_back_fcn=:update)
-      register_widget_for(class_name,value,call_back_fcn)
+    def register_default_widget_for(class_name,value,callback_fct=:update)
+      register_widget_for(class_name,value,callback_fct)
       @default_widget_for_hash[value] = class_name
       self
     end
 
-    def register_widget_for(class_name,value,call_back_fcn=:update)
+    def register_widget_for(class_name,value,callback_fct=:update)
       #check if widget is available
       if !widget? class_name
  #       puts "Widget #{class_name} is unknown to the loader. Cannot extend it!" 
         return nil
       end
-      @call_back_fcn_hash[class_name] ||= Hash.new
-      @call_back_fcn_hash[class_name][value] = call_back_fcn
+      @callback_fct_hash[class_name] ||= Hash.new
+      @callback_fct_hash[class_name][value] = callback_fct
 
       @widget_for_hash[value] ||= Array.new
       @widget_for_hash[value] << class_name if !@widget_for_hash[value].include?(class_name)
