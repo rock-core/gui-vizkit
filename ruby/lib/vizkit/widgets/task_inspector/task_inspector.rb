@@ -63,7 +63,7 @@ class TaskInspector < Qt::Widget
       #setting attributes
       key = task.name + "__ATTRIBUTES__"
       item3, item4 = get_item(key,"Attributes", item)
-      task.each_attribute do |attribute|
+      task.each_property do |attribute|
         key = task.name+"_"+ attribute.name
         item5, item6 = get_item(key,attribute.name, item3)
         item6.setText(attribute.read.to_s)
