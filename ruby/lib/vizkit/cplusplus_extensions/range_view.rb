@@ -35,8 +35,8 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "RangeView" do
     
     range_scan.ranges.each do |point|
 	if point < range_scan.maxRange and point > range_scan.minRange 
-		points.push (point/1e3 * Math.cos(angle))
-		points.push (point/1e3 * Math.sin(angle))
+		points.push(point/1e3 * Math.cos(angle))
+		points.push(point/1e3 * Math.sin(angle))
 		points.push 0.0
 		angle = angle + range_scan.angular_resolution	
 	end
