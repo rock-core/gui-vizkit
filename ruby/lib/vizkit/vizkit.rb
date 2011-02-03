@@ -57,7 +57,7 @@ module Vizkit
       when Orocos::OutputPort, Orocos::Log::OutputPort
         widget = @default_loader.widget_for(value)
         unless widget 
-          @struct_viewer ||= @default_loader.struct_viewer
+          @struct_viewer ||= @default_loader.StructViewer
           Vizkit.connect(@struct_viewer) unless @struct_viewer.visible
           widget = @struct_viewer
         end

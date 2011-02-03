@@ -78,14 +78,23 @@ module Vizkit
             create_widget(widget_name,parent.first)
           end
         end
+      end
     end
-end
 
     def create_widget(class_name,parent=nil)
       klass = @ruby_widget_hash[class_name]
+      #if ruby widget
       if klass
         widget = klass.call(parent)
-      else
+        if widget.respond_to?(:loader) && !widget.loader.is_a?(UiLoader)
+          raise "Cannot extend ruby widget #{class_name} because method :loader is alread defined"
+        end
+        widget.instance_variable_set(:@__loader__,self)
+        def widget.loader
+          @__loader__
+        end
+      else 
+        #look for c++ widget
         widget = super
         redefine_widget_class_name(widget,class_name)
         extend_widget widget if widget
@@ -148,7 +157,8 @@ end
 
       #extend childs and add accessor for QObject
       #find will find children recursive 
-      #objectNames are unique for widgets therefore we can put them to the toplevel
+      #objectNames are unique for widgets if the ui file was 
+      #generated with the qt designer therefore we can put them to the toplevel
       #warning: ruby objects have the wrong parent
       children = widget.findChildren(Qt::Object)
       children.each do |child|

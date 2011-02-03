@@ -90,4 +90,4 @@ class StructViewer < Qt::Widget
   end
 end
 
-Vizkit::UiLoader.register_ruby_widget("struct_viewer",StructViewer.method(:new))
+Vizkit::UiLoader.register_ruby_widget("StructViewer",StructViewer.method(:new))
