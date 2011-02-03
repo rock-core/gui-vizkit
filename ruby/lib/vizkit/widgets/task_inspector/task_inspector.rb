@@ -190,11 +190,13 @@ class TaskInspector < Qt::Widget
       left_object = parent.child(item.row,0)
     end
     name = ''
+    first=true
     if !left_object.nil? 
       #name = left_object.text
       item = left_object
+      first=false
     end
-    first=true
+
     while obj.nil? && !item.nil? do
 	if @mapping.has_key?(item)
 	  obj = @mapping[item]
@@ -208,7 +210,11 @@ class TaskInspector < Qt::Widget
 	  item = item.parent
         end
     end
-
+    if name.to_s.end_with?('.')
+      name = name.to_s.chop
+    end
+    
+      
     if name == "StructViewer"
     	return
     end
@@ -238,7 +244,11 @@ class TaskInspector < Qt::Widget
     if(name.empty?)
       type = data.class
     else
-      type = data.send(name).class
+      f = data
+      name.split(".").each do |s|
+        f = f.send(s)
+      end
+      type = f.class
     end
 
 
@@ -283,13 +293,13 @@ class TaskInspector < Qt::Widget
         STDERR.puts "Unknown Value #{value} for Boolean skipping"
       end
     else
-#      pp "----name ----"
-#      pp name
-#      pp "---object----"
-#      pp obj
-#      pp "---obj.attribue---"
-#      pp obj.attribute
-#      pp "---end---"
+      #pp "----name ----"
+      #pp name
+      #pp "---object----"
+      #pp obj
+      #pp "---obj.attribue---"
+      #pp obj.attribute
+      #pp "---end---"
       puts "task_inspector::set_task_attribute() not implemented for " + type.name
       #pp data.send(name)
     end
