@@ -176,14 +176,21 @@ module Vizkit
     attr_reader :reader
 
     def initialize(port,options,widget=nil,&block)
-      super(widget,&nil)
+      if widget.is_a? Method
+        @callback_fct = widget
+        widget = widget.receiver
+      end
+      if widget.is_a?(Qt::Widget)
+        super(widget,&nil)
+      else
+        super(nil,&nil)
+      end
 
-      this_options, @policy = Kernel.filter_options(options,[:update_frequency,:auto_reconnect,:callback])
+      this_options, @policy = Kernel.filter_options(options,[:update_frequency,:auto_reconnect])
       @port = port
       @widget = widget
       @update_frequency = this_options[:update_frequency] 
       @auto_reconnect = this_options[:auto_reconnect]
-      @callback_fct = this_options[:callback]
       @update_frequency ||= @@update_frequency
       @auto_reconnect ||= @@auto_reconnect
       @block = block
@@ -198,7 +205,7 @@ module Vizkit
 
         #use default callback_fct
         @callback_fct ||= :update if widget.respond_to?(:update)
-        @callback_fct = widget.method(@callback_fct) if @callback_fct
+        @callback_fct = widget.method(@callback_fct) if @callback_fct.is_a? Symbol
         raise "Widget #{widget.objectName}(#{widget.class_name}) has no callback function "if !@callback_fct
       else
         @callback_fct = nil
@@ -220,7 +227,7 @@ module Vizkit
       #call disconnect if widget is no longer visible
       #this could lead to some problems if the widget wants to
       #log the data 
-      disconnect if @widget && !@widget.visible
+      disconnect if @widget && @widget.is_a?(Qt::Widget) && !@widget.visible
       reconnect(true) if @auto_reconnect && !alive?
       while(data = reader.read_new)
         data = @block.call(data,@port.full_name) if @block

@@ -15,7 +15,7 @@ module Orocos
           options = widget
           widget = nil
         end
-        if widget.is_a?(Qt::Widget)||block_given?
+        if widget.is_a?(Qt::Widget)||block_given?|| widget.is_a?(Method)
           return connect_to_widget(widget,options,&block)
         else
           return org_connect_to widget,options
@@ -39,7 +39,7 @@ module Orocos
         options = widget
         widget = nil
       end
-      if widget.is_a?(Qt::Widget) || block_given?
+      if widget.is_a?(Qt::Widget) || block_given? || widget.is_a?(Method)
         return connect_to_widget(widget,options,&block)
       else
         return org_connect_to widget,options
@@ -60,6 +60,4 @@ module Orocos
       end
     end
   end
- 
-
 end
