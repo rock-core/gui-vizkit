@@ -101,7 +101,7 @@ class LogControl
 
       slider.setSliderPosition(@log_replay.sample_index) unless @slider_pressed
       if @log_replay.time
-        timestamp.text = @log_replay.time.strftime("%a %D %H:%M:%S.#{@log_replay.time.usec.to_s}")
+        timestamp.text = @log_replay.time.strftime("%a %D %H:%M:%S." + "%06d" % @log_replay.time.usec)
         lcd_speed.display(@log_replay.actual_speed)
         last_port.text = @log_replay.current_port.full_name if @log_replay.current_port
       else
