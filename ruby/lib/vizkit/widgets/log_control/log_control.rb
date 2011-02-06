@@ -1,7 +1,6 @@
 
 class LogControl
   module Functions
-      
     def control(replay,options=Hash.new)
       raise "Cannot control #{replay.class}" if !replay.instance_of?(Orocos::Log::Replay)
       @log_replay = replay
@@ -192,6 +191,15 @@ class LogControl
   def self.create_widget(parent = nil)
     form = Vizkit.load(File.join(File.dirname(__FILE__),'LogControl.ui'),parent)
     form.extend Functions
+
+    #workaround
+    #it is not possible to define virtual functions for qidgets which are loaded
+    #via UiLoader (qtruby1.8)
+    #stop replay if all windows are closed
+    $qApp.connect(SIGNAL(:lastWindowClosed)) do 
+      form.instance_variable_set(:@replay_on,false)
+    end
+
     form
   end
 end
