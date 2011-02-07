@@ -25,7 +25,7 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "ImageView" do
   end
 
   def options(hash = Hash.new)
-    init
+    @options ||= default_options
     @options.merge!(hash)
   end
 
