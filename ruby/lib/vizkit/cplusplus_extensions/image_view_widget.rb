@@ -6,6 +6,7 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "ImageView" do
       options[:time_overlay] = true
       options[:fps_overlay] = true
       options[:display_first] = true
+      options[:openGl] = true
       return options
   end
 
@@ -30,8 +31,8 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "ImageView" do
 
   def init 
     if !defined? @init
-      setOpenGL(true)
       @options ||= default_options
+      setOpenGL(options[:openGL])
       @time_overlay_object = addText(-150,-5,0,"time")
       @time_overlay_object.setColor(Qt::Color.new(255,255,0))
       @time_overlay_object.setPosFactor(1,1);
@@ -62,7 +63,7 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "ImageView" do
       stat = ''
       stat_valid = ''
       stat_invalid = ''
-      frame.attributes.to_a.each do |x|
+      frame.attributes.each do |x|
         stat =x.data_.to_s if x.name_ == 'StatFps'
         stat_valid =x.data_.to_s if x.name_ == 'StatValidFps'
         stat_invalid =x.data_.to_s if x.name_ == 'StatInValidFps'
