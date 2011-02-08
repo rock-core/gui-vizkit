@@ -32,11 +32,22 @@ osg::ref_ptr<osg::Group> VizPluginBase::getVizNode() const
 const std::string VizPluginBase::getPluginName() const 
 {
     return "VizPlugin";
-};
+}
 
 osg::ref_ptr<osg::Node> VizPluginBase::createMainNode()
 {
     return new osg::Group();
+}
+
+std::vector< QDockWidget* > VizPluginBase::getDockWidgets(QWidget* )
+{
+    if (dockWidgets.empty()) createDockWidgets();
+    return dockWidgets;
+}
+
+void VizPluginBase::createDockWidgets()
+{
+
 }
 
 void VizPluginBase::updateCallback(osg::Node* node)
@@ -64,4 +75,9 @@ bool VizPluginBase::isDirty() const
 void VizPluginBase::setDirty() 
 {
     dirty = true;
+}
+
+vizkit::VizPluginRubyAdapterCollection* vizkit::VizPluginBase::getRubyAdapterCollection()
+{
+    return &adapterCollection;
 }

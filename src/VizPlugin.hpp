@@ -6,9 +6,87 @@
 
 #include <boost/thread/mutex.hpp>
 #include <yaml-cpp/yaml.h>
+#include <qobject.h>
+#include <QDockWidget>
+#include <QVariant>
 
 namespace vizkit 
 {
+
+/** 
+ * Interface class for all ruby adapters of the visualization plugins
+ * Ruby adapters are usefull to get incoming data via ruby.
+ */
+class VizPluginRubyAdapterBase : public QObject
+{
+    Q_OBJECT
+    
+    public slots:
+        virtual void update(const QVariant&) = 0;
+        virtual QString getDataType() = 0;
+        virtual QString getClassName() = 0;
+};
+
+/** 
+ * This class holds all ruby adapters of a specific visualization plugin.
+ */
+class VizPluginRubyAdapterCollection : public QObject
+{
+    Q_OBJECT
+    
+    public:
+        /**
+         * adds an adapter to the list of ruby adapters.
+         */
+        void addAdapter(VizPluginRubyAdapterBase* adapter) 
+        {
+            adapterList.push_back(adapter);
+        };
+        
+        /**
+         * removes an adapter from the list if available.
+         */
+        void removeAdapter(VizPluginRubyAdapterBase* adapter)
+        {
+            std::vector<VizPluginRubyAdapterBase*>::iterator it = std::find(adapterList.begin(), adapterList.end(), adapter);
+            if (it != adapterList.end()) adapterList.erase(it);
+            else std::cerr << "No Adapter " << adapter->getClassName().toStdString() << " to remove." << std::endl;
+        };
+    public slots:
+        /**
+         * The classnames of all available adapers will be returned.
+         * @return QStringList of known adapters
+         */
+        QStringList* getListOfAvailableAdapter()
+        {
+            QStringList* adapterStringList = new QStringList();
+            for(std::vector<VizPluginRubyAdapterBase*>::iterator it = adapterList.begin(); it != adapterList.end(); it++)
+            {
+                adapterStringList->push_back((*it)->getClassName());
+            }
+            return adapterStringList;
+        };
+        
+        /**
+         * Retruns the ruby adapter given by its classname.
+         * It will be returnd as QObject, so ruby can get it.
+         * @param className classname of the adapter  
+         * @return the adapter
+         */
+        QObject* getAdapter(QString className)
+        {
+            for(std::vector<VizPluginRubyAdapterBase*>::iterator it = adapterList.begin(); it != adapterList.end(); it++)
+            {
+                if ((*it)->getClassName() == className) 
+                    return *it; 
+            }
+            std::cerr << "Adapter named " << className.toStdString() << " is not available." << std::endl;
+            return NULL;
+        };
+        
+    protected:
+        std::vector<VizPluginRubyAdapterBase*> adapterList;
+};
 
 /** 
  * Interface class for all visualization plugins based on vizkit. All plugins
@@ -25,14 +103,13 @@ namespace vizkit
  * within the updateMainNode(). Note that updateMainNode() is most likely called
  * from a different thread context than the rest.
  */
-class VizPluginBase 
+class VizPluginBase
 {
     public:
         VizPluginBase();
 
 	/** @return true if the plugins internal state has been updated */
 	virtual bool isDirty() const;
-
 	/** mark the internal state as modified */
 	void setDirty();
 
@@ -57,6 +134,16 @@ class VizPluginBase
 	 *  configuration options
 	 */
 	virtual void loadData(const YAML::Node& yamlNode) {};
+        
+        /**
+         * @return a vector of QDockWidgets provided by this class.
+         */
+        std::vector<QDockWidget*> getDockWidgets(QWidget*);
+        
+        /**
+         * @return an instance of the ruby adapter collection.
+         */
+        VizPluginRubyAdapterCollection* getRubyAdapterCollection();
 
     protected:
 	/** override this function to update the visualisation.
@@ -68,11 +155,18 @@ class VizPluginBase
 	 * @return node derived from osg::Group
 	 */ 
 	virtual osg::ref_ptr<osg::Node> createMainNode();
+        
+        /** override this method to provide your own QDockWidgets.
+         * The QDockWidgets will automatically attached to the main window.
+         */ 
+        virtual void createDockWidgets();
 
 	/** lock this mutex outside updateMainNode if you update the internal
 	 * state of the visualization.
 	 */ 
 	boost::mutex updateMutex;
+        
+        VizPluginRubyAdapterCollection adapterCollection;
 
     private:
 	class CallbackAdapter;
@@ -82,6 +176,7 @@ class VizPluginBase
         osg::ref_ptr<osg::Node> mainNode;
         osg::ref_ptr<osg::Group> vizNode;
 	bool dirty;
+        std::vector<QDockWidget*> dockWidgets;
 };
 
 template <typename T> class VizPlugin;
@@ -136,6 +231,55 @@ class VizPlugin : public VizPluginBase,
 	    dynamic_cast<VizPluginAddType<Type>*>(this)->updateDataIntern(data);
 	};
 };
+
+
+#define VizPluginRubyAdapter(className, dataType, pluginType)\
+    class VizPluginRubyAdapter##className : public VizPluginRubyAdapterBase {\
+        public:\
+            VizPluginRubyAdapter##className(VizPlugin<pluginType>* plugin)\
+            {\
+                vizPlugin = plugin;\
+            };\
+            void update(const QVariant& data)\
+            {\
+                const void* ptr = data.data();\
+                const dataType* pluginData = reinterpret_cast<const dataType*>(ptr);\
+                vizPlugin->updateData(*pluginData);\
+            }\
+        public slots:\
+            QString getClassName() \
+            {\
+                return QString("VizPluginRubyAdapter%1").arg(#className);\
+            }\
+            QString getDataType() \
+            {\
+                return #dataType;\
+            }\
+        private:\
+            VizPlugin<pluginType>* vizPlugin;\
+    };\
+    adapterCollection.addAdapter(new VizPluginRubyAdapter##className(this));
+    
+
+/*
+template <class T>
+class VizPluginRubyAdapter : public VizPluginRubyAdapterBase
+{
+    public:
+        VizPluginRubyAdapter(VizPlugin<T>* plugin)
+        {
+            vizPlugin = plugin;
+        };
+        void update(const QVariant& data)
+        {
+            const void* ptr = data.data();
+            const T* pluginData = reinterpret_cast<const T*>(ptr);
+            vizPlugin->updateData(*pluginData);
+        };
+    protected:
+        VizPlugin<T>* vizPlugin; 
+};
+*/
 
 /** @deprecated adapter item for legacy visualizations. Do not derive from this
  * class for new designs. Use VizPlugin directly instead.
