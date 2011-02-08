@@ -20,14 +20,13 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "RangeView" do
   def display(range_scan,port_name)
     #check if type is frame_pair
     if !defined? @init
+      openGL true
       @options ||= default_options
       @time_overlay_object = addText(-150,-5,0,"time")
       @time_overlay_object.setColor(Qt::Color.new(255,255,0))
       @time_overlay_object.setPosFactor(1,1);
-      @time_overlay_object.setRenderOnOpenGl(true)
       @time_overlay_object.setBackgroundColor(Qt::Color.new(0,0,0,40))
       @init = true
-      setOpenGL true
     end
 
     points = Array.new

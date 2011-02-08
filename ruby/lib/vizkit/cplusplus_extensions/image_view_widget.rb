@@ -32,17 +32,15 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "ImageView" do
   def init 
     if !defined? @init
       @options ||= default_options
-      setOpenGL(@options[:openGL])
+      openGL(@options[:openGL])
       @time_overlay_object = addText(-150,-5,0,"time")
       @time_overlay_object.setColor(Qt::Color.new(255,255,0))
       @time_overlay_object.setPosFactor(1,1);
-      @time_overlay_object.setRenderOnOpenGl(true)
       @time_overlay_object.setBackgroundColor(Qt::Color.new(0,0,0,40))
       @fps_overlay_object = addText(5,-5,0,"   ")
       @fps_overlay_object.setColor(Qt::Color.new(255,255,0))
       @fps_overlay_object.setBackgroundColor(Qt::Color.new(0,0,0,40))
       @fps_overlay_object.setPosFactor(0,1);
-      @fps_overlay_object.setRenderOnOpenGl(true)
       @init = true
     end
   end
