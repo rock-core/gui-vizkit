@@ -196,6 +196,7 @@ module Vizkit
       @block = block
       @reader = nil
       @timer_id = nil
+      @last_sample = nil    #save last sample so we can reuse the memory
 
       if widget 
         #try to find callback_fct for port
@@ -229,9 +230,9 @@ module Vizkit
       #log the data 
       disconnect if @widget && @widget.is_a?(Qt::Widget) && !@widget.visible
       reconnect(true) if @auto_reconnect && !alive?
-      while(data = reader.read_new)
-        data = @block.call(data,@port.full_name) if @block
-        @callback_fct.call data,@port.full_name if @callback_fct && data
+      while(reader.read_new(@last_sample))
+        @last_sample = @block.call(@last_sample,@port.full_name) if @block
+        @callback_fct.call @last_sample,@port.full_name if @callback_fct && @last_sample
       end
     end
 
@@ -251,6 +252,7 @@ module Vizkit
         @port = port if port
         @reader = @port.reader @policy
         if @reader
+          @last_sample = @reader.new_sample
           @timer_id = startTimer(1000/@update_frequency) if !@timer_id
           return true
         end
@@ -279,6 +281,15 @@ module Vizkit
         return true
       end
       false
+    end
+
+    def timerEvent(event)
+      disconnect if @widget && @widget.is_a?(Qt::Widget) && !@widget.visible
+      while(sample = reader.read_new)
+        sample = @block.call(sample,@port.full_name) if @block
+        @callback_fct.call sample,@port.full_name if @callback_fct && sample
+        @last_sample = sample
+      end
     end
 
     def disconnect()
