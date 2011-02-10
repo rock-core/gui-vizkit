@@ -44,7 +44,7 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "SonarView" do
     end
     if sonar_scan.class.name == "/base/samples/SonarScan"
       setSonarScan(sonar_scan.scanData.to_byte_array[8..-1],sonar_scan.scanData.size,sonar_scan.angle,sonar_scan.time_beetween_bins,false)
-    elsif sonar_scan.class.name == "/sonar_data/SonarScan"
+    elsif sonar_scan.class.name == "/sensorData/Sonar"
       setSonarScan(sonar_scan.scanData.to_byte_array[8..-1],sonar_scan.scanData.size,sonar_scan.bearing,sonar_scan.adInterval,true)
     else
       STDERR.puts "Cannot Handle Data of type: #{sonar_scan.class.name}, please check vizkit/ruby/lib/vizkit/cplusplus_extensions/sonar_view.rb" 
