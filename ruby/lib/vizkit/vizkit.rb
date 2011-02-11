@@ -135,9 +135,15 @@ module Vizkit
   #reconnects all connection to the widget and its children
   #even if the connection is still alive
   def self.reconnect(widget,force=false)
-    @connections.each do |connection|
-      if widget.findChild(Qt::Widget,connection.widget.objectName)
-        connection.reconnect
+    if widget.is_a?(Qt::Object)
+      @connections.each do |connection|
+        if connection.widget.is_a?(Qt::Object) && widget.findChild(Qt::Object,connection.widget.objectName)
+          connection.reconnect
+        end
+      end
+    else
+      @connections.each do |connection|
+          connection.reconnect if connection.widget == widget
       end
     end
   end
@@ -145,9 +151,15 @@ module Vizkit
   #connects all connection to the widget and its children
   #if the connection is not responding
   def self.connect(widget)
-    @connections.each do |connection|
-      if connection.widget && widget.findChild(Qt::Widget,connection.widget.objectName.to_s)
-        connection.connect
+   if widget.is_a?(Qt::Object)
+      @connections.each do |connection|
+        if connection.widget.is_a?(Qt::Object) && widget.findChild(Qt::Object,connection.widget.objectName)
+          connection.connect
+        end
+      end
+    else
+      @connections.each do |connection|
+          connection.connect if connection.widget == widget
       end
     end
   end
