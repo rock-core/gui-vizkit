@@ -14,8 +14,12 @@ class ActuatorControl
        			speedCtrl_checkBox.connect(SIGNAL('stateChanged(int)'),self,:speedCtrl)  
 			
 			# A local storage variable before sending the Gui output
-			@op_message = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0}
-			@op_mode    = 0
+			@op_message = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+			puts "now follows the op_message"
+			puts @op_message
+			puts "done"
+                        puts @op_message.methods	
+			#@op_mode    = 0
 			# A flag for checking whether activate_gui_control check box is checked or not
 			@_activategui = false
 		end
@@ -35,7 +39,7 @@ class ActuatorControl
 				@send_timer.stop if @send_timer
 			elsif (_activatekey == 2 )
 				@_activategui = true
-				@send_timer.start(100) if @send_timer
+				@send_timer.start(50) if @send_timer
 			end
 			
 			# Slider
@@ -88,7 +92,7 @@ class ActuatorControl
  		def update(input_gui, port_name)			
 			
 			target = input_gui.target.to_a
-			mode = input_gui.mode.to_a
+			#mode = input_gui.mode.to_a
 	      		# Reading the value from the joystick
 	      		_surgevalue 	= ( target[0] * 100 )
 	      		_swayvalue 	= ( target[1] * 100 )
@@ -97,12 +101,12 @@ class ActuatorControl
 	      		_pitchvalue 	= ( target[4] * 100 )
 	      		_yawvalue 	= ( target[5] * 100 )
 
-			_surgemode 	= mode[0]
-			_swaymode 	= mode[1]
-			_heavemode 	= mode[2]
-			_rollmode 	= mode[3]
-			_pitchmode 	= mode[4]
-			_yawmmmode 	= mode[5]
+			#_surgemode 	= mode[0]
+			#_swaymode 	= mode[1]
+			#_heavemode 	= mode[2]
+			#_rollmode 	= mode[3]
+			#_pitchmode 	= mode[4]
+			#_yawmmmode 	= mode[5]
 
 
 	      		# Setting the joystick value to the gui
@@ -113,17 +117,16 @@ class ActuatorControl
 				roll_slider.setValue(_rollvalue)
 				pitch_slider.setValue(_pitchvalue)
 				yaw_slider.setValue(_yawvalue)			
+                                @writer.write input_gui if @writer
 			end
 	       	end     
 
 		def send_GuiValue
 			output_gui = @writer.new_sample
-			output_gui.target = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 			for i in 0..5 do
-				output_gui.target[i] = (op_message[i] / 100)
+				output_gui.target.push(@op_message[i].to_f / 100)
+				output_gui.mode.push(:DM_UNINITIALIZED)
 			end
-			output_gui.mode = @op_mode 
-	
 			# Send Gui value
 			@writer.write output_gui
 		end			
