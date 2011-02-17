@@ -22,7 +22,7 @@ class VizPluginRubyAdapterBase : public QObject
     Q_OBJECT
     
     public slots:
-        virtual void update(const QVariant&) = 0;
+        virtual void update(QVariant&) = 0;
         virtual QString getDataType() = 0;
         virtual QString getClassName() = 0;
 };
@@ -232,7 +232,20 @@ class VizPlugin : public VizPluginBase,
 	};
 };
 
-
+/**
+ * Macro that adds a type-specific ruby adapter, provided by the plugin.
+ * Use this if you want to provide ruby adapters:
+ *
+ * <code>
+ * Classname::Classname()
+ * {    
+ *     VizPluginRubyAdapter(ClassnameWaypoint, base::Waypoint, base::Waypoint)
+ *
+ *     //multiple types are supported:
+ *     VizPluginRubyAdapter(ClassnameInteger, int, base::Waypoint)
+ *     //...
+ * }
+ */
 #define VizPluginRubyAdapter(className, dataType, pluginType)\
     class VizPluginRubyAdapter##className : public VizPluginRubyAdapterBase {\
         public:\
@@ -240,11 +253,12 @@ class VizPlugin : public VizPluginBase,
             {\
                 vizPlugin = plugin;\
             };\
-            void update(const QVariant& data)\
+            void update(QVariant& data)\
             {\
-                const void* ptr = data.data();\
+                void* ptr = data.value<void*>();\
                 const dataType* pluginData = reinterpret_cast<const dataType*>(ptr);\
                 vizPlugin->updateData(*pluginData);\
+                delete pluginData;\
             }\
         public slots:\
             QString getClassName() \
@@ -260,26 +274,6 @@ class VizPlugin : public VizPluginBase,
     };\
     adapterCollection.addAdapter(new VizPluginRubyAdapter##className(this));
     
-
-/*
-template <class T>
-class VizPluginRubyAdapter : public VizPluginRubyAdapterBase
-{
-    public:
-        VizPluginRubyAdapter(VizPlugin<T>* plugin)
-        {
-            vizPlugin = plugin;
-        };
-        void update(const QVariant& data)
-        {
-            const void* ptr = data.data();
-            const T* pluginData = reinterpret_cast<const T*>(ptr);
-            vizPlugin->updateData(*pluginData);
-        };
-    protected:
-        VizPlugin<T>* vizPlugin; 
-};
-*/
 
 /** @deprecated adapter item for legacy visualizations. Do not derive from this
  * class for new designs. Use VizPlugin directly instead.
