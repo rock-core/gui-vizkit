@@ -257,9 +257,8 @@ module Vizkit
       if @timer_id
         killTimer(@timer_id)
         @timer_id = nil
+        # @reader.disconnect this leads to some problems with the timerEvent: reason unknown
         @widget.disconnected(@port.full_name) if @widget.respond_to?:disconnected
-        @reader.disconnect
-        @reader = nil
       end
     end
 
