@@ -240,9 +240,14 @@ module Vizkit
       #call disconnect if widget is no longer visible
       #this could lead to some problems if the widget wants to
       #log the data 
-      disconnect if @widget && @widget.is_a?(Qt::Widget) && !@widget.visible
+      #
+      if @widget && @widget.is_a?(Qt::Widget) && !@widget.visible
+        disconnect
+        return
+      end
+
       reconnect(true) if @auto_reconnect && !alive?
-      while(reader.read_new(@last_sample))
+      while(@reader.read_new(@last_sample))
         @last_sample = @block.call(@last_sample,@port.full_name) if @block
         @callback_fct.call @last_sample,@port.full_name if @callback_fct && @last_sample
       end
@@ -251,9 +256,10 @@ module Vizkit
     def disconnect()
       if @timer_id
         killTimer(@timer_id)
-        @reader.disconnect
-        @widget.disconnected(@port.full_name) if @widget.respond_to?:disconnected
         @timer_id = nil
+        @widget.disconnected(@port.full_name) if @widget.respond_to?:disconnected
+        @reader.disconnect
+        @reader = nil
       end
     end
 
