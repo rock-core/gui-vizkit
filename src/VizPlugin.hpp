@@ -138,7 +138,7 @@ class VizPluginBase
         /**
          * @return a vector of QDockWidgets provided by this class.
          */
-        std::vector<QDockWidget*> getDockWidgets(QWidget*);
+        std::vector<QDockWidget*> getDockWidgets();
         
         /**
          * @return an instance of the ruby adapter collection.
@@ -258,7 +258,6 @@ class VizPlugin : public VizPluginBase,
                 void* ptr = data.value<void*>();\
                 const dataType* pluginData = reinterpret_cast<const dataType*>(ptr);\
                 vizPlugin->updateData(*pluginData);\
-                delete pluginData;\
             }\
         public slots:\
             QString getClassName() \

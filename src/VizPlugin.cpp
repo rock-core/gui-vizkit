@@ -39,7 +39,7 @@ osg::ref_ptr<osg::Node> VizPluginBase::createMainNode()
     return new osg::Group();
 }
 
-std::vector< QDockWidget* > VizPluginBase::getDockWidgets(QWidget* )
+std::vector< QDockWidget* > VizPluginBase::getDockWidgets()
 {
     if (dockWidgets.empty()) createDockWidgets();
     return dockWidgets;
