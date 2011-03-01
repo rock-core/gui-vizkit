@@ -209,6 +209,7 @@ module Vizkit
       @reader = nil
       @timer_id = nil
       @last_sample = nil    #save last sample so we can reuse the memory
+      @sample_class = nil
 
       if widget 
         #try to find callback_fct for port
@@ -248,8 +249,13 @@ module Vizkit
 
       reconnect(true) if @auto_reconnect && !alive?
       while(@reader.read_new(@last_sample))
-        @last_sample = @block.call(@last_sample,@port.full_name) if @block
-        @callback_fct.call @last_sample,@port.full_name if @callback_fct && @last_sample
+        if @block
+          @last_sample = @block.call(@last_sample,@port.full_name)
+          unless @last_sample.is_a? @sample_class
+            raise "#{port.task.name}.#{port.name}.connect_to: Code block returned #{@last_sample.class} but #{@sample_class}} was expected!!!"
+          end
+        end
+        @callback_fct.call @last_sample,@port.full_name if @callback_fct
       end
     end
 
@@ -270,6 +276,7 @@ module Vizkit
         @reader = @port.reader @policy
         if @reader
           @last_sample = @reader.new_sample
+          @sample_class = @last_sample.class
           @timer_id = startTimer(1000/@update_frequency) if !@timer_id
           return true
         end
