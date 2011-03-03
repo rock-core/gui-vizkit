@@ -39,7 +39,7 @@ Rice::Object createBridge()
 }
 
 extern "C"
-void Init_typelib_to_qvariant()
+void Init_vizkittypelib()
 {
   Data_Type<TypelibToQVariant> rbcQConverter =
     define_class<TypelibToQVariant>("TypelibToQVariant")
