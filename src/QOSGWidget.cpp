@@ -19,7 +19,7 @@
 #include <QtCore/QDebug>
 #include "QOSGWidget.hpp"
 #include "CompositeViewerQOSG.hpp"
-//#include "MouseManipulationManipulator.h"
+#include "MouseManipulationManipulator.h"
 
 #if defined(WIN32) && !defined(__CYGWIN__)
 #include <osgViewer/api/Win32/GraphicsWindowWin32>
@@ -544,8 +544,8 @@ void setupManipulatorAndHandler(osgViewer::View & view
             '3', "NodeTracker", new osgGA::NodeTrackerManipulator() );
         keyswitchManipulator->addMatrixManipulator( 
             '4', "Terrain", new osgGA::TerrainManipulator() );
-//        keyswitchManipulator->addMatrixManipulator( 
-//            '5', "MouseManipulator", new enview::MouseManipulationManipulator(view.getCamera()) );
+	keyswitchManipulator->addMatrixManipulator( 
+	    '5', "MouseManipulator", new enview::MouseManipulationManipulator(view.getCamera()) );
 
 	// set the default to be the terrain manipulator as it matches enview best at the moment
 	keyswitchManipulator->selectMatrixManipulator( 3 );
