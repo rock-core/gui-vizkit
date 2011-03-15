@@ -9,6 +9,7 @@
 #include <qobject.h>
 #include <QDockWidget>
 #include <QVariant>
+#include <QtGui/QWidget>
 
 namespace vizkit 
 {
@@ -273,6 +274,19 @@ class VizPlugin : public VizPluginBase,
     };\
     adapterCollection.addAdapter(new VizPluginRubyAdapter##className(this));
     
+    
+
+class VizPluginWidgetBase : public QWidget
+{
+    Q_OBJECT
+    
+    public:
+    VizPluginWidgetBase(QWidget* parent, Qt::WindowFlags f) : QWidget( parent, f ){};
+    public slots:
+    virtual vizkit::VizPluginBase* getPlugin() = 0;
+    virtual QObject* getAdapterCollection() = 0;
+};
+
 
 /** @deprecated adapter item for legacy visualizations. Do not derive from this
  * class for new designs. Use VizPlugin directly instead.
