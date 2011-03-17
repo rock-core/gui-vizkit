@@ -247,6 +247,7 @@ class VizkitQtPluginBase : public QObject
     
     public slots:
         virtual VizPluginBase* createPlugin() = 0;
+        virtual QString getPluginName() = 0;
 };
 
 /**
@@ -311,7 +312,7 @@ class VizkitQtPluginBase : public QObject
         {\
             return new pluginName;\
         };\
-        QString* getPluginName()\
+        virtual QString getPluginName()\
         {\
             return #pluginName;\
         }\
