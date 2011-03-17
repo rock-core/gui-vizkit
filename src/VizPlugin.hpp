@@ -9,7 +9,7 @@
 #include <qobject.h>
 #include <QDockWidget>
 #include <QVariant>
-#include <QtGui/QWidget>
+#include <QtPlugin>
 
 namespace vizkit 
 {
@@ -233,6 +233,22 @@ class VizPlugin : public VizPluginBase,
 	};
 };
 
+/** 
+ * Interface class for all Vizkit Qt plugins.
+ * Vizkit Qt plugins are only helper classes to create an
+ * instance of the Vizkit plugin using ruby.
+ */
+class VizkitQtPluginBase : public QObject
+{
+    Q_OBJECT
+    
+    public:
+        VizkitQtPluginBase(QObject* parent = 0) : QObject(parent){};
+    
+    public slots:
+        virtual VizPluginBase* createPlugin() = 0;
+};
+
 /**
  * Macro that adds a type-specific ruby adapter, provided by the plugin.
  * Use this if you want to provide ruby adapters:
@@ -273,19 +289,34 @@ class VizPlugin : public VizPluginBase,
             VizPlugin<pluginType>* vizPlugin;\
     };\
     adapterCollection.addAdapter(new VizPluginRubyAdapter##className(this));
-    
-    
 
-class VizPluginWidgetBase : public QWidget
-{
-    Q_OBJECT
-    
-    public:
-    VizPluginWidgetBase(QWidget* parent, Qt::WindowFlags f) : QWidget( parent, f ){};
-    public slots:
-    virtual vizkit::VizPluginBase* getPlugin() = 0;
-    virtual QObject* getAdapterCollection() = 0;
-};
+
+/**
+ * Macro that adds a Vizkit Qt plugin to a Vizkit plugin.
+ * This is needed to create an instance of the plugin in ruby, if
+ * the plugin is part of a external library.
+ * The ruby adapter macro is also needed in this case.
+ * 
+ * Use this to provide a Vizkit Qt plugin:
+ *
+ * <code>
+ *     class WaypointVisualization{..};
+ *     
+ *     VizkitQtPlugin(WaypointQtPlugin, WaypointVisualization)
+ */
+#define VizkitQtPlugin(className, pluginName)\
+    class className : public vizkit::VizkitQtPluginBase {\
+        public:\
+        virtual vizkit::VizPluginBase* createPlugin()\
+        {\
+            return new pluginName;\
+        };\
+        QString* getPluginName()\
+        {\
+            return #pluginName;\
+        }\
+    };\
+    Q_EXPORT_PLUGIN2(className, className)
 
 
 /** @deprecated adapter item for legacy visualizations. Do not derive from this
