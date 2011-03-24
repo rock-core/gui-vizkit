@@ -305,8 +305,8 @@ class VizkitQtPluginBase : public QObject
  *     
  *     VizkitQtPlugin(WaypointQtPlugin, WaypointVisualization)
  */
-#define VizkitQtPlugin(className, pluginName)\
-    class className : public vizkit::VizkitQtPluginBase {\
+#define VizkitQtPlugin(pluginName)\
+    class QtPlugin##pluginName : public vizkit::VizkitQtPluginBase {\
         public:\
         virtual vizkit::VizPluginBase* createPlugin()\
         {\
@@ -317,7 +317,7 @@ class VizkitQtPluginBase : public QObject
             return #pluginName;\
         }\
     };\
-    Q_EXPORT_PLUGIN2(className, className)
+    Q_EXPORT_PLUGIN2(QtPlugin##pluginName, QtPlugin##pluginName)
 
 
 /** @deprecated adapter item for legacy visualizations. Do not derive from this
