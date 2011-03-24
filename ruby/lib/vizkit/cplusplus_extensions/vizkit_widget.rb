@@ -5,7 +5,7 @@ module VizkitPluginExtension
         getListOfAvailableAdapter.each do |name|
             plugin = getAdapter(name)
             bridge = TypelibToQVariant.create_bridge
-            Qt::Object.connect(bridge, SIGNAL('changeVariant(QVariant&)'), plugin, SLOT('update(QVariant&)'))
+            Qt::Object.connect(bridge, SIGNAL('changeVariant(QVariant&, bool)'), plugin, SLOT('update(QVariant&, bool)'))
             @bridges[plugin.getRubyMethod] = bridge
             @plugins[plugin.getRubyMethod] = plugin
             typename = plugin.getDataType
