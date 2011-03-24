@@ -9,15 +9,15 @@ class QRubyBridge : public QObject
   Q_OBJECT
 
   signals:
-  void changeVariant(QVariant &);
+  void changeVariant(QVariant &, bool pass_ownership);
 
   public:
   QRubyBridge(QObject* parent = NULL);
 
-  void setVariant(QVariant const& qvariant)
+  void setVariant(QVariant const& qvariant, bool pass_ownership)
   {
     this->qvariant = qvariant;
-    emit changeVariant(this->qvariant);
+    emit changeVariant(this->qvariant, pass_ownership);
   };
 
   public slots:

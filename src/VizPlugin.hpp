@@ -23,7 +23,7 @@ class VizPluginRubyAdapterBase : public QObject
     Q_OBJECT
     
     public slots:
-        virtual void update(QVariant&) = 0;
+        virtual void update(QVariant&, bool) = 0;
         virtual QString getDataType() = 0;
         virtual QString getRubyMethod() = 0;
 };
@@ -271,12 +271,13 @@ class VizkitQtPluginBase : public QObject
             {\
                 vizPlugin = plugin;\
             };\
-            void update(QVariant& data)\
+            void update(QVariant& data, bool pass_ownership)\
             {\
                 void* ptr = data.value<void*>();\
                 dataType* pluginData = reinterpret_cast<dataType*>(ptr);\
                 vizPlugin->methodName(*pluginData);\
-                delete pluginData; \
+		if (pass_ownership) \
+			delete pluginData; \
             }\
         public slots:\
             QString getDataType() \

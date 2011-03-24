@@ -26,12 +26,12 @@ void TypelibToQVariant::wrap(Rice::Object obj, Rice::Object expected_type_name, 
   {
     void* cxx_type = orogen_transports::getOpaqueValue(StringValuePtr(typeName), val);
     QVariant qVar = qVariantFromValue(cxx_type);
-    qruby_bridge.setVariant(qVar);
+    qruby_bridge.setVariant(qVar, true);
   }
   else
   {
     QVariant qVar = qVariantFromValue(val.getData());
-    qruby_bridge.setVariant(qVar);
+    qruby_bridge.setVariant(qVar, false);
   }
 }
 
