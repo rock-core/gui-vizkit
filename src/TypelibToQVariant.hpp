@@ -31,11 +31,12 @@ class TypelibToQVariant
 {
  public:
    TypelibToQVariant();
-   void wrap(Rice::Object, Rice::Object);
+   void wrap(Rice::Object, Rice::Object, bool);
    Rice::Object getBridge();
 
   private:
    QRubyBridge qruby_bridge;
    VALUE rb_bridge;
 };
+
 #endif

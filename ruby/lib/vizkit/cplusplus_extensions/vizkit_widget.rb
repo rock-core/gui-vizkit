@@ -11,11 +11,15 @@ module VizkitPluginExtension
             typename = plugin.getDataType
             # the plugin reports a C++ type name. We need a typelib type name
             typename = Typelib::GCCXMLLoader.cxx_to_typelib(typename)
+            expected_ruby_type = Orocos.typelib_type_for(typename)
+
+            is_opaque = (expected_ruby_type.name != typename)
 
             singleton_class = (class << self; self end)
             singleton_class.class_eval do
                 define_method(plugin.getRubyMethod) do |value|
-                    bridge.wrap(value, typename)
+                    value = Typelib.from_ruby(value, expected_ruby_type)
+                    bridge.wrap(value, typename, is_opaque)
                 end
             end
         end
