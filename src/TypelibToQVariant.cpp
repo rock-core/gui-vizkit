@@ -35,7 +35,7 @@ Rice::Object TypelibToQVariant::getBridge()
 Rice::Object createBridge()
 {
   Object rb_type_to_variant = rb_eval_string("TypelibToQVariant.new");
-  Object rb_bridge = rb_type_to_variant.instance_eval("bridge");
+  Object rb_bridge = rb_type_to_variant.call("bridge");
   rb_bridge.iv_set("@typelib_to_qvariant",rb_type_to_variant); 
   rb_bridge.instance_eval("def wrap(obj, expected_type_name); @typelib_to_qvariant.wrap(obj, expected_type_name);self;end");
   return rb_bridge;
