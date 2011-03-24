@@ -6,15 +6,15 @@ module VizkitPluginExtension
             plugin = getAdapter(name)
             bridge = TypelibToQVariant.create_bridge
             Qt::Object.connect(bridge, SIGNAL('changeVariant(QVariant&)'), plugin, SLOT('update(QVariant&)'))
-            @bridges[plugin.getClassName] = bridge
-            @plugins[plugin.getClassName] = plugin
+            @bridges[plugin.getRubyMethod] = bridge
+            @plugins[plugin.getRubyMethod] = plugin
             typename = plugin.getDataType
             # the plugin reports a C++ type name. We need a typelib type name
             typename = Typelib::GCCXMLLoader.cxx_to_typelib(typename)
 
             singleton_class = (class << self; self end)
             singleton_class.class_eval do
-                define_method("update#{plugin.getClassName}") do |value|
+                define_method(plugin.getRubyMethod) do |value|
                     bridge.wrap(value, typename)
                 end
             end

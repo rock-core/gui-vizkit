@@ -25,7 +25,7 @@ class VizPluginRubyAdapterBase : public QObject
     public slots:
         virtual void update(QVariant&) = 0;
         virtual QString getDataType() = 0;
-        virtual QString getClassName() = 0;
+        virtual QString getRubyMethod() = 0;
 };
 
 /** 
@@ -51,7 +51,7 @@ class VizPluginRubyAdapterCollection : public QObject
         {
             std::vector<VizPluginRubyAdapterBase*>::iterator it = std::find(adapterList.begin(), adapterList.end(), adapter);
             if (it != adapterList.end()) adapterList.erase(it);
-            else std::cerr << "No Adapter " << adapter->getClassName().toStdString() << " to remove." << std::endl;
+            else std::cerr << "No Adapter " << adapter->getRubyMethod().toStdString() << " to remove." << std::endl;
         };
     public slots:
         /**
@@ -63,7 +63,7 @@ class VizPluginRubyAdapterCollection : public QObject
             QStringList* adapterStringList = new QStringList();
             for(std::vector<VizPluginRubyAdapterBase*>::iterator it = adapterList.begin(); it != adapterList.end(); it++)
             {
-                adapterStringList->push_back((*it)->getClassName());
+                adapterStringList->push_back((*it)->getRubyMethod());
             }
             return adapterStringList;
         };
@@ -74,14 +74,14 @@ class VizPluginRubyAdapterCollection : public QObject
          * @param className classname of the adapter  
          * @return the adapter
          */
-        QObject* getAdapter(QString className)
+        QObject* getAdapter(QString rubyMethodName)
         {
             for(std::vector<VizPluginRubyAdapterBase*>::iterator it = adapterList.begin(); it != adapterList.end(); it++)
             {
-                if ((*it)->getClassName() == className) 
+                if ((*it)->getRubyMethod() == rubyMethodName) 
                     return *it; 
             }
-            std::cerr << "Adapter named " << className.toStdString() << " is not available." << std::endl;
+            std::cerr << "Adapter named " << rubyMethodName.toStdString() << " is not available." << std::endl;
             return NULL;
         };
         
@@ -264,32 +264,38 @@ class VizkitQtPluginBase : public QObject
  *     //...
  * }
  */
-#define VizPluginRubyAdapter(className, Name, dataType, pluginType)\
-    class VizPluginRubyAdapter##className##Name : public VizPluginRubyAdapterBase {\
+#define VizPluginRubyAdapterCommon(className, dataType, methodName, rubyMethodName)\
+    class VizPluginRubyAdapter##className##rubyMethodName : public VizPluginRubyAdapterBase {\
         public:\
-            VizPluginRubyAdapter##className##Name(VizPlugin<pluginType>* plugin)\
+            VizPluginRubyAdapter##className##rubyMethodName(className* plugin)\
             {\
                 vizPlugin = plugin;\
             };\
             void update(QVariant& data)\
             {\
                 void* ptr = data.value<void*>();\
-                const dataType* pluginData = reinterpret_cast<const dataType*>(ptr);\
-                vizPlugin->updateData(*pluginData);\
+                dataType* pluginData = reinterpret_cast<dataType*>(ptr);\
+                vizPlugin->methodName(*pluginData);\
+                delete pluginData; \
             }\
         public slots:\
-            QString getClassName() \
-            {\
-                return QString(#Name);\
-            }\
             QString getDataType() \
             {\
                 return #dataType;\
             }\
+            QString getRubyMethod() \
+            {\
+                return #rubyMethodName; \
+            }\
         private:\
-            VizPlugin<pluginType>* vizPlugin;\
+            className* vizPlugin;\
     };\
-    adapterCollection.addAdapter(new VizPluginRubyAdapter##className##Name(this));
+    adapterCollection.addAdapter(new VizPluginRubyAdapter##className##rubyMethodName(this));
+
+#define VizPluginRubyAdapter(className, dataType, Name) \
+    VizPluginRubyAdapterCommon(className, dataType, updateData, update##Name)
+#define VizPluginRubyConfig(className, dataType, methodName) \
+    VizPluginRubyAdapterCommon(className, dataType, methodName, methodName)
 
 
 /**
