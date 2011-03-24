@@ -264,10 +264,10 @@ class VizkitQtPluginBase : public QObject
  *     //...
  * }
  */
-#define VizPluginRubyAdapter(className, dataType, pluginType)\
-    class VizPluginRubyAdapter##className : public VizPluginRubyAdapterBase {\
+#define VizPluginRubyAdapter(className, Name, dataType, pluginType)\
+    class VizPluginRubyAdapter##className##Name : public VizPluginRubyAdapterBase {\
         public:\
-            VizPluginRubyAdapter##className(VizPlugin<pluginType>* plugin)\
+            VizPluginRubyAdapter##className##Name(VizPlugin<pluginType>* plugin)\
             {\
                 vizPlugin = plugin;\
             };\
@@ -280,7 +280,7 @@ class VizkitQtPluginBase : public QObject
         public slots:\
             QString getClassName() \
             {\
-                return QString("VizPluginRubyAdapter%1").arg(#className);\
+                return QString(#Name);\
             }\
             QString getDataType() \
             {\
@@ -289,7 +289,7 @@ class VizkitQtPluginBase : public QObject
         private:\
             VizPlugin<pluginType>* vizPlugin;\
     };\
-    adapterCollection.addAdapter(new VizPluginRubyAdapter##className(this));
+    adapterCollection.addAdapter(new VizPluginRubyAdapter##className##Name(this));
 
 
 /**

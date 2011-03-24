@@ -1,16 +1,8 @@
-
 #ifndef TYPELIBTOQVARIANT_H
 #define TYPELIBTOQVARIANT_H
 
 #include <QtCore>
-#include <smoke.h>
-#include <rice/Class.hpp>
-#include <rice/Data_Object.hpp>
-#include "rice/Constructor.hpp"
-#include "rice/Data_Type.hpp"
-#include <iostream>
-#include <typelib_ruby.hh>
-#include <rtt/typelib/TypelibMarshallerBase.hpp> 
+#include <rice/Object.hpp>
 
 class QRubyBridge : public QObject
 {
