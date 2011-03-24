@@ -1,4 +1,7 @@
 #include "TypelibToQVariant.hpp"
+#include <rtt/typelib/TypelibMarshallerBase.hpp>
+#include <rice/Constructor.hpp>
+#include <typelib_ruby.hh>
 
 using namespace Rice;
 
