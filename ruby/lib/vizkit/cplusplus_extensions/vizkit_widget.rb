@@ -26,7 +26,7 @@ module VizkitPluginExtension
     end
 end
 
-Vizkit::UiLoader.extend_cplusplus_widget_class "vizkit::QVizkitWidget" do 
+Vizkit::UiLoader.extend_cplusplus_widget_class "vizkit::QVizkitMainWindow" do 
     def load_plugin(path)
         loader = Qt::PluginLoader.new(path)
         loader.load
