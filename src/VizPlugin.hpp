@@ -55,7 +55,7 @@ class VizPluginRubyAdapterCollection : public QObject
         };
     public slots:
         /**
-         * The classnames of all available adapers will be returned.
+         * The method names of all available adapers will be returned.
          * @return QStringList of known adapters
          */
         QStringList* getListOfAvailableAdapter()
@@ -69,9 +69,9 @@ class VizPluginRubyAdapterCollection : public QObject
         };
         
         /**
-         * Retruns the ruby adapter given by its classname.
+         * Retruns the ruby adapter given by its ruby method name.
          * It will be returnd as QObject, so ruby can get it.
-         * @param className classname of the adapter  
+         * @param rubyMethodName method name of the adapter
          * @return the adapter
          */
         QObject* getAdapter(QString rubyMethodName)
@@ -167,6 +167,8 @@ class VizPluginBase
 	 */ 
 	boost::mutex updateMutex;
         
+        std::vector<QDockWidget*> dockWidgets;
+        
         VizPluginRubyAdapterCollection adapterCollection;
 
     private:
@@ -177,7 +179,6 @@ class VizPluginBase
         osg::ref_ptr<osg::Node> mainNode;
         osg::ref_ptr<osg::Group> vizNode;
 	bool dirty;
-        std::vector<QDockWidget*> dockWidgets;
 };
 
 template <typename T> class VizPlugin;
@@ -255,19 +256,19 @@ class VizkitQtPluginBase : public QObject
  * Use this if you want to provide ruby adapters:
  *
  * <code>
- * Classname::Classname()
+ * Pluginname::Pluginname()
  * {    
- *     VizPluginRubyAdapter(ClassnameWaypoint, base::Waypoint, base::Waypoint)
- *
- *     //multiple types are supported:
- *     VizPluginRubyAdapter(ClassnameInteger, int, base::Waypoint)
- *     //...
+ *     //there will be a updateWaypoint method in ruby
+ *     VizPluginRubyAdapter(Pluginname, base::Waypoint, Waypoint)
+ * 
+ *     //if you want to call any other method of your plugin in ruby
+ *     VizPluginRubyConfig(Pluginname, bool, enableSomething)
  * }
  */
-#define VizPluginRubyAdapterCommon(className, dataType, methodName, rubyMethodName)\
-    class VizPluginRubyAdapter##className##rubyMethodName : public VizPluginRubyAdapterBase {\
+#define VizPluginRubyAdapterCommon(pluginName, dataType, methodName, rubyMethodName)\
+    class VizPluginRubyAdapter##pluginName##rubyMethodName : public VizPluginRubyAdapterBase {\
         public:\
-            VizPluginRubyAdapter##className##rubyMethodName(className* plugin)\
+            VizPluginRubyAdapter##pluginName##rubyMethodName(pluginName* plugin)\
             {\
                 vizPlugin = plugin;\
             };\
@@ -289,14 +290,14 @@ class VizkitQtPluginBase : public QObject
                 return #rubyMethodName; \
             }\
         private:\
-            className* vizPlugin;\
+            pluginName* vizPlugin;\
     };\
-    adapterCollection.addAdapter(new VizPluginRubyAdapter##className##rubyMethodName(this));
+    adapterCollection.addAdapter(new VizPluginRubyAdapter##pluginName##rubyMethodName(this));
 
-#define VizPluginRubyAdapter(className, dataType, Name) \
-    VizPluginRubyAdapterCommon(className, dataType, updateData, update##Name)
-#define VizPluginRubyConfig(className, dataType, methodName) \
-    VizPluginRubyAdapterCommon(className, dataType, methodName, methodName)
+#define VizPluginRubyAdapter(pluginName, dataType, typeName) \
+    VizPluginRubyAdapterCommon(pluginName, dataType, updateData, update##typeName)
+#define VizPluginRubyConfig(pluginName, dataType, methodName) \
+    VizPluginRubyAdapterCommon(pluginName, dataType, methodName, methodName)
 
 
 /**
@@ -310,7 +311,7 @@ class VizkitQtPluginBase : public QObject
  * <code>
  *     class WaypointVisualization{..};
  *     
- *     VizkitQtPlugin(WaypointQtPlugin, WaypointVisualization)
+ *     VizkitQtPlugin(WaypointVisualization)
  */
 #define VizkitQtPlugin(pluginName)\
     class QtPlugin##pluginName : public vizkit::VizkitQtPluginBase {\
