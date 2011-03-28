@@ -130,7 +130,7 @@ module Vizkit
     end
 
     def redefine_widget_class_name(widget,class_name)
-      if class_name && widget.class_name == "Qt::Widget"
+      if class_name && (widget.class_name == "Qt::Widget" || "Qt::MainWindow")
         widget.instance_variable_set(:@real_class_name,class_name)
         def widget.class_name;@real_class_name;end
         def widget.className;@real_class_name;end
