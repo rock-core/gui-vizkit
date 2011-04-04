@@ -16,6 +16,8 @@ end
 
 module Vizkit
   Qt::Application.new(ARGV)
+  @@auto_reconnect = 2000       #timer interval after which
+                                #ports are reconnected if they are no longer alive
   def self.app
     $qApp
   end
@@ -76,15 +78,16 @@ module Vizkit
     @connections
   end
 
-  def self.exec
+  def self.exec()
     # the garbage collector has to be called manually for now 
     # because ruby does not now how many objects were created from 
     # the typelib side 
      gc_timer = Qt::Timer.new
      gc_timer.connect(SIGNAL(:timeout)) do 
        GC.start
+       auto_reconnect()   #auto reconnect all ports which have set the auto_reconnect flag to true 
      end
-     gc_timer.start(2000)
+     gc_timer.start(@@auto_reconnect)
      $qApp.exec
      gc_timer.stop
 
@@ -148,10 +151,21 @@ module Vizkit
     end
   end
 
+  #reconnects all connection which have
+  #set the flag auto_reconnect to true 
+  def self.auto_reconnect()
+    @connections.each do |connection|
+      if connection.auto_reconnect && !connection.alive?
+        puts "Warning lost connection to #{connection.port.task.name}.#{connection.port.name}. Trying to reconnect."
+        connection.reconnect    
+      end
+    end
+  end
+
   #connects all connection to the widget and its children
   #if the connection is not responding
   def self.connect(widget)
-   if widget.is_a?(Qt::Object)
+    if widget.is_a?(Qt::Object)
       @connections.each do |connection|
         if connection.widget.is_a?(Qt::Object) && widget.findChild(Qt::Object,connection.widget.objectName)
           connection.connect
@@ -159,7 +173,7 @@ module Vizkit
       end
     else
       @connections.each do |connection|
-          connection.connect if connection.widget == widget
+        connection.connect if connection.widget == widget
       end
     end
   end
@@ -247,7 +261,6 @@ module Vizkit
         return
       end
 
-      reconnect(true) if @auto_reconnect && !alive?
       while(@reader.read_new(@last_sample))
         if @block
           @last_sample = @block.call(@last_sample,@port.full_name)
@@ -269,7 +282,6 @@ module Vizkit
     end
 
     def reconnect()
-      disconnect
       if Orocos::TaskContext.reachable?(@port.task.name)
         port = Orocos::TaskContext.get(@port.task.name).port(@port.name)
         @port = port if port
