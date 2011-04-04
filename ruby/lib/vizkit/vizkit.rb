@@ -63,7 +63,7 @@ module Vizkit
           Vizkit.connect(@struct_viewer) unless @struct_viewer.visible
           widget = @struct_viewer
         end
-        widget.setAttribute(Qt::WA_QuitOnClose, false)
+        #widget.setAttribute(Qt::WA_QuitOnClose, false)
         value.connect_to widget,options ,&block
         widget.show
         return widget
@@ -155,7 +155,9 @@ module Vizkit
   #set the flag auto_reconnect to true 
   def self.auto_reconnect()
     @connections.each do |connection|
-      if connection.auto_reconnect && !connection.alive?
+      if connection.auto_reconnect && 
+         ((connection.widget && connection.widget.visible) || !connection.widget) &&  
+         !connection.alive?
         puts "Warning lost connection to #{connection.port.task.name}.#{connection.port.name}. Trying to reconnect."
         connection.reconnect    
       end
