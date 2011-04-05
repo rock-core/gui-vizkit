@@ -230,7 +230,13 @@ class VizPlugin : public VizPluginBase,
 	void updateData(const Type &data) {
 	    boost::mutex::scoped_lock lockit(this->updateMutex);
 	    this->setDirty();
-	    dynamic_cast<VizPluginAddType<Type>*>(this)->updateDataIntern(data);
+	    VizPluginAddType<Type> *type = dynamic_cast<VizPluginAddType<Type>*>(this);
+	    if(type)
+		type->updateDataIntern(data);
+	    else
+	    {
+		throw std::runtime_error("Wrong type given to visualizer");
+	    }
 	};
 };
 
