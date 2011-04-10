@@ -1,3 +1,4 @@
+require 'vizkittypelib'
 module VizkitPluginExtension
     def load_adapters
         @bridges = Hash.new
