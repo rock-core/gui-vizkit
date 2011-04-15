@@ -5,11 +5,12 @@
 #include <vizkit/VizPlugin.hpp>
 #include <vizkit/CompositeViewerQOSG.hpp>
 #include <vizkit/PickHandler.hpp>
+#include <QtDesigner/QDesignerExportWidget>
 
 namespace vizkit 
 {
 
-class QVizkitWidget : public CompositeViewerQOSG 
+class QDESIGNER_WIDGET_EXPORT QVizkitWidget : public CompositeViewerQOSG 
 {
     Q_OBJECT
 
@@ -24,12 +25,18 @@ public:
     void setTrackedNode( vizkit::VizPluginBase* plugin );
 
     QSize sizeHint() const;
+    
+public slots:
+    QObject* createExternalPlugin(QObject* plugin);
+    QStringList* getListOfAvailablePlugins();
+    QObject* createPluginByName(QString pluginName);
 
 protected:
     osg::ref_ptr<osg::Group> root;
     void createSceneGraph();
     osg::ref_ptr<PickHandler> pickHandler;
     osg::ref_ptr<ViewQOSG> view;
+    QStringList* pluginNames;
 };
 
 }

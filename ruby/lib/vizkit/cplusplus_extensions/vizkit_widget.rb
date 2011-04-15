@@ -27,16 +27,16 @@ module VizkitPluginExtension
     end
 end
 
-Vizkit::UiLoader.extend_cplusplus_widget_class "vizkit::QVizkitMainWindow" do 
+Vizkit::UiLoader.extend_cplusplus_widget_class "vizkit::QVizkitWidget" do
     def load_plugin(path)
         loader = Qt::PluginLoader.new(path)
         loader.load
         if !loader.isLoaded
-            raise "Cannot load #{path}. Last error is: #{loader.errorString}"
+            Kernel.raise "Cannot load #{path}. Last error is: #{loader.errorString}"
         end
         plugin_instance = loader.instance
         if plugin_instance == nil
-            raise "Could not load plugin #{loader.fileName}. Last error is #{loader.errorString}"
+            Kernel.raise "Could not load plugin #{loader.fileName}. Last error is #{loader.errorString}"
         end
         plugin_instance
     end
@@ -70,3 +70,45 @@ Vizkit::UiLoader.extend_cplusplus_widget_class "vizkit::QVizkitMainWindow" do
     end
 end
 
+Vizkit::UiLoader.extend_cplusplus_widget_class "vizkit::QVizkitMainWindow" do
+    def load_plugin(path)
+        loader = Qt::PluginLoader.new(path)
+        loader.load
+        if !loader.isLoaded
+            Kernel.raise "Cannot load #{path}. Last error is: #{loader.errorString}"
+        end
+        plugin_instance = loader.instance
+        if plugin_instance == nil
+            Kernel.raise "Could not load plugin #{loader.fileName}. Last error is #{loader.errorString}"
+        end
+        plugin_instance
+    end
+
+    def findPluginPath(plugin_name)
+        path = if !ENV['VIZKIT_PLUGIN_RUBY_PATH']
+                   "/usr/local/lib:/usr/lib"
+               else
+                   ENV['VIZKIT_PLUGIN_RUBY_PATH']
+               end
+        path.split(':').each do |path|
+            path = File.join(path, "lib#{plugin_name}-viz.so")
+            if File.file?(path)
+                return path
+            end
+        end
+        nil
+    end
+
+    def createPlugin(plugin_name)
+        path = findPluginPath(plugin_name)
+        if !path
+            Kernel.raise "cannot find a shared library called lib#{plugin_name}-viz.so in VIZKIT_PLUGIN_RUBY_PATH"
+        end
+
+        plugin = load_plugin(path)
+        plugin = createExternalPlugin(plugin)
+        plugin.extend VizkitPluginExtension
+        plugin.load_adapters
+        plugin
+    end
+end
