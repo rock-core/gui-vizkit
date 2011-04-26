@@ -15,7 +15,9 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "ImageView" do
   end
 
   def save_frame(frame,path)
-        saveImage3(frame.frame_mode.to_s,frame.pixel_size,frame.size.width,frame.size.height,frame.image.to_byte_array[8..-1],path)
+    format = File.extname(path).sub!(/\./,"").upcase!
+    format = "PNG" unless format
+    saveImage3(frame.frame_mode.to_s,frame.pixel_size,frame.size.width,frame.size.height,frame.image.to_byte_array[8..-1],path,format)
   end
 
   def display2(frame_pair,port_name)
