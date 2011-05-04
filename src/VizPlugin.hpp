@@ -5,7 +5,7 @@
 #include <osg/Group>
 
 #include <boost/thread/mutex.hpp>
-#include <yaml-cpp/yaml.h>
+#include <yaml.h>
 #include <qobject.h>
 #include <QDockWidget>
 #include <QVariant>
