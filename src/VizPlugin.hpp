@@ -51,7 +51,6 @@ class VizPluginRubyAdapterCollection : public QObject
         {
             std::vector<VizPluginRubyAdapterBase*>::iterator it = std::find(adapterList.begin(), adapterList.end(), adapter);
             if (it != adapterList.end()) adapterList.erase(it);
-            else std::cerr << "No Adapter " << adapter->getRubyMethod().toStdString() << " to remove." << std::endl;
         };
     public slots:
         /**
@@ -81,7 +80,6 @@ class VizPluginRubyAdapterCollection : public QObject
                 if ((*it)->getRubyMethod() == rubyMethodName) 
                     return *it; 
             }
-            std::cerr << "Adapter named " << rubyMethodName.toStdString() << " is not available." << std::endl;
             return NULL;
         };
         
