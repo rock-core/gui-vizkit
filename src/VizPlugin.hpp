@@ -5,11 +5,16 @@
 #include <osg/Group>
 
 #include <boost/thread/mutex.hpp>
-#include <yaml.h>
 #include <qobject.h>
 #include <QDockWidget>
 #include <QVariant>
 #include <QtPlugin>
+
+namespace YAML
+{
+    class Emitter;
+    class Node;
+}
 
 namespace vizkit 
 {
