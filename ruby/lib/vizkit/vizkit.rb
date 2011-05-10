@@ -158,7 +158,7 @@ module Vizkit
       if connection.auto_reconnect && 
          ((connection.widget && connection.widget.visible) || !connection.widget) &&  
          !connection.alive?
-        puts "Warning lost connection to #{connection.port.task.name}.#{connection.port.name}. Trying to reconnect."
+        puts "Warning lost connection to #{connection.port_full_name}. Trying to reconnect."
         connection.reconnect    
       end
     end
@@ -188,6 +188,21 @@ module Vizkit
     @connections = Array.new
   end
 
+  # call-seq:
+  #   Vizkit.connect_port_to 'corridor_planner', 'plan', widget
+  #   Vizkit.connect_port_to 'corridor_planner', 'plan' do |value|
+  #     ...
+  #   end
+  #
+  # Asks vizkit to connect the given task,port pair on either a widget, and/or
+  # through a block
+  #
+  # Unlike Orocos::OutputPort#connect_to, this expects a task and port name,
+  # i.e. can be called even though the remote task is not started yet
+  def self.connect_port_to(task_name, port_name, *args, &block)
+    Vizkit.connections << OQConnection.new([task_name, port_name], *args, &block)
+  end
+
   class OQConnection < Qt::Object
     #default values
     class << self
@@ -215,7 +230,14 @@ module Vizkit
       end
 
       this_options, @policy = Kernel.filter_options(options,[:update_frequency,:auto_reconnect])
-      @port = port
+      if port.respond_to?(:to_ary)
+        @task_name, @port_name = *port
+        @port = nil
+      else
+        @task_name = port.task.name
+        @port_name = port.name
+        @port = port
+      end
       @widget = widget
       @update_frequency = this_options[:update_frequency] 
       @auto_reconnect = this_options[:auto_reconnect]
@@ -241,8 +263,13 @@ module Vizkit
         @callback_fct = nil
       end
 
-      connect
       self
+    end
+
+    attr_reader :task_name
+    attr_reader :port_name
+    def port_full_name
+      "#{@task_name}.#{@port_name}"
     end
 
     def update_frequency=(value)
@@ -265,12 +292,12 @@ module Vizkit
 
       while(@reader.read_new(@last_sample))
         if @block
-          @last_sample = @block.call(@last_sample,@port.full_name)
+          @last_sample = @block.call(@last_sample,@port_full_name)
           unless @last_sample.is_a? @sample_class
-            raise "#{port.task.name}.#{port.name}.connect_to: Code block returned #{@last_sample.class} but #{@sample_class}} was expected!!!"
+            raise "#{port_full_name}.connect_to: Code block returned #{@last_sample.class} but #{@sample_class}} was expected!!!"
           end
         end
-        @callback_fct.call @last_sample,@port.full_name if @callback_fct
+        @callback_fct.call @last_sample,@port_full_name if @callback_fct
       end
     end
 
@@ -279,13 +306,13 @@ module Vizkit
         killTimer(@timer_id)
         @timer_id = nil
         # @reader.disconnect this leads to some problems with the timerEvent: reason unknown
-        @widget.disconnected(@port.full_name) if @widget.respond_to?:disconnected
+        @widget.disconnected(@port_full_name) if @widget.respond_to?:disconnected
       end
     end
 
     def reconnect()
-      if Orocos::TaskContext.reachable?(@port.task.name)
-        port = Orocos::TaskContext.get(@port.task.name).port(@port.name)
+      if Orocos::TaskContext.reachable?(@task_name)
+        port = Orocos::TaskContext.get(@task_name).port(@port_name)
         @port = port if port
         @reader = @port.reader @policy
         if @reader
@@ -324,8 +351,8 @@ module Vizkit
     def timerEvent(event)
       disconnect if @widget && @widget.is_a?(Qt::Widget) && !@widget.visible
       while(sample = reader.read_new)
-        sample = @block.call(sample,@port.full_name) if @block
-        @callback_fct.call sample,@port.full_name if @callback_fct && sample
+        sample = @block.call(sample,@port_full_name) if @block
+        @callback_fct.call sample,@port_full_name if @callback_fct && sample
         @last_sample = sample
       end
     end
@@ -333,7 +360,7 @@ module Vizkit
     def disconnect()
       if @timer_id
         killTimer(@timer_id)
-        @widget.disconnected(@port.full_name) if @widget.respond_to?:disconnected
+        @widget.disconnected(@port_full_name) if @widget.respond_to?:disconnected
         @timer_id = nil
       end
     end

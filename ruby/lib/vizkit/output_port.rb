@@ -7,7 +7,9 @@ module Orocos
       alias :org_connect_to :connect_to
       
       def connect_to_widget(widget=nil,options=Hash.new,&block)
-        Vizkit.connections << Vizkit::OQLogConnection.new(self, options,widget,&block)
+        connection = Vizkit::OQLogConnection.new(self, options,widget,&block)
+        Vizkit.connections << connection
+        connection.connect
       end
 
       #code blocks are called directly from Log::Replay if widet == nil
@@ -34,7 +36,9 @@ module Orocos
     alias :org_disconnect_from :disconnect_from
     
     def connect_to_widget(widget=nil,options = Hash.new,&block)
-      Vizkit.connections << Vizkit::OQConnection.new(self, options,widget,&block)
+      connection = Vizkit::OQConnection.new(self, options,widget,&block)
+      Vizkit.connections << connection
+      connection.connect
     end
 
     #sets up a qt timer
