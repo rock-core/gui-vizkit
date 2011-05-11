@@ -292,12 +292,12 @@ module Vizkit
 
       while(@reader.read_new(@last_sample))
         if @block
-          @last_sample = @block.call(@last_sample,@port_full_name)
+          @last_sample = @block.call(@last_sample,port_full_name)
           unless @last_sample.is_a? @sample_class
             raise "#{port_full_name}.connect_to: Code block returned #{@last_sample.class} but #{@sample_class}} was expected!!!"
           end
         end
-        @callback_fct.call @last_sample,@port_full_name if @callback_fct
+        @callback_fct.call @last_sample,port_full_name if @callback_fct
       end
     rescue Exception => e
       puts "could not read on #{reader}: #{e.message}"
@@ -309,7 +309,7 @@ module Vizkit
         killTimer(@timer_id)
         @timer_id = nil
         # @reader.disconnect this leads to some problems with the timerEvent: reason unknown
-        @widget.disconnected(@port_full_name) if @widget.respond_to?:disconnected
+        @widget.disconnected(port_full_name) if @widget.respond_to?:disconnected
       end
     end
 
@@ -354,8 +354,8 @@ module Vizkit
     def timerEvent(event)
       disconnect if @widget && @widget.is_a?(Qt::Widget) && !@widget.visible
       while(sample = reader.read_new)
-        sample = @block.call(sample,@port_full_name) if @block
-        @callback_fct.call sample,@port_full_name if @callback_fct && sample
+        sample = @block.call(sample,port_full_name) if @block
+        @callback_fct.call sample,port_full_name if @callback_fct && sample
         @last_sample = sample
       end
     end
@@ -363,7 +363,7 @@ module Vizkit
     def disconnect()
       if @timer_id
         killTimer(@timer_id)
-        @widget.disconnected(@port_full_name) if @widget.respond_to?:disconnected
+        @widget.disconnected(port_full_name) if @widget.respond_to?:disconnected
         @timer_id = nil
       end
     end
