@@ -199,8 +199,8 @@ module Vizkit
   #
   # Unlike Orocos::OutputPort#connect_to, this expects a task and port name,
   # i.e. can be called even though the remote task is not started yet
-  def self.connect_port_to(task_name, port_name, *args, &block)
-    Vizkit.connections << OQConnection.new([task_name, port_name], *args, &block)
+  def self.connect_port_to(task_name, port_name, options = Hash.new, widget = nil, &block)
+    Vizkit.connections << OQConnection.new([task_name, port_name], options, widget, &block)
   end
 
   class OQConnection < Qt::Object
@@ -218,7 +218,7 @@ module Vizkit
     attr_reader :widget
     attr_reader :reader
 
-    def initialize(port,options,widget=nil,&block)
+    def initialize(port,options = Hash.new,widget=nil,&block)
       if widget.is_a? Method
         @callback_fct = widget
         widget = widget.receiver
@@ -299,6 +299,9 @@ module Vizkit
         end
         @callback_fct.call @last_sample,@port_full_name if @callback_fct
       end
+    rescue Exception => e
+      puts "could not read on #{reader}: #{e.message}"
+      disconnect
     end
 
     def disconnect()
