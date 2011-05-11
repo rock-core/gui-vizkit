@@ -57,13 +57,18 @@ module VizkitPluginLoaderExtension
     end
 
     def createPlugin(plugin_name)
-        path = findPluginPath(plugin_name)
-        if !path
-            Kernel.raise "cannot find a shared library called lib#{plugin_name}-viz.so in VIZKIT_PLUGIN_RUBY_PATH"
+        builtin = getListOfAvailablePlugins
+        if builtin.include?(plugin_name)
+            plugin = createPluginByName(plugin_name)
+        else
+            path = findPluginPath(plugin_name)
+            if !path
+                Kernel.raise "cannot find a shared library called lib#{plugin_name}-viz.so in VIZKIT_PLUGIN_RUBY_PATH"
+            end
+            plugin = load_plugin(path)
+            plugin = createExternalPlugin(plugin)
         end
 
-        plugin = load_plugin(path)
-        plugin = createExternalPlugin(plugin)
         plugin.extend VizkitPluginExtension
         plugin.load_adapters
         plugin
