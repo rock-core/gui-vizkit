@@ -326,6 +326,9 @@ module Vizkit
         end
       end
       false
+    rescue Exception => e
+      STDERR.puts "failed to reconnect: #{e.message}"
+      false
     end
 
     #shadows the connect methods from base object
