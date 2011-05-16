@@ -104,11 +104,15 @@ module Vizkit
     case handle
     when Qt::Widget:
       @connections.delete_if do |connection|
-      if widget.findChild(Qt::Widget,connection.widget.objectName)
-        connection.disconnect
-        return true
-      end
-      false
+        if connection.widget.is_a?(Qt::Object) && handle.findChild(Qt::Widget,connection.widget.objectName)
+          connection.disconnect
+          return true
+        end
+        if(connection.widget == handle)
+            connection.disconnect
+            return true
+        end
+        false
       end
     when Orocos::OutputPort:
       @connections.delete_if do |connection|
