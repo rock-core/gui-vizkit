@@ -256,8 +256,8 @@ class VizkitQtPluginBase : public QObject
         VizkitQtPluginBase(QObject* parent = 0) : QObject(parent){};
     
     public slots:
-        virtual VizPluginBase* createPlugin() = 0;
-        virtual QString getPluginName() = 0;
+        virtual VizPluginBase* createPlugin(QString const& name) = 0;
+        virtual QStringList getAvailablePlugins() const = 0;
 };
 
 /**
@@ -325,14 +325,18 @@ class VizkitQtPluginBase : public QObject
 #define VizkitQtPlugin(pluginName)\
     class QtPlugin##pluginName : public vizkit::VizkitQtPluginBase {\
         public:\
-        virtual vizkit::VizPluginBase* createPlugin()\
+        virtual QStringList getAvailablePlugins() const\
         {\
-            return new pluginName;\
+            QStringList result; \
+            result.push_back(#pluginName); \
+            return result;\
+        } \
+        virtual vizkit::VizPluginBase* createPlugin(QString const& name)\
+        {\
+            if (name == #pluginName) \
+                return new pluginName;\
+            else return 0;\
         };\
-        virtual QString getPluginName()\
-        {\
-            return #pluginName;\
-        }\
     };\
     Q_EXPORT_PLUGIN2(QtPlugin##pluginName, QtPlugin##pluginName)
 
