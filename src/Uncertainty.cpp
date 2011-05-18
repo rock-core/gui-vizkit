@@ -8,7 +8,7 @@
 #include <osg/ShapeDrawable>
 
 #include <Eigen/Cholesky>
-#include <Eigen/QR>
+#include <Eigen/Eigenvalues>
 #include <Eigen/Geometry>
 
 using namespace vizkit;
@@ -49,7 +49,7 @@ void Uncertainty::setMean( const Eigen::Vector3d& mean )
 void Uncertainty::setCovariance( const Eigen::Matrix2d& cov )
 {
     // get the rotation and scaling of the ellipsoid from the covariance matrix
-    Eigen::SelfAdjointEigenSolver<Eigen::Matrix2d> ev( cov, true );
+    Eigen::SelfAdjointEigenSolver<Eigen::Matrix2d> ev( cov );
     Eigen::Rotation2D<double> rm(0);
     rm.fromRotationMatrix( ev.eigenvectors() );
 
@@ -59,7 +59,7 @@ void Uncertainty::setCovariance( const Eigen::Matrix2d& cov )
 
     Eigen::Vector3d s;
     s << ev.eigenvalues(), 1.0;
-    setScale( eigen2osg( Eigen::Vector3d( s.cwise().sqrt() ) ) );
+    setScale( eigen2osg( Eigen::Vector3d( s.array().sqrt() ) ) );
 
     redraw(2);
 }
@@ -67,7 +67,7 @@ void Uncertainty::setCovariance( const Eigen::Matrix2d& cov )
 void Uncertainty::setCovariance( const Eigen::Matrix3d& cov )
 {
     // get the rotation and scaling of the ellipsoid from the covariance matrix
-    Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d> ev( cov, true );
+    Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d> ev( cov );
     Eigen::Matrix3d e_vec = ev.eigenvectors();
     Eigen::Vector3d e_val = ev.eigenvalues();
 
@@ -88,7 +88,7 @@ void Uncertainty::setCovariance( const Eigen::Matrix3d& cov )
     std::cout << "q scale: " << (q * ev.eigenvalues().cwise().sqrt()).transpose() << std::endl;
     */
 
-    setScale( eigen2osg( Eigen::Vector3d( e_val.cwise().sqrt() ) ) );
+    setScale( eigen2osg( Eigen::Vector3d( e_val.array().sqrt() ) ) );
 
     redraw(3);
 }
