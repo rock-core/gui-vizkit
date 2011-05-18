@@ -68,6 +68,9 @@ module VizkitPluginLoaderExtension
             end
             plugin = load_plugin(path)
             plugin = createExternalPlugin(plugin, plugin_name)
+            if !plugin
+                Kernel.raise "cannot create a vizkit plugin called #{plugin_name}"
+            end
         end
 
         plugin.extend VizkitPluginExtension
