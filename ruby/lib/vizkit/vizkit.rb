@@ -206,7 +206,10 @@ module Vizkit
   #
   # Unlike Orocos::OutputPort#connect_to, this expects a task and port name,
   # i.e. can be called even though the remote task is not started yet
-  def self.connect_port_to(task_name, port_name, options = Hash.new, widget = nil, &block)
+  def self.connect_port_to(task_name, port_name, widget = nil, options = Hash.new, &block)
+    if widget.kind_of?(Hash)
+      widget, options = nil, widget
+    end
     Vizkit.connections << OQConnection.new([task_name, port_name], options, widget, &block)
   end
 
