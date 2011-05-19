@@ -1,0 +1,44 @@
+#! /usr/bin/env ruby
+
+require 'vizkit'
+require 'orocos'
+require 'optparse'
+
+parser = OptionParser.new do |opt|
+    opt.banner = "rock-display [--host hostname] task_name [port_name]"
+    opt.on('--host HOSTNAME', String, "the corba nameserver we should contact") do |name|
+        Orocos::CORBA.name_service = name
+    end
+    opt.on('--help') do
+        puts parser
+        exit 0
+    end
+end
+
+remaining = parser.parse(ARGV)
+
+if remaining.empty?
+    puts parser
+    exit 1
+end
+
+Orocos.initialize
+
+task_inspector = nil
+remaining.each do |spec|
+    task_name, port_name = spec.split(':')
+    task = Orocos::TaskContext.get task_name
+    if !port_name
+        task_inspector ||= Vizkit.default_loader.task_inspector
+        task_inspector.config(task)
+    else
+        port = task.port(port_name)
+        Vizkit.display port
+    end
+end
+
+if task_inspector
+    task_inspector.show
+end
+Vizkit.exec
+
