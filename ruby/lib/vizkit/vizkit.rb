@@ -255,7 +255,8 @@ module Vizkit
       if widget.is_a? Method
         @callback_fct = widget
         widget = widget.receiver
-      elsif widget.is_a?(Qt::Widget)
+      end
+      if widget.is_a?(Qt::Widget)
         super(widget,&nil)
       else
         super(nil,&nil)
