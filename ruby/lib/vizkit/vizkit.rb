@@ -210,6 +210,8 @@ module Vizkit
     if widget.kind_of?(Hash)
       widget, options = nil, widget
     end
+    #add default option
+    options[:auto_reconnect] = true unless options.has_key? :auto_reconnect
     Vizkit.connections << OQConnection.new([task_name, port_name], options, widget, &block)
   end
 
