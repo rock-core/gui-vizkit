@@ -62,8 +62,8 @@ class TaskInspector < Qt::Widget
     if object.is_a?(Orocos::Property)
 	object = object.read
     end
-    if object.is_a?(Orocos::OutputPort)
-	object = nil #object.read # not now crashed sometimes
+    if object.is_a?(Orocos::OutputReader)
+	object = object.read
     end
 
     if object.kind_of?(Typelib::CompoundType)
@@ -157,14 +157,15 @@ class TaskInspector < Qt::Widget
             itemm2 = Qt::StandardItem.new
             #itemm2.setText(attribute.class.to_s.match('/(.*)>$')[1])
             itemm2.setText(name)
-            @hash[name]=itemm
+            reader = port.reader :pull => true, :init => true
+            @hash[name]=[itemm, reader]
             item5.appendRow(itemm)
             item5.setChild(itemm.row,1,itemm2)
             add_object(port,itemm)
             #item7, item8 = get_item(key,port.name, item5)
           else
-            itemm = @hash[name]
-            add_object(port,itemm)
+            itemm, reader = @hash[name]
+            add_object(reader,itemm)
           end
         end
         #item8.setText(port.type_name.to_s)
