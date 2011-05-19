@@ -1,6 +1,8 @@
 #!/usr/bin/env ruby
 
 class TaskInspector < Qt::Widget
+  MAX_ARRAY_FIELDS = 32
+
   slots 'refresh()','set_task_attribute(const QModelIndex&)'
   attr_reader :multi  #widget supports displaying of multi tasks
   PropertyConfig = Struct.new(:name, :attribute, :type)
