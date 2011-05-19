@@ -234,8 +234,7 @@ module Vizkit
       if widget.is_a? Method
         @callback_fct = widget
         widget = widget.receiver
-      end
-      if widget.is_a?(Qt::Widget)
+      elsif widget.is_a?(Qt::Widget)
         super(widget,&nil)
       else
         super(nil,&nil)
@@ -261,20 +260,7 @@ module Vizkit
       @last_sample = nil    #save last sample so we can reuse the memory
       @sample_class = nil
 
-      if widget 
-        #try to find callback_fct for port
-        if !@callback_fct && widget.respond_to?(:loader)
-          @callback_fct = widget.loader.callback_fct widget.class_name,port.type_name
-        end
-
-        #use default callback_fct
-        @callback_fct ||= :update if widget.respond_to?(:update)
-        @callback_fct = widget.method(@callback_fct) if @callback_fct.is_a? Symbol
-        raise "Widget #{widget.objectName}(#{widget.class_name}) has no callback function "if !@callback_fct
-      else
-        @callback_fct = nil
-      end
-
+      discover_callback_fct
       self
     end
 
@@ -282,6 +268,22 @@ module Vizkit
     attr_reader :port_name
     def port_full_name
       "#{@task_name}.#{@port_name}"
+    end
+
+    def discover_callback_fct
+      if @widget && @port 
+        #try to find callback_fct for port this is not working if no port is given
+        if !@callback_fct && @widget.respond_to?(:loader)
+          @callback_fct = @widget.loader.callback_fct @widget.class_name,@port.type_name
+        end
+
+        #use default callback_fct
+        @callback_fct ||= :update if @widget.respond_to?(:update)
+        @callback_fct = @widget.method(@callback_fct) if @callback_fct.is_a? Symbol
+        raise "Widget #{@widget.objectName}(#{@widget.class_name}) has no callback function "if !@callback_fct
+      else
+        @callback_fct = nil
+      end
     end
 
     def update_frequency=(value)
@@ -329,6 +331,7 @@ module Vizkit
       if Orocos::TaskContext.reachable?(@task_name)
         port = Orocos::TaskContext.get(@task_name).port(@port_name)
         @port = port if port
+        discover_callback_fct
         @reader = @port.reader @policy
         if @reader
           @last_sample = @reader.new_sample
