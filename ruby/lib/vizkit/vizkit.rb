@@ -163,7 +163,7 @@ module Vizkit
   def self.auto_reconnect()
     @connections.each do |connection|
       if connection.auto_reconnect && 
-         ((connection.widget && connection.widget.visible) || !connection.widget) &&  
+         ((connection.widget && connection.respond_to?(:visible) && connection.widget.visible) || !connection.widget) &&  
          !connection.alive?
         puts "Warning lost connection to #{connection.port_full_name}. Trying to reconnect."
         connection.reconnect    
