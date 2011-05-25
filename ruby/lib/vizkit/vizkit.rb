@@ -162,9 +162,7 @@ module Vizkit
   #set the flag auto_reconnect to true 
   def self.auto_reconnect()
     @connections.each do |connection|
-      if connection.auto_reconnect && 
-         ((connection.widget && connection.respond_to?(:visible) && connection.widget.visible) || !connection.widget) &&  
-         !connection.alive?
+      if connection.auto_reconnect && (!connection.widget.is_a?(Qt::Widget) || connection.widget.visible) && !connection.alive?
         puts "Warning lost connection to #{connection.port_full_name}. Trying to reconnect."
         connection.reconnect    
       end
