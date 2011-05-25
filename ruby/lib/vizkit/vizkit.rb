@@ -242,7 +242,7 @@ module Vizkit
       attr_accessor :update_frequency
       attr_accessor :auto_reconnect
     end
-    @@update_frequency = 20
+    @@update_frequency = 8
     @@auto_reconnect = false
 
     attr_accessor :auto_reconnect
