@@ -24,7 +24,7 @@ class TaskInspector < Qt::Widget
     @tasks = Hash.new
     @multi = true
 
-    connect(@tree_model, SIGNAL('dataChanged(const QModelIndex&,const QModelIndex&)'),self,SLOT('set_task_attribute(const QModelIndex&)'))
+    # connect(@tree_model, SIGNAL('dataChanged(const QModelIndex&,const QModelIndex&)'),self,SLOT('set_task_attribute(const QModelIndex&)'))
     
     @timer = Qt::Timer.new(self)
     connect(@timer,SIGNAL('timeout()'),self,SLOT('refresh()'))
