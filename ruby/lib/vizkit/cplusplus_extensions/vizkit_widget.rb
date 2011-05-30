@@ -56,20 +56,23 @@ module VizkitPluginLoaderExtension
         nil
     end
 
-    def createPlugin(plugin_name, lib_name = nil)
+    def createPlugin(lib_name, plugin_name = nil)
         builtin = getListOfAvailablePlugins
-        if builtin.include?(plugin_name)
-            plugin = createPluginByName(plugin_name)
+        if builtin.include?(lib_name)
+            plugin = createPluginByName(lib_name)
         else
-            lib_name ||= plugin_name
             path = findPluginPath(lib_name)
             if !path
-                Kernel.raise "cannot find a shared library called lib#{lib_name}-viz.so in VIZKIT_PLUGIN_RUBY_PATH"
+                Kernel.raise "#{lib_name} is not a builtin plugin, nor lib#{lib_name}-viz.so in VIZKIT_PLUGIN_RUBY_PATH. Available builtin plugins are: #{builtin.join(", ")}."
             end
             plugin = load_plugin(path)
-            plugin = createExternalPlugin(plugin, plugin_name)
+            plugin = createExternalPlugin(plugin, plugin_name || "")
             if !plugin
-                Kernel.raise "cannot create a vizkit plugin called #{plugin_name}"
+                if plugin_name
+                    Kernel.raise "library #{lib_name} does not have any vizkit plugin called #{plugin_name}"
+                else
+                    Kernel.raise "#{lib_name} either defines no vizkit plugin, or multiple ones (and you must select one explicitely)"
+                end
             end
         end
 
