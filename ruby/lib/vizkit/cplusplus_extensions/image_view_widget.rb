@@ -5,8 +5,6 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "ImageView" do
   #save all images which are displayed to the given folder 
   def save_images_to(folder)
       @folder_path = folder
-      puts @folder_path
-      puts '######'
   end
 
   def default_options()
