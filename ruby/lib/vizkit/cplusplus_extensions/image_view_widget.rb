@@ -1,6 +1,14 @@
 #prepares the c++ qt widget for the use in ruby with widget_grid
 
 Vizkit::UiLoader::extend_cplusplus_widget_class "ImageView" do
+    
+  #save all images which are displayed to the given folder 
+  def save_images_to(folder)
+      @folder_path = folder
+      puts @folder_path
+      puts '######'
+  end
+
   def default_options()
       options = Hash.new
       options[:time_overlay] = true
@@ -43,6 +51,7 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "ImageView" do
       @fps_overlay_object.setColor(Qt::Color.new(255,255,0))
       @fps_overlay_object.setBackgroundColor(Qt::Color.new(0,0,0,40))
       @fps_overlay_object.setPosFactor(0,1);
+      @folder_path ||= nil
       @init = true
     end
   end
@@ -72,6 +81,11 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "ImageView" do
     end
     addRawImage(frame.frame_mode.to_s,frame.pixel_size,frame.size.width,frame.size.height,frame.image.to_byte_array[8..-1])
     update2
+    if @folder_path
+        @save_counter ||= 0
+        save(File.join(@folder_path,"image"+sprintf("%6d",@save_counter).gsub(/ /,"0")+".png"))
+        @save_counter += 1
+    end
   end
 end
 
