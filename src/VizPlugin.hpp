@@ -305,6 +305,8 @@ class VizkitQtPluginBase : public QObject
 
 #define VizPluginRubyAdapter(pluginName, dataType, typeName) \
     VizPluginRubyAdapterCommon(pluginName, dataType, updateData, update##typeName)
+#define VizPluginRubyMethod(pluginName, dataType, methodName) \
+    VizPluginRubyAdapterCommon(pluginName, dataType, methodName, methodName)
 #define VizPluginRubyConfig(pluginName, dataType, methodName) \
     VizPluginRubyAdapterCommon(pluginName, dataType, methodName, methodName)
 
