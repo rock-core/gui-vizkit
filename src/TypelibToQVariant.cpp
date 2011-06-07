@@ -15,7 +15,7 @@ TypelibToQVariant::TypelibToQVariant():
 {
   qruby_bridge.setObjectName("__typelib_to_qvariant__");
   rb_bridge = rb_eval_string("$qApp.findChild(Qt::Object,'__typelib_to_qvariant__')");
-  qruby_bridge.setObjectName("");
+  qruby_bridge.setParent(0);
 };
 
 void TypelibToQVariant::wrap(Rice::Object obj, Rice::Object expected_type_name, bool is_opaque)
