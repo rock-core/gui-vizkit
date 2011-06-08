@@ -3,7 +3,7 @@
 #define TYPELIBTOQVARIANT_H
 
 #include <QtCore>
-#include <smoke.h>
+//#include <smoke.h>
 #include <rice/Class.hpp>
 #include <rice/Data_Object.hpp>
 #include "rice/Constructor.hpp"
