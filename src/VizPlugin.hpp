@@ -5,11 +5,16 @@
 #include <osg/Group>
 
 #include <boost/thread/mutex.hpp>
-#include <yaml-cpp/yaml.h>
 #include <qobject.h>
 #include <QDockWidget>
 #include <QVariant>
 #include <QtPlugin>
+
+namespace YAML
+{
+    class Emitter;
+    class Node;
+}
 
 namespace vizkit 
 {
@@ -23,9 +28,9 @@ class VizPluginRubyAdapterBase : public QObject
     Q_OBJECT
     
     public slots:
-        virtual void update(QVariant&) = 0;
+        virtual void update(QVariant&, bool) = 0;
         virtual QString getDataType() = 0;
-        virtual QString getClassName() = 0;
+        virtual QString getRubyMethod() = 0;
 };
 
 /** 
@@ -51,11 +56,10 @@ class VizPluginRubyAdapterCollection : public QObject
         {
             std::vector<VizPluginRubyAdapterBase*>::iterator it = std::find(adapterList.begin(), adapterList.end(), adapter);
             if (it != adapterList.end()) adapterList.erase(it);
-            else std::cerr << "No Adapter " << adapter->getClassName().toStdString() << " to remove." << std::endl;
         };
     public slots:
         /**
-         * The classnames of all available adapers will be returned.
+         * The method names of all available adapers will be returned.
          * @return QStringList of known adapters
          */
         QStringList* getListOfAvailableAdapter()
@@ -63,25 +67,24 @@ class VizPluginRubyAdapterCollection : public QObject
             QStringList* adapterStringList = new QStringList();
             for(std::vector<VizPluginRubyAdapterBase*>::iterator it = adapterList.begin(); it != adapterList.end(); it++)
             {
-                adapterStringList->push_back((*it)->getClassName());
+                adapterStringList->push_back((*it)->getRubyMethod());
             }
             return adapterStringList;
         };
         
         /**
-         * Retruns the ruby adapter given by its classname.
+         * Retruns the ruby adapter given by its ruby method name.
          * It will be returnd as QObject, so ruby can get it.
-         * @param className classname of the adapter  
+         * @param rubyMethodName method name of the adapter
          * @return the adapter
          */
-        QObject* getAdapter(QString className)
+        QObject* getAdapter(QString rubyMethodName)
         {
             for(std::vector<VizPluginRubyAdapterBase*>::iterator it = adapterList.begin(); it != adapterList.end(); it++)
             {
-                if ((*it)->getClassName() == className) 
+                if ((*it)->getRubyMethod() == rubyMethodName) 
                     return *it; 
             }
-            std::cerr << "Adapter named " << className.toStdString() << " is not available." << std::endl;
             return NULL;
         };
         
@@ -167,6 +170,8 @@ class VizPluginBase
 	 */ 
 	boost::mutex updateMutex;
         
+        std::vector<QDockWidget*> dockWidgets;
+        
         VizPluginRubyAdapterCollection adapterCollection;
 
     private:
@@ -177,7 +182,6 @@ class VizPluginBase
         osg::ref_ptr<osg::Node> mainNode;
         osg::ref_ptr<osg::Group> vizNode;
 	bool dirty;
-        std::vector<QDockWidget*> dockWidgets;
 };
 
 template <typename T> class VizPlugin;
@@ -229,7 +233,13 @@ class VizPlugin : public VizPluginBase,
 	void updateData(const Type &data) {
 	    boost::mutex::scoped_lock lockit(this->updateMutex);
 	    this->setDirty();
-	    dynamic_cast<VizPluginAddType<Type>*>(this)->updateDataIntern(data);
+	    VizPluginAddType<Type> *type = dynamic_cast<VizPluginAddType<Type>*>(this);
+	    if(type)
+		type->updateDataIntern(data);
+	    else
+	    {
+		throw std::runtime_error("Wrong type given to visualizer");
+	    }
 	};
 };
 
@@ -246,8 +256,8 @@ class VizkitQtPluginBase : public QObject
         VizkitQtPluginBase(QObject* parent = 0) : QObject(parent){};
     
     public slots:
-        virtual VizPluginBase* createPlugin() = 0;
-        virtual QString getPluginName() = 0;
+        virtual VizPluginBase* createPlugin(QString const& name) = 0;
+        virtual QStringList getAvailablePlugins() const = 0;
 };
 
 /**
@@ -255,41 +265,50 @@ class VizkitQtPluginBase : public QObject
  * Use this if you want to provide ruby adapters:
  *
  * <code>
- * Classname::Classname()
+ * Pluginname::Pluginname()
  * {    
- *     VizPluginRubyAdapter(ClassnameWaypoint, base::Waypoint, base::Waypoint)
- *
- *     //multiple types are supported:
- *     VizPluginRubyAdapter(ClassnameInteger, int, base::Waypoint)
- *     //...
+ *     //there will be a updateWaypoint method in ruby
+ *     VizPluginRubyAdapter(Pluginname, base::Waypoint, Waypoint)
+ * 
+ *     //if you want to call any other method of your plugin in ruby
+ *     VizPluginRubyConfig(Pluginname, bool, enableSomething)
  * }
  */
-#define VizPluginRubyAdapter(className, dataType, pluginType)\
-    class VizPluginRubyAdapter##className : public VizPluginRubyAdapterBase {\
+#define VizPluginRubyAdapterCommon(pluginName, dataType, methodName, rubyMethodName)\
+    class VizPluginRubyAdapter##pluginName##rubyMethodName : public VizPluginRubyAdapterBase {\
         public:\
-            VizPluginRubyAdapter##className(VizPlugin<pluginType>* plugin)\
+            VizPluginRubyAdapter##pluginName##rubyMethodName(pluginName* plugin)\
             {\
                 vizPlugin = plugin;\
             };\
-            void update(QVariant& data)\
+            void update(QVariant& data, bool pass_ownership)\
             {\
                 void* ptr = data.value<void*>();\
-                const dataType* pluginData = reinterpret_cast<const dataType*>(ptr);\
-                vizPlugin->updateData(*pluginData);\
+                dataType* pluginData = reinterpret_cast<dataType*>(ptr);\
+                vizPlugin->methodName(*pluginData);\
+		if (pass_ownership) \
+			delete pluginData; \
             }\
         public slots:\
-            QString getClassName() \
-            {\
-                return QString("VizPluginRubyAdapter%1").arg(#className);\
-            }\
             QString getDataType() \
             {\
                 return #dataType;\
             }\
+            QString getRubyMethod() \
+            {\
+                return #rubyMethodName; \
+            }\
         private:\
-            VizPlugin<pluginType>* vizPlugin;\
+            pluginName* vizPlugin;\
     };\
-    adapterCollection.addAdapter(new VizPluginRubyAdapter##className(this));
+    adapterCollection.addAdapter(new VizPluginRubyAdapter##pluginName##rubyMethodName(this));
+
+#define VizPluginRubyAdapter(pluginName, dataType, typeName) \
+    VizPluginRubyAdapterCommon(pluginName, dataType, updateData, update##typeName)
+#define VizPluginRubyMethod(pluginName, dataType, methodName) \
+    VizPluginRubyAdapterCommon(pluginName, dataType, methodName, methodName)
+#define VizPluginRubyConfig(pluginName, dataType, methodName) \
+    VizPluginRubyAdapterCommon(pluginName, dataType, methodName, methodName)
 
 
 /**
@@ -303,21 +322,25 @@ class VizkitQtPluginBase : public QObject
  * <code>
  *     class WaypointVisualization{..};
  *     
- *     VizkitQtPlugin(WaypointQtPlugin, WaypointVisualization)
+ *     VizkitQtPlugin(WaypointVisualization)
  */
-#define VizkitQtPlugin(className, pluginName)\
-    class className : public vizkit::VizkitQtPluginBase {\
+#define VizkitQtPlugin(pluginName)\
+    class QtPlugin##pluginName : public vizkit::VizkitQtPluginBase {\
         public:\
-        virtual vizkit::VizPluginBase* createPlugin()\
+        virtual QStringList getAvailablePlugins() const\
         {\
-            return new pluginName;\
+            QStringList result; \
+            result.push_back(#pluginName); \
+            return result;\
+        } \
+        virtual vizkit::VizPluginBase* createPlugin(QString const& name)\
+        {\
+            if (name == #pluginName) \
+                return new pluginName;\
+            else return 0;\
         };\
-        virtual QString getPluginName()\
-        {\
-            return #pluginName;\
-        }\
     };\
-    Q_EXPORT_PLUGIN2(className, className)
+    Q_EXPORT_PLUGIN2(QtPlugin##pluginName, QtPlugin##pluginName)
 
 
 /** @deprecated adapter item for legacy visualizations. Do not derive from this

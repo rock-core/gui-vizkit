@@ -13,12 +13,13 @@ MotionCommandVisualization::MotionCommandVisualization()
 {
     tv = 0;
     rv = 0;
+    VizPluginRubyAdapter(MotionCommandVisualization, base::MotionCommand2D, MotionCommand)
 }
 
 osg::ref_ptr< osg::Node > MotionCommandVisualization::createMainNode()
 {
-    osg::ref_ptr<osg::Group> group = new osg::Group;    
-    osg::StateSet* state = group->getOrCreateStateSet();
+    positionTransformation = new osg::PositionAttitudeTransform();
+    osg::StateSet* state = positionTransformation->getOrCreateStateSet();
     state->setMode( GL_LIGHTING, osg::StateAttribute::ON );
 
     arrowRotation = new osg::PositionAttitudeTransform();
@@ -42,8 +43,7 @@ osg::ref_ptr< osg::Node > MotionCommandVisualization::createMainNode()
     
     arrowRotation->addChild(shg.release());
     
-    
-    group->addChild(arrowRotation.get());
+    positionTransformation->addChild(arrowRotation.get());
     
     //draw a cycle around the robot while turning
     geom = new osg::Geometry;
@@ -67,11 +67,9 @@ osg::ref_ptr< osg::Node > MotionCommandVisualization::createMainNode()
 
     osg::StateSet* stategeode = geode->getOrCreateStateSet();
     stategeode->setMode( GL_LIGHTING, osg::StateAttribute::OFF );
-
-    
-    group->addChild(geode.release());
-    
-    return group;
+  
+    positionTransformation->addChild(geode.release());    
+    return positionTransformation;
 }
 
 
@@ -86,15 +84,20 @@ void MotionCommandVisualization::updateMainNode( osg::Node* node )
     
     motionPointerHead->setCenter(osg::Vec3(0,tv, 0));
     
+    positionTransformation->setPosition(robotPosition);
+    positionTransformation->setAttitude(robotOrientation);
     arrowRotation->setAttitude(osg::Quat(rv, osg::Vec3d(0,0,1)));
     
     drawRotation();
 }
 
-void MotionCommandVisualization::updateDataIntern ( const std::pair<double, double> & data )
+void MotionCommandVisualization::updateDataIntern ( const std::pair< base::MotionCommand2D, base::Pose >& data )
 {
-    tv = data.first;
-    rv = data.second;
+    tv = data.first.translation;
+    rv = data.first.rotation;
+    
+    robotPosition = osg::Vec3(data.second.position.x(), data.second.position.y(), data.second.position.z());
+    robotOrientation = osg::Quat(data.second.orientation.x(), data.second.orientation.y(), data.second.orientation.z(), data.second.orientation.w());
 }
 
 

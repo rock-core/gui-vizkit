@@ -1,6 +1,8 @@
 #!/usr/bin/env ruby
 
 class TaskInspector < Qt::Widget
+  MAX_ARRAY_FIELDS = 32
+
   slots 'refresh()','set_task_attribute(const QModelIndex&)'
   attr_reader :multi  #widget supports displaying of multi tasks
   PropertyConfig = Struct.new(:name, :attribute, :type)
@@ -22,7 +24,7 @@ class TaskInspector < Qt::Widget
     @tasks = Hash.new
     @multi = true
 
-    connect(@tree_model, SIGNAL('dataChanged(const QModelIndex&,const QModelIndex&)'),self,SLOT('set_task_attribute(const QModelIndex&)'))
+    # connect(@tree_model, SIGNAL('dataChanged(const QModelIndex&,const QModelIndex&)'),self,SLOT('set_task_attribute(const QModelIndex&)'))
     
     @timer = Qt::Timer.new(self)
     connect(@timer,SIGNAL('timeout()'),self,SLOT('refresh()'))
@@ -60,8 +62,8 @@ class TaskInspector < Qt::Widget
     if object.is_a?(Orocos::Property)
 	object = object.read
     end
-    if object.is_a?(Orocos::OutputPort)
-	object = nil #object.read # not now crashed sometimes
+    if object.is_a?(Orocos::OutputReader)
+	object = object.read
     end
 
     if object.kind_of?(Typelib::CompoundType)
@@ -155,14 +157,15 @@ class TaskInspector < Qt::Widget
             itemm2 = Qt::StandardItem.new
             #itemm2.setText(attribute.class.to_s.match('/(.*)>$')[1])
             itemm2.setText(name)
-            @hash[name]=itemm
+            reader = port.reader :pull => true, :init => true
+            @hash[name]=[itemm, reader]
             item5.appendRow(itemm)
             item5.setChild(itemm.row,1,itemm2)
             add_object(port,itemm)
             #item7, item8 = get_item(key,port.name, item5)
           else
-            itemm = @hash[name]
-            add_object(port,itemm)
+            itemm, reader = @hash[name]
+            add_object(reader,itemm)
           end
         end
         #item8.setText(port.type_name.to_s)

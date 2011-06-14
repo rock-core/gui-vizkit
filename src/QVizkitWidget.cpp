@@ -4,6 +4,7 @@
 #include <vizkit/MotionCommandVisualization.hpp>
 #include <vizkit/TrajectoryVisualization.hpp>
 #include <vizkit/WaypointVisualization.hpp>
+#include <vizkit/RigidBodyStateVisualization.hpp>
 
 using namespace vizkit;
 
@@ -30,7 +31,7 @@ QVizkitWidget::QVizkitWidget( QWidget* parent, Qt::WindowFlags f )
     GridNode *gn = new GridNode();
     root->addChild(gn);
     
-    pluginNames = new QStringList();
+    pluginNames = new QStringList;
 }
 
 QSize QVizkitWidget::sizeHint() const
@@ -102,30 +103,33 @@ void QVizkitWidget::removeDataHandler(VizPluginBase *viz)
     root->removeChild( viz->getVizNode() );
 }
 
-/**
- * Sets the camera focus to specific position.
- * @param lookAtPos focus this point
- */
 void QVizkitWidget::changeCameraView(const osg::Vec3& lookAtPos)
 {
-    osgGA::KeySwitchMatrixManipulator* switchMatrixManipulator = dynamic_cast<osgGA::KeySwitchMatrixManipulator*>(view->getCameraManipulator());
-    if (!switchMatrixManipulator) return;
-    //select TerrainManipulator
-    switchMatrixManipulator->selectMatrixManipulator(3);
-    
-    //get current eye position
-    osg::Matrixd matrix = switchMatrixManipulator->getMatrix();
-    osg::Vec3d currentEyePos = matrix.getTrans();
-    
-    changeCameraView(lookAtPos, currentEyePos);
+    changeCameraView(&lookAtPos, 0, 0);
 }
 
-/**
- * Sets the camera focus and the camera itself to specific position.
- * @param lookAtPos focus this point
- * @param eyePos position of the camera
- */
 void QVizkitWidget::changeCameraView(const osg::Vec3& lookAtPos, const osg::Vec3& eyePos)
+{
+    changeCameraView(&lookAtPos, &eyePos, 0);
+}
+
+void QVizkitWidget::setCameraLookAt(double x, double y, double z)
+{
+    osg::Vec3 lookAt(x, y, z);
+    changeCameraView(&lookAt, 0, 0);
+}
+void QVizkitWidget::setCameraEye(double x, double y, double z)
+{
+    osg::Vec3 eye(x, y, z);
+    changeCameraView(0, &eye, 0);
+}
+void QVizkitWidget::setCameraUp(double x, double y, double z)
+{
+    osg::Vec3 up(x, y, z);
+    changeCameraView(0, 0, &up);
+}
+
+void QVizkitWidget::changeCameraView(const osg::Vec3* lookAtPos, const osg::Vec3* eyePos, const osg::Vec3* upVector)
 {
     osgGA::KeySwitchMatrixManipulator* switchMatrixManipulator = dynamic_cast<osgGA::KeySwitchMatrixManipulator*>(view->getCameraManipulator());
     if (!switchMatrixManipulator) return;
@@ -136,10 +140,81 @@ void QVizkitWidget::changeCameraView(const osg::Vec3& lookAtPos, const osg::Vec3
     osg::Vec3d eye, center, up;
     switchMatrixManipulator->getHomePosition(eye, center, up);
 
-    //set new values
-    switchMatrixManipulator->setHomePosition(eyePos, lookAtPos, up);
+    if (lookAtPos)
+        center = *lookAtPos;
+    if (eyePos)
+        eye = *eyePos;
+    if (upVector)
+        up = *upVector;
 
+    //set new values
+    switchMatrixManipulator->setHomePosition(eye, center, up);
     view->home();
+}
+
+/**
+ * Creates an instance of a visualization plugin using its
+ * Vizkit Qt Plugin.
+ * @param plugin Qt Plugin of the visualization plugin
+ * @return Instance of the adapter collection of this plugin
+ */
+QObject* QVizkitWidget::createExternalPlugin(QObject* plugin, QString const& name)
+{
+    vizkit::VizkitQtPluginBase* qtPlugin = dynamic_cast<vizkit::VizkitQtPluginBase*>(plugin);
+    if (qtPlugin) 
+    {
+        QStringList plugins = qtPlugin->getAvailablePlugins();
+        vizkit::VizPluginBase* plugin = 0;
+        if (name.isEmpty())
+        {
+            if (plugins.size() == 0)
+            {
+                std::cerr << "this Qt Designer plugin defines no vizkit plugins" << std::endl;
+                return NULL;
+            }
+            else if (plugins.size() > 1)
+            {
+                std::cerr << "this Qt Designer plugin defines more than one vizkit plugin, you must select one explicitely" << std::endl;
+                std::cerr << "available plugins are:" << std::endl;
+                for (QStringList::const_iterator it = plugins.begin(); it != plugins.end(); ++it)
+                    std::cerr << "  " << it->toStdString() << std::endl;
+                return NULL;
+            }
+
+            plugin = qtPlugin->createPlugin(*plugins.begin());
+        }
+        else if (!plugins.contains(name))
+        {
+            if (plugins.contains(name + "Visualization"))
+                plugin = qtPlugin->createPlugin(name + "Visualization");
+            else
+            {
+                std::cerr << "there is no Vizkit plugin available called " << name.toStdString() << std::endl;
+                std::cerr << "available plugins are:" << std::endl;
+                for (QStringList::const_iterator it = plugins.begin(); it != plugins.end(); ++it)
+                    std::cerr << "  " << it->toStdString() << std::endl;
+
+                return NULL;
+            }
+        }
+        else
+        {
+            plugin = qtPlugin->createPlugin(name);
+        }
+
+        if (!plugin)
+        {
+            std::cerr << "createPlugin returned NULL" << std::endl;
+            return NULL;
+        }
+        addDataHandler(plugin);
+        return plugin->getRubyAdapterCollection();
+    }
+    else 
+    {
+        std::cerr << "The given attribute is no Vizkit Qt Plugin!" << std::endl;
+        return NULL;
+    }
 }
 
 /**
@@ -148,7 +223,7 @@ void QVizkitWidget::changeCameraView(const osg::Vec3& lookAtPos, const osg::Vec3
  * @param pluginName Name of the plugin
  * @return Instance of the adapter collection of this plugin
  */
-QObject* vizkit::QVizkitWidget::createPlugin(QString pluginName)
+QObject* QVizkitWidget::createPluginByName(QString pluginName)
 {
     vizkit::VizPluginBase* plugin = 0;
     if (pluginName == "WaypointVisualization")
@@ -163,10 +238,14 @@ QObject* vizkit::QVizkitWidget::createPlugin(QString pluginName)
     {
         plugin = new vizkit::TrajectoryVisualization();
     }
+    else if (pluginName == "RigidBodyStateVisualization")
+    {
+        plugin = new vizkit::RigidBodyStateVisualization();
+    }
 
     if (plugin) 
     {
-        this->addDataHandler(plugin);
+        addDataHandler(plugin);
         VizPluginRubyAdapterCollection* adapterCollection = plugin->getRubyAdapterCollection();
         return adapterCollection;
     }
@@ -177,38 +256,17 @@ QObject* vizkit::QVizkitWidget::createPlugin(QString pluginName)
 }
 
 /**
- * Creates an instance of a visualization plugin using its
- * Vizkit Qt Plugin.
- * @param plugin Qt Plugin of the visualization plugin
- * @return Instance of the adapter collection of this plugin
- */
-QObject* vizkit::QVizkitWidget::createExternalPlugin(QObject* plugin)
-{
-    vizkit::VizkitQtPluginBase* qtPlugin = dynamic_cast<vizkit::VizkitQtPluginBase*>(plugin);
-    if (qtPlugin) 
-    {
-        vizkit::VizPluginBase* plugin = qtPlugin->createPlugin();
-        addDataHandler(plugin);
-        return plugin->getRubyAdapterCollection();
-    }
-    else 
-    {
-        std::cerr << "The given attribute is no Vizkit Qt Plugin!" << std::endl;
-        return NULL;
-    }
-}
-
-/**
  * Returns a list of all available visualization plugins.
  * @return list of plugin names
  */
-QStringList* vizkit::QVizkitWidget::getListOfAvailablePlugins()
+QStringList* QVizkitWidget::getListOfAvailablePlugins()
 {
     if (!pluginNames->size()) 
     {
         pluginNames->push_back("WaypointVisualization");
         pluginNames->push_back("TrajectoryVisualization");
         pluginNames->push_back("MotionCommandVisualization");
+        pluginNames->push_back("RigidBodyStateVisualization");
     }
     return pluginNames;
 }

@@ -20,25 +20,41 @@ public:
     void addDataHandler(VizPluginBase *viz);
     void removeDataHandler(VizPluginBase *viz);
     
+    /**
+     * Sets the camera focus to specific position.
+     * @param lookAtPos focus this point
+     */
     void changeCameraView(const osg::Vec3& lookAtPos);
+    /**
+     * Sets the camera focus and the camera itself to specific position.
+     * @param lookAtPos focus this point
+     * @param eyePos position of the camera
+     */
     void changeCameraView(const osg::Vec3& lookAtPos, const osg::Vec3& eyePos);
     void setTrackedNode( vizkit::VizPluginBase* plugin );
 
     QSize sizeHint() const;
     
-public slots:    
+public slots:
+    QObject* createExternalPlugin(QObject* plugin, QString const& name);
     QStringList* getListOfAvailablePlugins();
-    QObject* createPlugin(QString pluginName);
-    QObject* createExternalPlugin(QObject* plugin);
+    QObject* createPluginByName(QString pluginName);
+
+public slots:
+    void setCameraLookAt(double x, double y, double z);
+    void setCameraEye(double x, double y, double z);
+    void setCameraUp(double x, double y, double z);
 
 protected:
+    void changeCameraView(const osg::Vec3* lookAtPos,
+            const osg::Vec3* eyePos,
+            const osg::Vec3* upVector);
+
     osg::ref_ptr<osg::Group> root;
     void createSceneGraph();
     osg::ref_ptr<PickHandler> pickHandler;
-
     osg::ref_ptr<ViewQOSG> view;
-    
-    QStringList* pluginNames;    
+    QStringList* pluginNames;
 };
 
 }
