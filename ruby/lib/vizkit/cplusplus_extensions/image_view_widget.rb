@@ -50,15 +50,27 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "ImageView" do
       @fps_overlay_object.setBackgroundColor(Qt::Color.new(0,0,0,40))
       @fps_overlay_object.setPosFactor(0,1);
       @folder_path ||= nil
+			@isMinimized = false
+			connect(SIGNAL("activityChanged(bool)"),self,:setActive)
       @init = true
     end
   end
+	
+	def setActive(active)
+		if active	== true
+			@isMinimized = false
+		else
+      @fps_overlay_object.setText("")
+			@time_overlay_object.setText("")
+			@isMinimized = true
+		end
+	end
 
   #diplay is called each time new data are available on the orocos output port
   #this functions translates the orocos data struct to the widget specific format
   def display(frame,port_name)
     init
-    if @options[:time_overlay] == true
+    if @options[:time_overlay] == true and  @isMinimized == false
       if frame.time.instance_of?(Time)
         time = frame.time
       else
@@ -66,7 +78,7 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "ImageView" do
       end
       @time_overlay_object.setText(time.strftime("%b %d %Y %H:%M:%S"))
     end
-    if @options[:fps_overlay]
+    if @options[:fps_overlay] and @isMinimized == false
       stat = ''
       stat_valid = ''
       stat_invalid = ''
