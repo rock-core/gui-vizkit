@@ -141,5 +141,5 @@ class ActuatorControl
 end
 
 Vizkit::UiLoader.register_ruby_widget('ActuatorControl',ActuatorControl.method(:create_widget))
-Vizkit::UiLoader.register_widget_for('ActuatorControl','/base/actuators/Command')
+#Vizkit::UiLoader.register_widget_for('ActuatorControl','/base/actuators/Command')
 
