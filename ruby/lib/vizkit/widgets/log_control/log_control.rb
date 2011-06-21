@@ -39,8 +39,11 @@ class LogControl
       @brush = Qt::Brush.new(Qt::Color.new(200,200,200))
       @widget_hash = Hash.new
       @mapping = Hash.new
-      
-      @log_replay.tasks.each_value do |task|
+     
+		 	#if not @log_replay.tasks
+			#	STDERR.puts "Cannot handle empty Task"
+			#else
+        @log_replay.tasks.each do |task|
         next if !task.used?
         item, item2 = get_item(task.name,task.name, @root_item)
         item2.setText(task.file_path)
@@ -63,6 +66,7 @@ class LogControl
           end
         end
       end
+			#end
       treeView.resizeColumnToContents(0)
       display_info
     end

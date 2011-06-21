@@ -17,7 +17,8 @@ Vizkit::UiLoader.extend_cplusplus_widget_class "ArtificialHorizon" do
   end
 end
 
-Vizkit::UiLoader.register_widget_for("ArtificialHorizon",'/wrappers/Orientation',:update)
-Vizkit::UiLoader.register_widget_for("ArtificialHorizon",'/wrappers/RigidBodyState',:update)
-Vizkit::UiLoader.register_widget_for("ArtificialHorizon",'/wrappers/samples/RigidBodyState',:update)
-Vizkit::UiLoader.register_widget_for("ArtificialHorizon",'/wrappers/Pose',:update)
+## Now Handled by the compass Widget
+#Vizkit::UiLoader.register_widget_for("ArtificialHorizon",'/wrappers/Orientation',:update)
+#Vizkit::UiLoader.register_widget_for("ArtificialHorizon",'/wrappers/RigidBodyState',:update)
+#Vizkit::UiLoader.register_widget_for("ArtificialHorizon",'/wrappers/samples/RigidBodyState',:update)
+#Vizkit::UiLoader.register_widget_for("ArtificialHorizon",'/wrappers/Pose',:update)
