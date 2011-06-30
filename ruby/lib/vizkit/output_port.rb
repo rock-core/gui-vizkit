@@ -10,6 +10,7 @@ module Orocos
         connection = Vizkit::OQLogConnection.new(self, options,widget,&block)
         Vizkit.connections << connection
         connection.connect
+        connection 
       end
 
       #code blocks are called directly from Log::Replay if widet == nil
@@ -20,7 +21,7 @@ module Orocos
           options = widget
           widget = nil
         end
-        if widget.is_a?(Qt::Widget)|| widget.is_a?(Method)
+        if !widget || widget.is_a?(Qt::Widget)|| widget.is_a?(Method)
           return connect_to_widget(widget,options,&block)
         else
           return org_connect_to widget,options,&block

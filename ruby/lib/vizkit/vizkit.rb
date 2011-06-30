@@ -200,12 +200,11 @@ module Vizkit
   #   end
   #
   # Asks vizkit to connect the given task,port pair on either a widget, and/or
-  # through a block
+  # through a block. The return value is the connection object which can be used to disconnect
+  # and reconncet the widget/ block.
   #
   # Unlike Orocos::OutputPort#connect_to, this expects a task and port name,
   # i.e. can be called even though the remote task is not started yet
-  # 
-  # Use the method use_tasks to pre define which tasks shall be used
   # This is use full if tasks are replayed from a logfile 
   def self.connect_port_to(task_name, port_name, widget = nil, options = Hash.new, &block)
     if widget.kind_of?(Hash)
@@ -213,13 +212,16 @@ module Vizkit
     end
 
     task = @use_tasks.find{|task| task.name==task_name && task.has_port?(port_name)} if @use_tasks
+    connection = nil;
     if task
-      task.port(port_name).connect_to(widget,options,&block)
+      connection = task.port(port_name).connect_to(widget,options,&block)
     else
       #add default option
       options[:auto_reconnect] = true unless options.has_key? :auto_reconnect
-      Vizkit.connections << OQConnection.new([task_name, port_name], options, widget, &block)
+      connection = OQConnection.new([task_name, port_name], options, widget, &block)
+      Vizkit.connections << connection 
     end
+    connection 
   end
 
   # cal-seq:
