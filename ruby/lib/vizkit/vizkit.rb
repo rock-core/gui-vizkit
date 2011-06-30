@@ -236,6 +236,15 @@ module Vizkit
       @use_tasks = Array(tasks).flatten
   end
 
+  #returns the task which shall be used by auto_connect 
+  #this is usefull for log replay
+  def self.use_task?(task_name)
+    task = nil
+    task = @use_tasks.find{|task| task.name==task_name} if @use_tasks
+    task
+  end
+
+
   class OQConnection < Qt::Object
     #default values
     class << self
