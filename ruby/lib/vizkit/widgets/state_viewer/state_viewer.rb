@@ -2,6 +2,8 @@
 
 class StateViewer < Qt::Widget
 
+    TaskNamePair = Struct.new :name, :task
+
     def initialize(parent=nil)
         super
         #add layout to the widget
@@ -20,18 +22,37 @@ class StateViewer < Qt::Widget
         @red.setColor(Qt::Palette::Window,Qt::Color.new(255,0,0))
         @green.setColor(Qt::Palette::Window,Qt::Color.new(0,255,0))
         @blue.setColor(Qt::Palette::Window,Qt::Color.new(0,0,255))
+        @font = Qt::Font.new
+        @font.setPointSize(7)
+        @font.setBold(true)
 
         @timer = Qt::Timer.new
         @timer.connect(SIGNAL('timeout()')) do 
-            @hash_tasks.each_value do |task|
-                update(task.state,task.name)
+            @hash_tasks.each_value do |pair|
+                begin 
+                    if !pair.task || !pair.task.reachable?
+                        pair.task =  Vizkit.use_task?(pair.name)
+                        pair.task = Orocos::TaskContext.get pair.name unless pair.task
+                    end
+                rescue Orocos::NotFound 
+                    pair.task = nil
+                end
+                if pair.task
+                    if pair.task.running?
+                        update(pair.task.state ,pair.name,@green)
+                    else
+                        update(pair.task.state ,pair.name,@blue)
+                    end
+                else
+                    update("not reachable",pair.name,@red)
+                end
             end
         end
     end
 
     def default_options
         options = Hash.new
-        options[:max_rows] = 3
+        options[:max_rows] = 6
         options[:update_frequency] = 1
         options
     end
@@ -42,18 +63,27 @@ class StateViewer < Qt::Widget
     end
 
     def add(task)
-        if !@hash_tasks.has_key? task.name
-            @hash_tasks[task.name] = task
+        pair = TaskNamePair.new
+        if task.is_a?(Orocos::TaskContext)
+            pair.name = task.name
+            pair.task = task
+        else 
+            pair.name = task.to_s
+        end
+
+        if !@hash_tasks.has_key? pair.name
+                @hash_tasks[pair.name] = pair
         end
         if !@timer.active
             @timer.start(1/@options[:update_frequency])
         end
     end
 
-    def update(data, port_name)
+    def update(data, port_name, color = @red)
         label = @hash_labels[port_name]
         if !label
             label = Qt::Label.new 
+            label.setFont(@font)
             label.setAutoFillBackground true
             @hash_labels[port_name] = label
             @layout.addWidget(label,@row,@col)
@@ -65,14 +95,7 @@ class StateViewer < Qt::Widget
         end
 
         label.setText(port_name.to_s + " : " + data.to_s)
-
-        if data.to_s == "stopped"
-            label.setPalette(@red) 
-        elsif data.to_s == "unknown"
-            label.setPalette(@blue) 
-        else
-            label.setPalette(@green) 
-        end
+        label.setPalette color if label.palette != color
     end
 end
 

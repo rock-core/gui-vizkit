@@ -41,7 +41,7 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "ImageView" do
     if !defined? @init
       @options ||= default_options
       openGL(@options[:openGL])
-      @time_overlay_object = addText(-150,-5,0,"time")
+      @time_overlay_object = addText(-150,-5,0,"")
       @time_overlay_object.setColor(Qt::Color.new(255,255,0))
       @time_overlay_object.setPosFactor(1,1);
       @time_overlay_object.setBackgroundColor(Qt::Color.new(0,0,0,40))
@@ -50,52 +50,52 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "ImageView" do
       @fps_overlay_object.setBackgroundColor(Qt::Color.new(0,0,0,40))
       @fps_overlay_object.setPosFactor(0,1);
       @folder_path ||= nil
-			@isMinimized = false
-			connect(SIGNAL("activityChanged(bool)"),self,:setActive)
+      @isMinimized = false
+      connect(SIGNAL("activityChanged(bool)"),self,:setActive)
       @init = true
     end
   end
-	
-	def setActive(active)
-		if active	== true
-			@isMinimized = false
-		else
-      @fps_overlay_object.setText("")
-			@time_overlay_object.setText("")
-			@isMinimized = true
-		end
-	end
+
+  def setActive(active)
+      if active	== true
+          @isMinimized = false
+      else
+          @fps_overlay_object.setText("")
+          @time_overlay_object.setText("")
+          @isMinimized = true
+      end
+  end
 
   #diplay is called each time new data are available on the orocos output port
   #this functions translates the orocos data struct to the widget specific format
   def display(frame,port_name)
-    init
-    if @options[:time_overlay] == true and  @isMinimized == false
-      if frame.time.instance_of?(Time)
-        time = frame.time
-      else
-        time = Time.at(frame.time.seconds,frame.time.microseconds)
+      init
+      @last_frame ||= frame
+      save_frame = frame
+         frame = @last_frame
+
+      if @options[:time_overlay] == false and  @isMinimized == false
+          if frame.time.instance_of?(Time)
+              time = frame.time
+          else
+              time = Time.at(frame.time.seconds,frame.time.microseconds)
+          end
+          @time_overlay_object.setText(time.strftime("%b %d %Y %H:%M:%S"))
       end
-      @time_overlay_object.setText(time.strftime("%b %d %Y %H:%M:%S"))
-    end
-    if @options[:fps_overlay] and @isMinimized == false
-      stat = ''
-      stat_valid = ''
-      stat_invalid = ''
-      frame.attributes.each do |x|
-        stat =x.data_.to_s if x.name_ == 'StatFps'
-        stat_valid =x.data_.to_s if x.name_ == 'StatValidFps'
-        stat_invalid =x.data_.to_s if x.name_ == 'StatInValidFps'
+      if @options[:fps_overlay]==false and @isMinimized == false
+          stat = ''
+          stat_valid = ''
+          stat_invalid = ''
+          frame.attributes.each do |x|
+              stat =x.data_.to_s if x.name_ == 'StatFps'
+              stat_valid =x.data_.to_s if x.name_ == 'StatValidFps'
+              stat_invalid =x.data_.to_s if x.name_ == 'StatInValidFps'
+          end
+          @fps_overlay_object.setText(" stat fps: #{stat},  valid #{stat_valid}, invalid #{stat_invalid}")
       end
-      @fps_overlay_object.setText(" stat fps: #{stat},  valid #{stat_valid}, invalid #{stat_invalid}")
-    end
-    addRawImage(frame.frame_mode.to_s,frame.pixel_size,frame.size.width,frame.size.height,frame.image.to_byte_array[8..-1])
-    update2
-    if @folder_path
-        @save_counter ||= 0
-        save(File.join(@folder_path,"image"+sprintf("%6d",@save_counter).gsub(/ /,"0")+".png"))
-        @save_counter += 1
-    end
+      addRawImage(frame.frame_mode.to_s,frame.pixel_size,frame.size.width,frame.size.height,frame.image.to_byte_array[8..-1])
+      update2
+          @last_frame = save_frame
   end
 end
 
