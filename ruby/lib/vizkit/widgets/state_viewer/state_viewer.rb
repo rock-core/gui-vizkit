@@ -10,6 +10,8 @@ class StateViewer < Qt::Widget
         @layout = Qt::GridLayout.new
         self.setLayout @layout
 
+        @task_inspector = Vizkit.default_loader.task_inspector 
+
         @hash_labels = Hash.new
         @hash_tasks = Hash.new
         @options = default_options
@@ -83,6 +85,14 @@ class StateViewer < Qt::Widget
         label = @hash_labels[port_name]
         if !label
             label = Qt::Label.new 
+            label.instance_variable_set :@task_name, port_name
+            label.instance_variable_set :@task_inspector, @task_inspector
+            label.instance_eval do
+                def mouseDoubleClickEvent(event)
+                    @task_inspector.config @task_name
+                    @task_inspector.show
+                end
+            end
             label.setFont(@font)
             label.setAutoFillBackground true
             @hash_labels[port_name] = label
