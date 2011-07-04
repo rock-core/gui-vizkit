@@ -74,7 +74,7 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "ImageView" do
       save_frame = frame
          frame = @last_frame
 
-      if @options[:time_overlay] == false and  @isMinimized == false
+      if @options[:time_overlay] and  @isMinimized == false
           if frame.time.instance_of?(Time)
               time = frame.time
           else
@@ -82,7 +82,7 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "ImageView" do
           end
           @time_overlay_object.setText(time.strftime("%b %d %Y %H:%M:%S"))
       end
-      if @options[:fps_overlay]==false and @isMinimized == false
+      if @options[:fps_overlay] and @isMinimized == false
           stat = ''
           stat_valid = ''
           stat_invalid = ''
