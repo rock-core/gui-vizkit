@@ -70,9 +70,6 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "ImageView" do
   #this functions translates the orocos data struct to the widget specific format
   def display(frame,port_name)
       init
-      @last_frame ||= frame
-      save_frame = frame
-         frame = @last_frame
 
       if @options[:time_overlay] and  @isMinimized == false
           if frame.time.instance_of?(Time)
@@ -95,7 +92,6 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "ImageView" do
       end
       addRawImage(frame.frame_mode.to_s,frame.pixel_size,frame.size.width,frame.size.height,frame.image.to_byte_array[8..-1])
       update2
-          @last_frame = save_frame
   end
 end
 
