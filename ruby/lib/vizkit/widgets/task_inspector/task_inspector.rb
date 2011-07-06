@@ -237,15 +237,15 @@ class TaskInspector < Qt::Widget
   end
 
   def set_task_attribute(item2)
-    return if !item2.parent
-    item = item2.parent.child(item2.row,0) 
-    pair = @hash[item2]
-    return if !pair || !pair.task || !pair.task.reachable?
+  #   return if !item2.parent
+  #   item = item2.parent.child(item2.row,0) 
+  #   pair = @hash[item2]
+  #   return if !pair || !pair.task || !pair.task.reachable?
 
-    property = pair.task.property item.text
-    sample = property.new_sample
-    update_item(sample,item.parent,true,item.row)
-    property.write sample
+  #   property = pair.task.property item.text
+  #   sample = property.new_sample
+  #   update_item(sample,item.parent,true,item.row)
+  #   property.write sample
   end
 end
 
