@@ -1,6 +1,7 @@
 #ifndef MOUSEMANIPULATIONMANIPULATOR_H
 #define MOUSEMANIPULATIONMANIPULATOR_H
-#include <osgGA/MatrixManipulator>
+
+#include <vizkit/osgMatrixManipulator.h>
 #include <osgManipulator/Dragger>
 
 namespace enview {
