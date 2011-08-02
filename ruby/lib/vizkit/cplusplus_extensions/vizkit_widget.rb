@@ -12,7 +12,14 @@ module VizkitPluginExtension
             typename = plugin.getDataType
             # the plugin reports a C++ type name. We need a typelib type name
             typename = Typelib::GCCXMLLoader.cxx_to_typelib(typename)
-            expected_ruby_type = Orocos.typelib_type_for(typename)
+            expected_ruby_type =
+                begin Orocos.typelib_type_for(typename)
+                rescue Typelib::NotFound
+                    # Make sure we have loaded the typekit that will allow us to handle
+                    # this type
+                    Orocos.load_typekit_for(typename, true)
+                    Orocos.typelib_type_for(typename)
+                end
 
             is_opaque = (expected_ruby_type.name != typename)
 
