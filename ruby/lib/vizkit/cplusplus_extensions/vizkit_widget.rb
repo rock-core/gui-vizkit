@@ -38,7 +38,6 @@ module VizkitPluginExtension
 		
 		define_method('updateData') do |value|
 		    if(method_name = @type_to_method[value.class])
-			puts("Type matches #{method_name}")
 			self.send(method_name, value)
 		    else
 			message = "Expected type(s) "
