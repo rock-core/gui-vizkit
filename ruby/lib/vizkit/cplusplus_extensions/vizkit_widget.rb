@@ -25,11 +25,34 @@ module VizkitPluginExtension
 
             singleton_class = (class << self; self end)
             singleton_class.class_eval do
+		attr_accessor :type_to_method
+		
                 define_method(plugin.getRubyMethod) do |value|
                     value = Typelib.from_ruby(value, expected_ruby_type)
                     bridge.wrap(value, typename, is_opaque)
                 end
+		
+		define_method('updateData') do |value|
+		    if(method_name = @type_to_method[value.class])
+			puts("Type matches #{method_name}")
+			self.send(method_name, value)
+		    else
+			message = "Expected type(s) "
+			
+			type_to_method.each do |i,j |
+			    message = message + i.name + " "
+			end
+			message = message + "but got #{value.class.name}"
+			raise ArgumentError, message
+		    end
+                end		
             end
+	    if(!self.type_to_method)
+		self.type_to_method = Hash.new()
+	    end
+	    if(plugin.getRubyMethod.match("update"))
+		self.type_to_method[expected_ruby_type] = plugin.getRubyMethod
+	    end
         end
     end
 end
