@@ -192,7 +192,56 @@ module Vizkit
       def widget.loader
         @__loader__
       end
+
+      def widget.pretty_print(pp)
+        loader.pretty_print_widget(pp,class_name)
+      end
       widget
+    end
+
+    def pretty_print_widget(pp,widget_name)
+      extension = cplusplus_extension_hash[widget_name]
+      ruby_widget_new = ruby_widget_hash[widget_name]
+      pp.text "=========================================================="
+      pp.breakable
+      pp.text "Widget name: #{widget_name}"
+      pp.breakable
+      if !ruby_widget_new
+        pp.text "C++ Widget"
+      else
+        pp.text "Ruby Widget"
+      end
+      pp.breakable
+      registered_for(widget_name).each do |val|
+        pp.text "registerd for: #{val}"
+        pp.breakable
+      end
+      pp.text "----------------------------------------------------------"
+      pp.breakable
+
+      if extension 
+        pp.breakable
+        extension.instance_methods.each do |method|
+          pp.text "added ruby method: #{method.to_s}"
+          pp.text "(#{extension.instance_method(method).arity} parameter)"
+          pp.breakable
+        end
+      else
+        if !ruby_widget_new
+          pp.text "no ruby extension"
+          pp.breakable
+        else
+          methods = Qt::Widget.instance_methods
+          klass = ruby_widget_new.call.class
+          klass.instance_methods.each do |method|
+            if !methods.include? method
+              pp.text "ruby method: #{method.to_s}"
+              pp.text "(#{klass.instance_method(method).arity} parameter)"
+              pp.breakable
+            end
+          end
+        end
+      end
     end
 
     def registered_for(widget)
