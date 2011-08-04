@@ -90,6 +90,10 @@ module Vizkit
     UiLoader.widget_name_for_fct_hash = Hash.new
     UiLoader.widget_names_for_fct_hash = Hash.new
 
+    attr_reader :widget_for_hash
+    attr_reader :cplusplus_extension_hash
+    attr_reader :ruby_widget_hash
+
     def initialize(parent = nil)
       super(Qt::UiLoader.new(parent))
       @widget_for_hash = Hash.new
@@ -189,6 +193,15 @@ module Vizkit
         @__loader__
       end
       widget
+    end
+
+    def registered_for(widget)
+      widget = widget.class_name if widget.is_a? Qt::Widget
+      val = Array.new
+      @widget_for_hash.each_pair do |key,value|
+        val << key if value == widget  || (value.is_a?(Array) && value.include?(widget))
+      end
+      val
     end
 
     def extend_all_widgets(widget,mapping = nil)
