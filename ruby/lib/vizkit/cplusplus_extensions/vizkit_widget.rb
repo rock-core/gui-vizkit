@@ -1,6 +1,10 @@
 require 'vizkittypelib'
 module VizkitPluginExtension
+    
     def load_adapters
+        if !Orocos.master_project # Check if Orocos has been initialized
+   	    raise RuntimeError, 'you need to call Orocos.initialize before using the Ruby bindings for Vizkit3D'
+	end
         @bridges = Hash.new
         @plugins = Hash.new
         getListOfAvailableAdapter.each do |name|
