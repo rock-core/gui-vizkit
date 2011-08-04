@@ -116,7 +116,7 @@ module VizkitPluginLoaderExtension
     end
 end
 
-Vizkit::UiLoader.extend_cplusplus_widget_class "vizkit::QVizkitWidget" do
+Vizkit::UiLoader.extend_cplusplus_widget_class "vizkit::Vizkit3DWidget" do
     include VizkitPluginLoaderExtension
 end
 
