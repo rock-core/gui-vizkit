@@ -1,6 +1,8 @@
 require 'vizkittypelib'
 module VizkitPluginExtension
-    
+    attr_reader :plugins 
+    attr_reader :expected_ruby_type
+
     def load_adapters
         if !Orocos.master_project # Check if Orocos has been initialized
    	    raise RuntimeError, 'you need to call Orocos.initialize before using the Ruby bindings for Vizkit3D'
@@ -56,7 +58,35 @@ module VizkitPluginExtension
 	    if(plugin.getRubyMethod.match("update"))
 		self.type_to_method[expected_ruby_type] = plugin.getRubyMethod
 	    end
+
+            plugin.instance_variable_set(:@expected_ruby_type,expected_ruby_type)
+            def plugin.expected_ruby_type
+                @expected_ruby_type
+            end
         end
+    end
+
+    def pretty_print(pp)
+        pp.text "=========================================================="
+        pp.breakable
+        pp.text "Vizkit3d Plugin: #{name}"
+        pp.breakable
+        pp.text "Library name: #{lib_name}"
+        pp.breakable
+        pp.text "----------------------------------------------------------"
+
+        pp.breakable 
+        pp.text "  Methods:"
+        pp.breakable
+        @plugins.each_value do |plugin|
+            if plugin.getRubyMethod.match("update")
+                pp.text "    updateData(#{plugin.expected_ruby_type.name})" 
+            else
+                pp.text "    #{plugin.getRubyMethod}(#{plugin.expected_ruby_type.name})"
+            end
+            pp.breakable
+        end
+        pp.breakable
     end
 end
 
@@ -89,10 +119,37 @@ module VizkitPluginLoaderExtension
         nil
     end
 
+    def builtin_plugins
+        getListOfAvailablePlugins
+    end
+
+    def custom_plugins
+        libs = Array.new
+        path = if !ENV['VIZKIT_PLUGIN_RUBY_PATH']
+                   "/usr/local/lib:/usr/lib"
+               else
+                   ENV['VIZKIT_PLUGIN_RUBY_PATH']
+               end
+        path.split(':').each do |path|
+            next unless File::directory? path
+            Dir::foreach(path) do |lib|
+                lib =~ /^lib(.*)-viz.so$/
+                libs << $1 if $1
+            end
+        end
+        libs
+    end
+
+    def plugins
+        builtin_plugins + custom_plugins
+    end
+
     def createPlugin(lib_name, plugin_name = nil)
         builtin = getListOfAvailablePlugins
         if builtin.include?(lib_name)
             plugin = createPluginByName(lib_name)
+            plugin_name = lib_name
+            lib_name = "builtin"
         else
             path = findPluginPath(lib_name)
             if !path
@@ -107,9 +164,19 @@ module VizkitPluginLoaderExtension
                     Kernel.raise "#{lib_name} either defines no vizkit plugin, or multiple ones (and you must select one explicitely)"
                 end
             end
+            plugin_name = lib_name unless plugin_name
+            lib_name = "lib#{lib_name}-viz.so"
         end
 
         plugin.extend VizkitPluginExtension
+        plugin.instance_variable_set(:@__name__,plugin_name)
+        def plugin.name 
+            @__name__
+        end
+        plugin.instance_variable_set(:@__lib_name__,lib_name)
+        def plugin.lib_name
+            @__lib_name__
+        end
         plugin.load_adapters
         plugin
     end
