@@ -426,6 +426,12 @@ module Vizkit
 
   @connections = Array.new
   @default_loader = UiLoader.new
+
+  #returns the instance of the vizkit 3d widget 
+  def self.vizkit3d_widget
+    @vizkit3d_widget ||= default_loader.create_widget("vizkit::QVizkitMainWindow")
+    @vizkit3d_widget
+  end
 end
 
 
