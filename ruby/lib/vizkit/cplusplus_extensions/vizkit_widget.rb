@@ -119,10 +119,16 @@ module VizkitPluginLoaderExtension
         nil
     end
 
+    # Returns the list of plugins that are built-in the Vizkit3DWidget
+    #
+    # The returned value is a list of plugin names
     def builtin_plugins
         getListOfAvailablePlugins
     end
 
+    # Returns the list of plugins that are available through external libraries
+    #
+    # The returned value is an array of pairs [lib_name, plugin_name]
     def custom_plugins
         libs = Array.new
         path = if !ENV['VIZKIT_PLUGIN_RUBY_PATH']
@@ -133,17 +139,61 @@ module VizkitPluginLoaderExtension
         path.split(':').each do |path|
             next unless File::directory? path
             Dir::foreach(path) do |lib|
-                lib =~ /^lib(.*)-viz.so$/
-                libs << $1 if $1
+                if lib =~ /^lib(.*)-viz.so$/
+                    qt_plugin =
+                        begin load_plugin(File.join(path, lib))
+                        rescue Exception => e
+                            STDERR.puts "WARN: cannot load vizkit plugin library #{File.join(path, lib)}: #{e.message}"
+                            next
+                        end
+
+                    libname = $1
+                    adapters = getListOfExternalPlugins(qt_plugin)
+                    adapters.each do |name|
+                        libs << [libname, name]
+                    end
+                end
             end
         end
         libs
     end
 
+    # Returns the list of all available vizkit plugins
+    #
+    # The returned value is an array of arrays. Builtin plugins are stored as
+    # [plugin_name] and custom plugins as [lib_name, plugin_name]. This is so
+    # that, in both cases, one can do:
+    #
+    #   pl = plugins[2]
+    #   createPlugin(*pl)
+    #
     def plugins
-        builtin_plugins + custom_plugins
+        builtin_plugins.map { |v| [v] } + custom_plugins
     end
 
+    # Creates a vizkit plugin object
+    #
+    # Builtin plugins, whose list is returned by #builtin_plugins, are created
+    # with
+    #
+    #   createPlugin(plugin_name)
+    #
+    # External plugins, whose list is returned by #custom_plugins, are created
+    # with
+    #
+    #   createPlugin(lib_name, plugin_name)
+    #
+    # Where +lib_name+  is the name of the plugin library without the "lib" and
+    # "-viz.so" parts. For instance, a package that installs a library called
+    # <tt>libvfh_star-viz.so</tt> will do
+    #
+    #   createPlugin("vfh_star", "VFHTree")
+    #
+    # Moreover, if the library only provides one plugin, the plugin name can be
+    # omitted
+    #
+    #   createPlugin("vfh_star")
+    #
     def createPlugin(lib_name, plugin_name = nil)
         builtin = getListOfAvailablePlugins
         if builtin.include?(lib_name)
