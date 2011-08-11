@@ -26,6 +26,13 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "ImageView" do
     saveImage3(frame.frame_mode.to_s,frame.pixel_size,frame.size.width,frame.size.height,frame.image.to_byte_array[8..-1],path,format)
   end
 
+
+  def display3(frame,port_name)
+  	init
+    addRawImage(frame.frame_mode.to_s,frame.image.size,frame.size.width,frame.size.height,frame.image.to_byte_array[8..-1])
+    update2
+  end
+
   def display2(frame_pair,port_name)
     init
     frame = @options[:display_first] == true ? frame_pair.first : frame_pair.second
@@ -96,4 +103,5 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "ImageView" do
 end
 
 Vizkit::UiLoader.register_widget_for("ImageView","/base/samples/frame/Frame",:display)
+Vizkit::UiLoader.register_widget_for("ImageView","/base/samples/frame/CompressedFrame",:display3)
 Vizkit::UiLoader.register_widget_for("ImageView","/base/samples/frame/FramePair",:display2)
