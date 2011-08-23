@@ -1,7 +1,6 @@
 require 'vizkittypelib'
 module VizkitPluginExtension
     attr_reader :plugins 
-    attr_reader :expected_ruby_type
 
     def load_adapters
         if !Orocos.master_project # Check if Orocos has been initialized
@@ -77,16 +76,14 @@ module VizkitPluginExtension
 
         pp.breakable 
         pp.text "  Methods:"
-        pp.breakable
         @plugins.each_value do |plugin|
-            if plugin.getRubyMethod.match("update")
-                pp.text "    updateData(#{plugin.expected_ruby_type.name})" 
+            pp.breakable
+            if plugin.getRubyMethod.match(/^update/)
+                pp.text "    updateData(#{plugin.expected_ruby_type.name}) (alias of #{plugin.getRubyMethod})" 
             else
                 pp.text "    #{plugin.getRubyMethod}(#{plugin.expected_ruby_type.name})"
             end
-            pp.breakable
         end
-        pp.breakable
     end
 end
 
