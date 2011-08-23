@@ -8,6 +8,7 @@ class LogControl
       @slider_pressed = false
       @user_speed = @log_replay.speed
 
+
       dir = File.dirname(__FILE__)
       @pause_icon =  Qt::Icon.new(File.join(dir,'pause.png'))
       @play_icon = Qt::Icon.new(File.join(dir,'play.png'))
@@ -18,11 +19,17 @@ class LogControl
       connect(slider, SIGNAL('valueChanged(int)'), lcd_index, SLOT('display(int)'))
       slider.connect(SIGNAL('sliderReleased()'),self,:slider_released)
       bnext.connect(SIGNAL('clicked()'),self,:bnext_clicked)
+      #bnext.connect(SIGNAL('clicked()'),self,:bnextmarker_clicked)
       bback.connect(SIGNAL('clicked()'),self,:bback_clicked)
+      #bback.connect(SIGNAL('clicked()'),self,:bprevmarker_clicked)
       bstop.connect(SIGNAL('clicked()'),self,:bstop_clicked)
       bplay.connect(SIGNAL('clicked()'),self,:bplay_clicked)
       treeView.connect(SIGNAL('doubleClicked(const QModelIndex&)'),self,:tree_double_clicked)
       slider.connect(SIGNAL(:sliderPressed)) {@slider_pressed = true;}
+      
+      if(options.has_key?(:marker))
+          add_marker_stream_by_name(options[:marker])
+      end
 
       @log_replay.align unless @log_replay.aligned?
       return if !@log_replay.replay?
@@ -69,6 +76,30 @@ class LogControl
 			#end
       treeView.resizeColumnToContents(0)
       display_info
+    end
+
+    def add_marker_stream_by_name(name)
+        #need to align first, sorry
+        @log_replay.align unless @log_replay.aligned?
+        @log_replay.rewind
+        before = Time.new
+        i=0
+        
+        #getting the ID for later header compareision
+        id = @log_replay.get_stream_index_for_name(name)
+
+        #don't use step, alining takes to much time we need only the header
+        #if later on more informations are requierd please re-read only current sample
+        while t = @log_replay.advance
+          if(t[0] == id)
+            @log_replay.markers << t[1]
+            slider.addMarker(i)
+          end
+          i=i+1
+        end
+        
+        #rewind to beginning
+        @log_replay.rewind
     end
 
     def tree_double_clicked(model_index)
@@ -145,6 +176,19 @@ class LogControl
       @log_replay.seek(slider.value)
       display_info
     end
+    
+    def bnextmarker_clicked
+      return if !@log_replay.replay?
+      @log_replay.next_marker()
+      display_info
+    end
+    
+    def bprevmarker_clicked
+      return if !@log_replay.replay?
+      @log_replay.prev_marker()
+      display_info
+    end
+
 
     def bnext_clicked
       return if !@log_replay.replay?
