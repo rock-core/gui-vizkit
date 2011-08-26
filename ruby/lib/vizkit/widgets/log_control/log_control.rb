@@ -28,7 +28,17 @@ class LogControl
       slider.connect(SIGNAL(:sliderPressed)) {@slider_pressed = true;}
       
       if(options.has_key?(:marker))
+          marker_view.show
+          @marker_mapping = Hash.new
+          @marker_model = Qt::StandardItemModel.new
+          @marker_model.setColumnCount(1)
+          @marker_model.setHorizontalHeaderLabels(["Information"])
+          @marker_root = @marker_model.invisibleRootItem
+          marker_view.setModel(@marker_model)
+          marker_view.setAlternatingRowColors(true)
+          marker_view.setSortingEnabled(true)    
           add_marker_stream_by_name(options[:marker])
+          marker_view.connect(SIGNAL('doubleClicked(const QModelIndex&)'),self,:marker_tree_double_clicked)
       end
 
       @log_replay.align unless @log_replay.aligned?
@@ -83,7 +93,6 @@ class LogControl
         @log_replay.align unless @log_replay.aligned?
         @log_replay.rewind
         before = Time.new
-        i=0
         
         #getting the ID for later header compareision
         id = @log_replay.get_stream_index_for_name(name)
@@ -92,14 +101,28 @@ class LogControl
         #if later on more informations are requierd please re-read only current sample
         while t = @log_replay.advance
           if(t[0] == id)
-            @log_replay.markers << t[1]
-            slider.addMarker(i)
+            sample = @log_replay.single_data(id)
+            time = sample.time
+            @log_replay.markers << time
+            target_sample_pos = @log_replay.get_sample_index_for_time(time)
+            slider.addMarker(target_sample_pos)
+            
+            item = get_marker_item(sample.id,sample.message.split("\n")[0], @marker_root)
+            get_marker_item("id_#{sample.id}",sample.id,item)
+            get_marker_item("message_#{sample.id}",sample.message,item)
+            get_marker_item("time_#{sample.id}",sample.time,item) 
           end
-          i=i+1
         end
         
         #rewind to beginning
         @log_replay.rewind
+    end
+    
+    def marker_tree_double_clicked(model_index)
+      item = @marker_model.itemFromIndex(model_index)
+      return unless @marker_mapping.has_key? item.text
+      @log_replay.seek(@marker_mapping[item.text]) if @marker_mapping[item.text].is_a? Time
+      display_info
     end
 
     def tree_double_clicked(model_index)
@@ -119,6 +142,14 @@ class LogControl
     
     def playing?
       @replay_on
+    end
+
+    def get_marker_item(key,name,root_item)
+      item = Qt::StandardItem.new(name.to_s)
+      item.setEditable(false)
+      root_item.appendRow(item)
+      @marker_mapping[name.to_s] = name
+      return item
     end
 
     def get_item(key,name,root_item)
@@ -239,6 +270,7 @@ class LogControl
   def self.create_widget(parent = nil)
     form = Vizkit.load(File.join(File.dirname(__FILE__),'LogControl.ui'),parent)
     form.extend Functions
+    form.marker_view.hide
 
     #workaround
     #it is not possible to define virtual functions for qidgets which are loaded
