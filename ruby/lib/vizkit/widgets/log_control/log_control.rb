@@ -26,19 +26,27 @@ class LogControl
       bplay.connect(SIGNAL('clicked()'),self,:bplay_clicked)
       treeView.connect(SIGNAL('doubleClicked(const QModelIndex&)'),self,:tree_double_clicked)
       slider.connect(SIGNAL(:sliderPressed)) {@slider_pressed = true;}
-      
-      if(options.has_key?(:marker))
-          marker_view.show
-          @marker_mapping = Hash.new
-          @marker_model = Qt::StandardItemModel.new
-          @marker_model.setColumnCount(1)
-          @marker_model.setHorizontalHeaderLabels(["Information"])
-          @marker_root = @marker_model.invisibleRootItem
-          marker_view.setModel(@marker_model)
-          marker_view.setAlternatingRowColors(true)
-          marker_view.setSortingEnabled(true)    
-          add_marker_stream_by_name(options[:marker])
-          marker_view.connect(SIGNAL('doubleClicked(const QModelIndex&)'),self,:marker_tree_double_clicked)
+     
+      if(options.has_key?(:show_marker))
+             if options[:show_marker] == true
+          	marker_view.show
+                @marker_mapping = Hash.new
+                @marker_model = Qt::StandardItemModel.new
+                @marker_model.setColumnCount(1)
+                @marker_model.setHorizontalHeaderLabels(["Information"])
+                @marker_root = @marker_model.invisibleRootItem
+                marker_view.setModel(@marker_model)
+                marker_view.setAlternatingRowColors(true)
+                marker_view.setSortingEnabled(true)
+                marker_view.connect(SIGNAL('doubleClicked(const QModelIndex&)'),self,:marker_tree_double_clicked)
+              end
+      end
+
+      if(options.has_key?(:marker_type))
+          add_marker_stream_by_type(options[:marker_type])
+      end
+      if(options.has_key?(:marker_stream))
+          add_marker_stream_by_name(options[:marker_stream])
       end
 
       @log_replay.align unless @log_replay.aligned?
@@ -88,14 +96,14 @@ class LogControl
       display_info
     end
 
-    def add_marker_stream_by_name(name)
-        #need to align first, sorry
+    def add_marker_stream_by_id(id)
+        throw "Cannot add marker, unless it's not initializaed in options (:show_marker=>true)" if not @marker_root
+
+	#need to align first, sorry
         @log_replay.align unless @log_replay.aligned?
         @log_replay.rewind
         before = Time.new
         
-        #getting the ID for later header compareision
-        id = @log_replay.get_stream_index_for_name(name)
 
         #don't use step, alining takes to much time we need only the header
         #if later on more informations are requierd please re-read only current sample
@@ -106,16 +114,36 @@ class LogControl
             @log_replay.markers << time
             target_sample_pos = @log_replay.get_sample_index_for_time(time)
             slider.addMarker(target_sample_pos)
-            
-            item = get_marker_item(sample.id,sample.message.split("\n")[0], @marker_root)
-            get_marker_item("id_#{sample.id}",sample.id,item)
-            get_marker_item("message_#{sample.id}",sample.message,item)
+
+	    #Only getting first line, to prevent too log messages
+            string = sample.comment.split("\n")[0] 
+	    string = "<nil>" if not string
+
+            item = get_marker_item(sample.id,string, @marker_root)
+            get_marker_item("id_#{sample.id}","ID: #{sample.id}",item)
+            get_marker_item("comment_#{sample.id}",sample.comment,item)
             get_marker_item("time_#{sample.id}",sample.time,item) 
           end
         end
         
         #rewind to beginning
         @log_replay.rewind
+    end
+
+    def add_marker_stream_by_type(type)
+	#need to align first, sorry
+        @log_replay.align unless @log_replay.aligned?
+        id = @log_replay.get_stream_index_for_type(type)
+	pp "Found stream id: #{id} #{type}"
+	add_marker_stream_by_id(id)        
+    end
+
+    def add_marker_stream_by_name(name)
+	#need to align first, sorry
+        @log_replay.align unless @log_replay.aligned?
+        #getting the ID for later header compareision
+        id = @log_replay.get_stream_index_for_name(name)
+	add_marker_stream_by_id(id)        
     end
     
     def marker_tree_double_clicked(model_index)

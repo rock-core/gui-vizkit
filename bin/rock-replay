@@ -13,6 +13,6 @@ end
 
 log = Orocos::Log::Replay.open(ARGV)
 log.track true
-Vizkit.control log
+Vizkit.control log, :show_marker=>true, :marker_type=>"/logger/Marker"
 Vizkit.exec
 
