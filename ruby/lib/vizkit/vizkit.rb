@@ -11,6 +11,9 @@ module Vizkit
     define_widget_for_methods("task_control",Orocos::TaskContext) do |task|
       task.model.name
     end
+    define_widget_for_methods("task",Orocos::TaskContext,Orocos::Log::TaskContext) do |task|
+      task.class
+    end
   end
 end
 
@@ -67,8 +70,14 @@ module Vizkit
         value.connect_to widget,options ,&block
         widget.show
         return widget
+      when Orocos::TaskContext
+        widget = @default_loader.widget_for(value)
+        raise "Cannot handle #{value.class}" unless widget
+        widget.config(value)
+        widget.show
+        return widget
       else
-          raise "Cannot handle #{value.class}"
+        raise "Cannot handle #{value.class}"
       end
     end
     nil
