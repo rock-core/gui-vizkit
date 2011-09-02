@@ -34,11 +34,13 @@ class LogControl
       end
      
 
-      if(options.has_key?(:marker_type))
-          add_marker_stream_by_type(options[:marker_type])
+      if(options.has_key?(:marker_type) and @show_marker == true)
+          @log_replay.add_marker_stream_by_type(options[:marker_type])
+          add_marker_from_replay if not @log_replay.markers.empty?
       end
-      if(options.has_key?(:marker_stream))
-          add_marker_stream_by_name(options[:marker_stream])
+      if(options.has_key?(:marker_stream) and @show_marker == true)
+          @log_replay.add_marker_stream_by_name(options[:marker_stream])
+          add_marker_from_replay if not @log_replay.markers.empy?
       end
 
       @log_replay.align unless @log_replay.aligned?
@@ -92,6 +94,9 @@ class LogControl
     def initialize_marker_view()
         if @show_marker
             marker_view.show
+            geo = size()
+            geo.setHeight(460)
+            resize(geo)
             @marker_mapping = Hash.new
             @marker_model = Qt::StandardItemModel.new
             @marker_model.setColumnCount(1)
@@ -104,58 +109,28 @@ class LogControl
         end
     end
 
-    def add_marker_stream_by_id(id)
-        initialize_marker_view if id
-        throw "Cannot add marker, unless it's not initializaed in options (:show_marker=>true)" if not @marker_root
-        
-
-	#need to align first, sorry
-        @log_replay.align unless @log_replay.aligned?
-        @log_replay.rewind
-        before = Time.new
-        
+    def add_marker_from_replay()
+        initialize_marker_view
+        raise "Internal error marker_roor is not set, this souldn't occur" if not @marker_root
 
         #don't use step, alining takes to much time we need only the header
         #if later on more informations are requierd please re-read only current sample
-        while t = @log_replay.advance
-          if(t[0] == id)
-            sample = @log_replay.single_data(id)
+        @log_replay.markers.each do |sample|
             time = sample.time
-            @log_replay.markers << time
-            target_sample_pos = @log_replay.get_sample_index_for_time(time)
+            target_sample_pos = @log_replay.sample_index_for_time(time)
             slider.addMarker(target_sample_pos)
 
 	    #Only getting first line, to prevent too log messages
             string = sample.comment.split("\n")[0] 
 	    string = "<nil>" if not string
 
-            item = get_marker_item(sample.id,string, @marker_root)
-            get_marker_item("id_#{sample.id}","ID: #{sample.id}",item)
-            get_marker_item("comment_#{sample.id}",sample.comment,item)
-            get_marker_item("time_#{sample.id}",sample.time,item) 
-          end
+            item = marker_item(sample.id,string, @marker_root)
+            marker_item("id_#{sample.id}","ID: #{sample.id}",item)
+            marker_item("comment_#{sample.id}",sample.comment,item)
+            marker_item("time_#{sample.id}",sample.time,item) 
         end
-        
-        #rewind to beginning
-        @log_replay.rewind
     end
 
-    def add_marker_stream_by_type(type)
-	#need to align first, sorry
-        @log_replay.align unless @log_replay.aligned?
-        id = @log_replay.get_stream_index_for_type(type)
-        add_marker_stream_by_id(id) if id
-    end
-
-    def add_marker_stream_by_name(name)
-	#need to align first, sorry
-        @log_replay.align unless @log_replay.aligned?
-        #getting the ID for later header compareision
-        id = @log_replay.get_stream_index_for_name(name)
-        raise "Cannot find Marker Stream #{name}" if not id
-	add_marker_stream_by_id(id)
-    end
-    
     def marker_tree_double_clicked(model_index)
       item = @marker_model.itemFromIndex(model_index)
       return unless @marker_mapping.has_key? item.text
@@ -182,7 +157,7 @@ class LogControl
       @replay_on
     end
 
-    def get_marker_item(key,name,root_item)
+    def marker_item(key,name,root_item)
       item = Qt::StandardItem.new(name.to_s)
       item.setEditable(false)
       root_item.appendRow(item)
@@ -309,6 +284,9 @@ class LogControl
     form = Vizkit.load(File.join(File.dirname(__FILE__),'LogControl.ui'),parent)
     form.extend Functions
     form.marker_view.hide
+    geo = form.size()
+    geo.setHeight(260)
+    form.resize(geo)
 
     #workaround
     #it is not possible to define virtual functions for qidgets which are loaded
