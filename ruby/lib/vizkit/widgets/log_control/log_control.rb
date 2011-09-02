@@ -7,7 +7,7 @@ class LogControl
       @replay_on = false 
       @slider_pressed = false
       @user_speed = @log_replay.speed
-
+      @show_marker = false 
 
       dir = File.dirname(__FILE__)
       @pause_icon =  Qt::Icon.new(File.join(dir,'pause.png'))
@@ -26,21 +26,13 @@ class LogControl
       bplay.connect(SIGNAL('clicked()'),self,:bplay_clicked)
       treeView.connect(SIGNAL('doubleClicked(const QModelIndex&)'),self,:tree_double_clicked)
       slider.connect(SIGNAL(:sliderPressed)) {@slider_pressed = true;}
-     
+      
       if(options.has_key?(:show_marker))
              if options[:show_marker] == true
-          	marker_view.show
-                @marker_mapping = Hash.new
-                @marker_model = Qt::StandardItemModel.new
-                @marker_model.setColumnCount(1)
-                @marker_model.setHorizontalHeaderLabels(["Information"])
-                @marker_root = @marker_model.invisibleRootItem
-                marker_view.setModel(@marker_model)
-                marker_view.setAlternatingRowColors(true)
-                marker_view.setSortingEnabled(true)
-                marker_view.connect(SIGNAL('doubleClicked(const QModelIndex&)'),self,:marker_tree_double_clicked)
-              end
+                 @show_marker = true
+             end
       end
+     
 
       if(options.has_key?(:marker_type))
           add_marker_stream_by_type(options[:marker_type])
@@ -96,8 +88,26 @@ class LogControl
       display_info
     end
 
+
+    def initialize_marker_view()
+        if @show_marker
+            marker_view.show
+            @marker_mapping = Hash.new
+            @marker_model = Qt::StandardItemModel.new
+            @marker_model.setColumnCount(1)
+            @marker_model.setHorizontalHeaderLabels(["Information"])
+            @marker_root = @marker_model.invisibleRootItem
+            marker_view.setModel(@marker_model)
+            marker_view.setAlternatingRowColors(true)
+            marker_view.setSortingEnabled(true)
+            marker_view.connect(SIGNAL('doubleClicked(const QModelIndex&)'),self,:marker_tree_double_clicked)
+        end
+    end
+
     def add_marker_stream_by_id(id)
+        initialize_marker_view if id
         throw "Cannot add marker, unless it's not initializaed in options (:show_marker=>true)" if not @marker_root
+        
 
 	#need to align first, sorry
         @log_replay.align unless @log_replay.aligned?
@@ -134,8 +144,7 @@ class LogControl
 	#need to align first, sorry
         @log_replay.align unless @log_replay.aligned?
         id = @log_replay.get_stream_index_for_type(type)
-	pp "Found stream id: #{id} #{type}"
-	add_marker_stream_by_id(id)        
+        add_marker_stream_by_id(id) if id
     end
 
     def add_marker_stream_by_name(name)
@@ -143,7 +152,8 @@ class LogControl
         @log_replay.align unless @log_replay.aligned?
         #getting the ID for later header compareision
         id = @log_replay.get_stream_index_for_name(name)
-	add_marker_stream_by_id(id)        
+        raise "Cannot find Marker Stream #{name}" if not id
+	add_marker_stream_by_id(id)
     end
     
     def marker_tree_double_clicked(model_index)
