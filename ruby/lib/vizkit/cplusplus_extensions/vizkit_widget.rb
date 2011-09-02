@@ -14,18 +14,13 @@ module VizkitPluginExtension
             Qt::Object.connect(bridge, SIGNAL('changeVariant(QVariant&, bool)'), plugin, SLOT('update(QVariant&, bool)'))
             @bridges[plugin.getRubyMethod] = bridge
             @plugins[plugin.getRubyMethod] = plugin
-            typename = plugin.getDataType
+            cxx_typename = plugin.getDataType
             # the plugin reports a C++ type name. We need a typelib type name
-            typename = Typelib::GCCXMLLoader.cxx_to_typelib(typename)
-            expected_ruby_type =
-                begin Orocos.typelib_type_for(typename)
-                rescue Typelib::NotFound
-                    # Make sure we have loaded the typekit that will allow us to handle
-                    # this type
-                    Orocos.load_typekit_for(typename, true)
-                    Orocos.typelib_type_for(typename)
-                end
-
+            typename = Typelib::GCCXMLLoader.cxx_to_typelib(cxx_typename)
+            if !Orocos.registered_type?(cxx_typename)
+                Orocos.load_typekit_for(typename, true) 
+            end
+            expected_ruby_type = Orocos.typelib_type_for(typename)
             is_opaque = (expected_ruby_type.name != typename)
 
             singleton_class = (class << self; self end)
