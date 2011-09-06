@@ -251,8 +251,8 @@ module Vizkit
       attr_accessor :update_frequency
       attr_accessor :auto_reconnect
     end
-    @@update_frequency = 8
-    @@auto_reconnect = false
+    OQConnection::update_frequency = 8
+    OQConnection::auto_reconnect = false
 
     attr_accessor :auto_reconnect
     attr_reader :update_frequency
@@ -283,8 +283,8 @@ module Vizkit
       @widget = widget
       @update_frequency = this_options[:update_frequency] 
       @auto_reconnect = this_options[:auto_reconnect]
-      @update_frequency ||= @@update_frequency
-      @auto_reconnect ||= @@auto_reconnect
+      @update_frequency ||= OQConnection::update_frequency
+      @auto_reconnect ||= OQConnection::auto_reconnect
       @block = block
       @reader = nil
       @timer_id = nil
@@ -426,6 +426,12 @@ module Vizkit
 
   @connections = Array.new
   @default_loader = UiLoader.new
+
+  #returns the instance of the vizkit 3d widget 
+  def self.vizkit3d_widget
+    @vizkit3d_widget ||= default_loader.create_widget("vizkit::Vizkit3DWidget")
+    @vizkit3d_widget
+  end
 end
 
 

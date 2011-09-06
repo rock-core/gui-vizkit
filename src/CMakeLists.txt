@@ -8,13 +8,13 @@ set(LIB_MAINWINDOW_LOADER ${PROJECT_NAME}mainwindowloader)
 set(TYPELIB_TO_QVARIANT ${PROJECT_NAME}typelib)
 
 set(SOURCES 
-    VizPlugin.cpp
+    Vizkit3DPlugin.cpp
     CompositeViewerQOSG.cpp
     CoordinateFrame.cpp
     GridNode.cpp
     PickHandler.cpp
     QOSGWidget.cpp
-    QVizkitWidget.cpp
+    Vizkit3DWidget.cpp
     WaypointVisualization.cpp
     MotionCommandVisualization.cpp
     TrajectoryVisualization.cpp
@@ -26,9 +26,9 @@ set(SOURCES
     )
 
 set(QT_HEADERS 
-    VizPlugin.hpp
+    Vizkit3DPlugin.hpp
     QOSGWidget.hpp 
-    QVizkitWidget.hpp 
+    Vizkit3DWidget.hpp 
     CompositeViewerQOSG.hpp 
     PickHandler.hpp
     QVizkitMainWindow.hpp
@@ -36,6 +36,7 @@ set(QT_HEADERS
 
 set(HEADERS 
     ${QT_HEADERS}
+    VizPlugin.hpp
     CoordinateFrame.hpp
     GridNode.hpp
     MotionCommandVisualization.hpp

@@ -90,6 +90,10 @@ module Vizkit
     UiLoader.widget_name_for_fct_hash = Hash.new
     UiLoader.widget_names_for_fct_hash = Hash.new
 
+    attr_reader :widget_for_hash
+    attr_reader :cplusplus_extension_hash
+    attr_reader :ruby_widget_hash
+
     def initialize(parent = nil)
       super(Qt::UiLoader.new(parent))
       @widget_for_hash = Hash.new
@@ -188,7 +192,65 @@ module Vizkit
       def widget.loader
         @__loader__
       end
+
+      def widget.pretty_print(pp)
+        loader.pretty_print_widget(pp,class_name)
+      end
       widget
+    end
+
+    def pretty_print_widget(pp,widget_name)
+      extension = cplusplus_extension_hash[widget_name]
+      ruby_widget_new = ruby_widget_hash[widget_name]
+      pp.text "=========================================================="
+      pp.breakable
+      pp.text "Widget name: #{widget_name}"
+      pp.breakable
+      if !ruby_widget_new
+        pp.text "C++ Widget"
+      else
+        pp.text "Ruby Widget"
+      end
+      pp.breakable
+      registered_for(widget_name).each do |val|
+        pp.text "registerd for: #{val}"
+        pp.breakable
+      end
+      pp.text "----------------------------------------------------------"
+      pp.breakable
+
+      if extension 
+        pp.breakable
+        extension.instance_methods.each do |method|
+          pp.text "added ruby method: #{method.to_s}"
+          pp.text "(#{extension.instance_method(method).arity} parameter)"
+          pp.breakable
+        end
+      else
+        if !ruby_widget_new
+          pp.text "no ruby extension"
+          pp.breakable
+        else
+          methods = Qt::Widget.instance_methods
+          klass = ruby_widget_new.call.class
+          klass.instance_methods.each do |method|
+            if !methods.include? method
+              pp.text "ruby method: #{method.to_s}"
+              pp.text "(#{klass.instance_method(method).arity} parameter)"
+              pp.breakable
+            end
+          end
+        end
+      end
+    end
+
+    def registered_for(widget)
+      widget = widget.class_name if widget.is_a? Qt::Widget
+      val = Array.new
+      @widget_for_hash.each_pair do |key,value|
+        val << key if value == widget  || (value.is_a?(Array) && value.include?(widget))
+      end
+      val
     end
 
     def extend_all_widgets(widget,mapping = nil)

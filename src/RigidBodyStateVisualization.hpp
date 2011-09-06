@@ -8,7 +8,7 @@
 namespace vizkit 
 {
 
-class RigidBodyStateVisualization : public VizPlugin<base::samples::RigidBodyState>
+class RigidBodyStateVisualization : public Vizkit3DPlugin<base::samples::RigidBodyState>
 {
     public:
 	EIGEN_MAKE_ALIGNED_OPERATOR_NEW
@@ -42,6 +42,8 @@ class RigidBodyStateVisualization : public VizPlugin<base::samples::RigidBodySta
          */
         void setColor(base::Vector3d const& color);
 	
+	void setColor(const osg::Vec4d& color, osg::Geode* geode);
+	
     private:
         bool covariance;
         bool covariance_with_samples;
@@ -51,7 +53,7 @@ class RigidBodyStateVisualization : public VizPlugin<base::samples::RigidBodySta
 	osg::Vec3d pos;
 	osg::Quat orientation;
 	osg::ref_ptr<osg::Node>  body_model;
-        osg::ref_ptr<osg::Geode> createSimpleBody(double size);
+        osg::ref_ptr<osg::Group> createSimpleBody(double size);
 };
 
 }
