@@ -1,18 +1,69 @@
 #!/usr/bin/env ruby
 #
 require 'vizkit'
+require 'optparse'
 
-if ARGV.empty?
-  puts
-  puts "Programm for replaying log files"
-  puts "Usage:"
-  puts "replay logfile1, logfile2, ..."
-  puts
-  exit 1
+@search_filter = Hash.new
+@show_and_exit = false
+parser = OptionParser.new do |opt|
+    opt.banner = <<-EOT
+
+usage: rock-replay <logfile>
+
+ Replays and displays log data genreated by the generic orogen logger 
+
+Examples:
+ rock-replay camera.0.log
+ rock-replay folder
+ rock-replay camera.0.log -t camera
+
+    EOT
+
+    opt.on('--help') do
+        puts self
+        exit 0
+    end
+    opt.on('-t', '--tasks TASK', 'displays only tasks which match TASK.') do |task|
+        @search_filter[:tasks] = /#{task}/
+    end
+    opt.on('-T', '--types TYPE', 'displays only ports which match TYPES.') do |type|
+        @search_filter[:types] = /#{type}/
+    end
+    opt.on('-p', '--ports PORT', 'displays only ports which match PORT.') do |port|
+        @search_filter[:ports] = /#{port}/
+    end
+    opt.on('-l', '--limit LIMIT', 'displays only ports those number of samplest does not exceed LIMIT.') do |limit|
+        @search_filter[:limit] = limit.to_i
+    end
+    opt.on('-s', '--show', 'displays all replayed tasks on the consol and exits.') do
+        @show_and_exit = true
+    end
+    opt.on('--debug') do
+        debug = true
+    end
 end
 
-log = Orocos::Log::Replay.open(ARGV)
-log.track true
-Vizkit.control log, :show_marker=>true, :marker_type=>"/logger/Marker"
-Vizkit.exec
+
+remaining = parser.parse(ARGV)
+if remaining.empty? 
+    puts parser
+    exit(1)
+end
+
+log = Orocos::Log::Replay.open(remaining)
+
+#select only ports which are not filtered out
+log.track(true,@search_filter)
+
+if @show_and_exit
+    pp log
+else
+    unless log.replay?
+        puts "No ports are selected!"; 
+        exit 0
+    end
+    puts "Aligning streams. This can take a long time"
+    Vizkit.control log, :show_marker=>true, :marker_type=>"/logger/Marker"
+    Vizkit.exec
+end
 
