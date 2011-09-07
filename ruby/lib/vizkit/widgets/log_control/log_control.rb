@@ -68,6 +68,7 @@ class LogControl
         item2.setText(task.file_path)
         #setting ports
         task.each_port do |port|
+          next unless port.used?
           key = task.name+"_"+ port.name
           item2, item3 = get_item(key,port.name, item)
           @mapping[item2] = port
