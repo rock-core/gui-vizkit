@@ -266,6 +266,10 @@ class LogControl
        @log_replay.reset_time_sync
        display_info
     end
+
+    def refresh
+        @log_replay.refresh
+    end
     
     def bplay_clicked 
       return if !@log_replay.replay?
@@ -288,6 +292,16 @@ class LogControl
     geo = form.size()
     geo.setHeight(260)
     form.resize(geo)
+
+    #workaround 
+    #it seems that widgets which are created by the UiLoader do not 
+    #forward message calls to ruby
+    short = Qt::Shortcut.new(Qt::KeySequence.new("Ctrl+R"),form)
+    short.connect(SIGNAL('activated()'))do
+        form.refresh
+    end
+
+
 
     #workaround
     #it is not possible to define virtual functions for qidgets which are loaded
