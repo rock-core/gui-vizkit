@@ -20,7 +20,7 @@ Examples:
     EOT
 
     opt.on('--help') do
-        puts self
+        puts parser
         exit 0
     end
     opt.on('-t', '--tasks TASK', 'displays only tasks which match TASK.') do |task|
