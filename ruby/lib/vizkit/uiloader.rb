@@ -64,29 +64,23 @@ module Vizkit
       def extend_cplusplus_widget_class(class_name,&block)
         @current_loader_instance.extend_cplusplus_widget_class(class_name,&block)
       end
-      def register_3d_plugin(widget_name,lib_name,plugin_name,widget_method_name,plugin_method_name=:updateData)
+      def register_3d_plugin(widget_name,lib_name,plugin_name)
         # This is used to share the plugin instance between the creation method
         # and the display method
-        plugin = nil
-        ext = Module.new do
-          define_method(widget_method_name) do |data,port|
-            plugin.send(plugin_method_name,data)
-          end
-        end
         creation_method = lambda do |parent|
           if !Orocos.initialized?
             Orocos.initialize
           end
           widget = Vizkit.vizkit3d_widget
-          widget.extend(ext)
-          plugin = widget.createPlugin(lib_name, plugin_name)
+          widget.plugins[widget_name] = widget.createPlugin(lib_name, plugin_name)
           widget
         end
         register_ruby_widget(widget_name,creation_method)
       end
-      def register_3d_plugin_for(class_name,type_name,update_method)
-        @current_loader_instance.register_callback_fct('vizkit::Vizkit3DWidget',type_name,update_method)
-        register_widget_for(class_name,type_name,update_method)
+      def register_3d_plugin_for(widget_name,type_name,display_method = nil,&filter)
+        @current_loader_instance.register_callback_fct('vizkit::Vizkit3DWidget',type_name,:update)
+        VizkitPluginLoaderExtension.type_to_widget_name[type_name] = [widget_name,display_method,filter]
+        register_widget_for(widget_name,type_name,"not_used")
       end
 
       def define_widget_for_methods(name,*klasses,&map)

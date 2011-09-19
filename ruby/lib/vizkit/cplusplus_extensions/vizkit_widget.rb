@@ -222,6 +222,29 @@ module VizkitPluginLoaderExtension
         plugin.load_adapters
         plugin
     end
+
+    # The set of plugins loaded by display-a-type infrastructure. It is a
+    # mapping from class name (as declared in #register_ruby_widget) to the
+    # corresponding plugin instance
+    attribute(:plugins) { Hash.new }
+
+    class << self
+        # A mapping from the type names to the plugin widget name (as provided by
+        # #register_3d_plugin_for)
+        attr_reader :type_to_widget_name
+    end
+    @type_to_widget_name = Hash.new
+
+    # Dispatcher method, that dispatches the data to the different plugins
+    def update(data, port_name)
+        widget_name, update_method, filter = VizkitPluginLoaderExtension.type_to_widget_name[data.class.name]
+        plugin = plugins[widget_name]
+        if filter
+            filter.call(plugin,data,port_name)
+        else
+            plugin.send(update_method,data)
+        end
+    end
 end
 
 Vizkit::UiLoader.extend_cplusplus_widget_class "vizkit::Vizkit3DWidget" do
