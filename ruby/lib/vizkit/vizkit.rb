@@ -319,7 +319,9 @@ module Vizkit
 
         #use default callback_fct
         @callback_fct ||= :update if @widget.respond_to?(:update)
-        @callback_fct = @widget.method(@callback_fct) if @callback_fct.is_a? Symbol
+        if !@callback_fct.respond_to?(:call)
+          @callback_fct = @widget.method(@callback_fct) 
+        end
         raise "Widget #{@widget.objectName}(#{@widget.class_name}) has no callback function "if !@callback_fct
       else
         @callback_fct = nil
