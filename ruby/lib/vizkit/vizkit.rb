@@ -183,8 +183,10 @@ module Vizkit
   def self.connect(widget)
     if widget.is_a?(Qt::Object)
       @connections.each do |connection|
-        if connection.widget.is_a?(Qt::Object) && widget.findChild(Qt::Object,connection.widget.objectName)
-          connection.connect
+        if connection.widget.is_a?(Qt::Object) 
+          if connection.objectName() && widget.findChild(Qt::Object,connection.widget.objectName) || connection.widget == widget
+            connection.connect
+          end
         end
       end
     else
