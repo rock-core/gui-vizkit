@@ -30,16 +30,9 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "SonarView" do
     end
 
     if @options[:time_overlay] == true
-      if sonar_scan.class.name == "/base/samples/SonarScan"
-        if sonar_scan.time.instance_of?(Time)
-	  time = sonar_scan.time
-        elsif sonar_scan.class.name == "/base/samples/SonarScan"
-	  if sonar_scan.stamp.instance_of?(Time)
-	    time = sonar_scan.stamp
-	end
-    else
-      time = Time.at(frame.time.seconds,frame.time.microseconds)
-    end
+      if sonar_scan.respond_to?(:time) && sonar_scan.time.instance_of?(Time)
+        time = sonar_scan.time
+      end
       @time_overlay_object.setText(time.strftime("%b %d %Y %H:%M:%S"))
     end
     if sonar_scan.class.name == "/base/samples/SonarScan"
@@ -47,14 +40,13 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "SonarView" do
     elsif sonar_scan.class.name == "/sensorData/Sonar"
       setSonarScan(sonar_scan.scanData.to_byte_array[8..-1],sonar_scan.scanData.size,sonar_scan.bearing,sonar_scan.adInterval,true)
     elsif sonar_scan.class.name == "/base/samples/SonarBeam"
-        angle = sonar_scan.bearing.rad 
-        angle = angle + 2*Math::PI if angle < 0
+      angle = sonar_scan.bearing.rad 
+      angle = angle + 2*Math::PI if angle < 0
       setSonarScan(sonar_scan.beam.to_byte_array[8..-1],sonar_scan.beam.size,angle,sonar_scan.sampling_interval,false)
     else
       STDERR.puts "Cannot Handle Data of type: #{sonar_scan.class.name}, please check vizkit/ruby/lib/vizkit/cplusplus_extensions/sonar_view.rb" 
     end
-      update2
-    end
+    update2
   end
 end
 
