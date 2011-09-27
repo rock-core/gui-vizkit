@@ -7,17 +7,17 @@ class StructViewer < Qt::Widget
     load File.join(File.dirname(__FILE__),'struct_viewer_window.ui.rb')
     load File.join(File.dirname(__FILE__),'tree_modeler.rb')
     @window = Ui_Form.new
-    @window.setupUi(self)
+    @window.setup_ui(self)
     @modeler = TreeModeler.new
-    @tree_model = @modeler.createTreeModel
-    @window.treeView.setModel(@tree_model)
-    @window.treeView.setAlternatingRowColors(true)
-    @window.treeView.setSortingEnabled(true)
+    @tree_model = @modeler.create_tree_model
+    @window.treeView.set_model(@tree_model)
+    @window.treeView.set_alternating_row_colors(true)
+    @window.treeView.set_sorting_enabled(true)
     #@brush = Qt::Brush.new(Qt::Color.new(200,200,200))
   end
 
   def update(data, port_name)
-     @modeler.generateTree(data, port_name, @tree_model)
+     @modeler.generate_tree(data, port_name, @tree_model)
   end
 
 end
