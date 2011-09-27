@@ -3,8 +3,8 @@
 class TreeModeler
     MAX_ARRAY_FIELDS = 30
 
-    def initialize
-        @brush = Qt::Brush.new(Qt::Color.new(200,200,200))
+    def initialize(brush)
+        @brush = brush
     end
     
     # Generates empty tree model.
@@ -40,6 +40,33 @@ class TreeModeler
         # Update model with new sample.
         add_object(sample, item)
         model
+    end
+    
+    # Generates a sub tree for an existing parent item. Non-existent 
+    # children will be added to parent_item. See generate_tree. Returns 
+    # the updated parent_item.
+    def generate_sub_tree(sample, port_name, parent_item)
+        # Try to find item in model. Is there already a matching 
+        # descendant item for sample in parent_item?
+        
+        # item = find_descendant(parent_item, port_name)
+        item = direct_child?(parent_item, port_name)
+        
+        unless item
+            # Item not found. Create new item and add it to the model.
+            item = Qt::StandardItem.new(port_name)
+            item.set_background(@brush)
+            item2 = Qt::StandardItem.new
+            item2.set_background(@brush)
+            item2.set_text(sample.class.to_s.match('/(.*)>$')[1])
+            parent_item.append_row(item)
+            puts "*** item.row = #{item.row} "
+            parent_item.set_child(item.row,1,item2)
+        end
+        
+        # Update sub tree with new sample.
+        add_object(sample, item)
+        #parent_item
     end
     
 private
@@ -83,7 +110,7 @@ private
         end
     end
     
-    # Check if the item is already in the model
+    # Search for item in the model. Returns nil if the item is not found.
     def find_item(model, item_name)
         found_items = model.find_items(item_name, Qt::MatchFixedString || Qt::MatchCaseSensitive)
         case found_items.size
@@ -94,6 +121,24 @@ private
             else
                 raise "Found more items than expected. Use unique names!"
         end
+    end
+    
+    def direct_child?(parent_item, item_name)
+        rc = 0
+        while rc < parent_item.row_count
+            child = parent_item.child(rc)
+            return child if child.text.eql?(item_name)
+        end
+        nil
+    end
+    
+    # Check if the item is already a descendant of parent_item
+    def find_descendant(parent_item, item_name)
+        tmp_model = Qt::StandardItemModel.new
+        tmp_model.invisible_root_item.append_row(parent_item)
+        puts "**** in find_descendant: parent_item.row_count = #{parent_item.row_count}"
+        puts "**** in find_descendant: inv-root-item.row_count = #{tmp_model.invisible_root_item.row_count}"
+        find_item(tmp_model, item_name)
     end
     
     # Gets a pair of parent_item's direct children in the specified row. 
@@ -109,6 +154,15 @@ private
         parent_item.set_child(item.row,1,item2)
       end
       [item,item2]
+    end
+    
+    def tree_depth(item)
+        depth = 0;
+        parent = item.parent
+        until parent
+            ++depth
+        end
+        depth
     end
     
 end
