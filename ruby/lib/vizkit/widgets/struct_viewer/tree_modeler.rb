@@ -49,7 +49,7 @@ private
         if object.kind_of?(Typelib::CompoundType)
           row = 0;
           object.each_field do |name,value|
-            item, item2 = StructViewer.child_items(parent_item,row)
+            item, item2 = child_items(parent_item,row)
             item.setText name
             item2.setText value.class.name
             add_object(value,item)
@@ -67,7 +67,7 @@ private
           else
             row = 0
             object.each_with_index do |val,row|
-              item,item2 = StructViewer.child_items(parent_item,row)
+              item,item2 = child_items(parent_item,row)
               item2.setText val.class.name
               item.setText "[#{row}]"
               add_object val,item
@@ -95,11 +95,12 @@ private
         end
     end
     
-    def self.child_items(parent_item,row)
+    def child_items(parent_item,row)
       item = parent_item.child(row)
       item2 = parent_item.child(row,1)
       unless item
-        item = Qt::StandardItem.new(name.to_s)
+        #item = Qt::StandardItem.new(name.to_s)
+        item = Qt::StandardItem.new("*******TESTTEST*******") # TODO debug
         parent_item.appendRow(item)
         item2 = Qt::StandardItem.new
         parent_item.setChild(item.row,1,item2)
