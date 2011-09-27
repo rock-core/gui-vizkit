@@ -9,7 +9,7 @@ class StructViewer < Qt::Widget
     @window = Ui_Form.new
     @window.setupUi(self)
     @modeler = TreeModeler.new
-    @tree_model = modeler.createTreeModel
+    @tree_model = @modeler.createTreeModel
     @window.treeView.setModel(@tree_model)
     @window.treeView.setAlternatingRowColors(true)
     @window.treeView.setSortingEnabled(true)
@@ -17,7 +17,7 @@ class StructViewer < Qt::Widget
   end
 
   def update(data, port_name)
-     modeler.generateTree(data, port_name, @tree_model)
+     @modeler.generateTree(data, port_name, @tree_model)
   end
 
 end
