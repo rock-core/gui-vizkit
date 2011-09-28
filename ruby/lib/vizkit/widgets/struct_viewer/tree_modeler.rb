@@ -53,7 +53,7 @@ class TreeModeler
         item = direct_child?(parent_item, item_name)
         
         unless item
-            puts "*** No item for item_name '#{item_name}'found. Generating one and appending it to parent_item."
+            #puts "*** No item for item_name '#{item_name}'found. Generating one and appending it to parent_item."
             # Item not found. Create new item and add it to the model.
             item = Qt::StandardItem.new(item_name)
             item.set_background(@brush)
@@ -61,7 +61,7 @@ class TreeModeler
             item2.set_background(@brush)
             item2.set_text(sample.class.to_s.match('/(.*)>$')[1])
             parent_item.append_row(item)
-            puts "*** item.row = #{item.row} "
+            #puts "*** item.row = #{item.row} "
             parent_item.set_child(item.row,1,item2)
         end
         
@@ -127,16 +127,16 @@ private
     # Checks if there is a direct child of parent_item corresponding to item_name. 
     # 'Direct' refers to a difference in (tree) depth of 1 between parent and child.
     def direct_child?(parent_item, item_name)
-        puts "*** direct_child? begin"
+        #puts "*** direct_child? begin"
         rc = 0
         child = nil
-        puts "*** direct_child? parent_item.row_count = #{parent_item.row_count}"
+        #puts "*** direct_child? parent_item.row_count = #{parent_item.row_count}"
         while rc < parent_item.row_count
-            puts "*** direct_child? loop"
+            #puts "*** direct_child? loop"
             child = parent_item.child(rc)
-            puts "*** checking #{child.text}"
+            #puts "*** checking #{child.text}"
             if child.text.eql?(item_name)
-                puts "*** direct_child?: #{child.text} == #{item_name}"
+                #puts "*** direct_child?: #{child.text} == #{item_name}"
                 return child
             end
             rc+=1
