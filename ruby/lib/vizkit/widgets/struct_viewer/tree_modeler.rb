@@ -16,7 +16,7 @@ class TreeModeler
     
     # Generates a tree model with sample as root item of the first sub tree.
     # Default layout: 2 columns: (Property, Value)
-    def generate_tree(sample, port_name, model=nil)
+    def generate_tree(sample, item_name, model=nil)
         if not model
             # Create new model
             model = create_tree_model
@@ -25,10 +25,10 @@ class TreeModeler
         root_item = model.invisible_root_item
         
         # Try to find item in model
-        item = find_item(model, port_name)
+        item = find_item(model, item_name)
         unless item
             # Item not found. Create new item and add it to the model.
-            item = Qt::StandardItem.new(port_name)
+            item = Qt::StandardItem.new(item_name)
             item.set_background(@brush)
             item2 = Qt::StandardItem.new
             item2.set_background(@brush)
@@ -45,16 +45,17 @@ class TreeModeler
     # Generates a sub tree for an existing parent item. Non-existent 
     # children will be added to parent_item. See generate_tree. Returns 
     # the updated parent_item.
-    def generate_sub_tree(sample, port_name, parent_item)
+    def generate_sub_tree(sample, item_name, parent_item)
         # Try to find item in model. Is there already a matching 
         # descendant item for sample in parent_item?
         
-        # item = find_descendant(parent_item, port_name)
-        item = direct_child?(parent_item, port_name)
+        # item = find_descendant(parent_item, item_name)
+        item = direct_child?(parent_item, item_name)
         
         unless item
+            puts "*** No item for item_name '#{item_name}'found. Generating one and appending it to parent_item."
             # Item not found. Create new item and add it to the model.
-            item = Qt::StandardItem.new(port_name)
+            item = Qt::StandardItem.new(item_name)
             item.set_background(@brush)
             item2 = Qt::StandardItem.new
             item2.set_background(@brush)
@@ -123,22 +124,24 @@ private
         end
     end
     
+    # Checks if there is a direct child of parent_item corresponding to item_name. 
+    # 'Direct' refers to a difference in (tree) depth of 1 between parent and child.
     def direct_child?(parent_item, item_name)
+        puts "*** direct_child? begin"
         rc = 0
+        child = nil
+        puts "*** direct_child? parent_item.row_count = #{parent_item.row_count}"
         while rc < parent_item.row_count
+            puts "*** direct_child? loop"
             child = parent_item.child(rc)
-            return child if child.text.eql?(item_name)
+            puts "*** checking #{child.text}"
+            if child.text.eql?(item_name)
+                puts "*** direct_child?: #{child.text} == #{item_name}"
+                return child
+            end
+            rc+=1
         end
         nil
-    end
-    
-    # Check if the item is already a descendant of parent_item
-    def find_descendant(parent_item, item_name)
-        tmp_model = Qt::StandardItemModel.new
-        tmp_model.invisible_root_item.append_row(parent_item)
-        puts "**** in find_descendant: parent_item.row_count = #{parent_item.row_count}"
-        puts "**** in find_descendant: inv-root-item.row_count = #{tmp_model.invisible_root_item.row_count}"
-        find_item(tmp_model, item_name)
     end
     
     # Gets a pair of parent_item's direct children in the specified row. 
@@ -156,14 +159,6 @@ private
       [item,item2]
     end
     
-    def tree_depth(item)
-        depth = 0;
-        parent = item.parent
-        until parent
-            ++depth
-        end
-        depth
-    end
     
 end
 
