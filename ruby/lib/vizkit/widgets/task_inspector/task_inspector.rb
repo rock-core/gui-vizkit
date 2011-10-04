@@ -11,17 +11,18 @@ class TaskInspector < Qt::Widget
 
   def initialize(parent=nil)
     super
-    load File.join(File.dirname(__FILE__),'task_inspector_window.ui.rb')
+    load File.join(File.dirname(__FILE__), 'task_inspector_window.ui.rb')
+    load File.join(File.dirname(__FILE__), '..', 'struct_viewer', 'tree_modeler.rb')
     @window = Ui_Form.new
     @window.setupUi(self)
-    @tree_model = Qt::StandardItemModel.new
-    @tree_model.setHorizontalHeaderLabels(["Property","Value"])
+    @brush = Qt::Brush.new(Qt::Color.new(200,200,200))
+    @modeler = TreeModeler.new
+    @tree_model = @modeler.create_tree_model
     @root_item = @tree_model.invisibleRootItem
     @window.treeView.setModel(@tree_model)
     @window.treeView.setAlternatingRowColors(true)
     @window.treeView.setSortingEnabled(true)
-    @brush = Qt::Brush.new(Qt::Color.new(200,200,200))
-
+    
     @hash = Hash.new
     @reader_hash = Hash.new
     @tasks = Hash.new
@@ -52,27 +53,13 @@ class TaskInspector < Qt::Widget
     @timer.start(options[:interval])
   end
 
-  def child_items(parent_item,row)
-    item = parent_item.child(row,0)
-    item2 = parent_item.child(row,1)
-    unless item
-      item = Qt::StandardItem.new
-      parent_item.appendRow(item)
-      item2 = Qt::StandardItem.new
-      parent_item.setChild(item.row,1,item2)
-      item.setEditable(false)
-      item2.setEditable(false)
-    end
-    [item,item2]
-  end
-
   def get_item(key,name,root_item)
     if @hash.has_key?(key)
       item =  @hash[key]
       item2 = root_item.child(item.row,1)
       [item,item2]
     else
-      item, item2 = child_items root_item, -1
+      item, item2 = @modeler.child_items root_item, -1
       item.setText name.to_s
       @hash[key]=item
       [item,item2]
@@ -94,7 +81,7 @@ class TaskInspector < Qt::Widget
       parent_item.removeRows(row,parent_item.rowCount-row) if row < parent_item.rowCount
     elsif object.is_a?(Array) || (object.kind_of?(Typelib::Type) && object.respond_to?(:each) )
       if object.size > MAX_ARRAY_FIELDS
-        item, item2 = child_items(parent_item,0)
+        item, item2 = @modeler.child_items(parent_item,0)
         item2.setText "#{object.size} fields ..."
       elsif object.size > 0
         row = 0
@@ -113,11 +100,11 @@ class TaskInspector < Qt::Widget
         object << a
       end
     else
-      item, item2 = child_items(parent_item,row)
+      item, item2 = @modeler.child_items(parent_item,row)
       if object 
         if read_obj
           raise "name differs" if(object.respond_to?(:name) && item.text != object.name)
-          #confert type
+          #convert type
           type = object
           if object.is_a? Typelib::Type
             type = object.to_ruby 
@@ -187,7 +174,7 @@ class TaskInspector < Qt::Widget
         end
       end
 
-      item, item2 = get_item(pair.name,pair.name, @root_item)
+      item, item2 = get_item(pair.name, pair.name, @root_item)
       if !pair.task
         item2.setText("not reachable")
         item.removeRows(1,item.rowCount-1)
@@ -224,7 +211,8 @@ class TaskInspector < Qt::Widget
             else
               item7, item8 = get_item(key,port.name, item5)
               reader = port_reader(task,port)
-              update_item(reader.read,item7)
+              #update_item(reader.read,item7)
+              @modeler.generate_sub_tree(reader.read, port.name, item7)
             end
             item8.setText(port.type_name.to_s)
           end
