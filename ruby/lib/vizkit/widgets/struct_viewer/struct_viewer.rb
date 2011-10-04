@@ -9,7 +9,7 @@ class StructViewer < Qt::Widget
     @window = Ui_Form.new
     @window.setup_ui(self)
     @brush = Qt::Brush.new(Qt::Color.new(200,200,200))
-    @modeler = TreeModeler.new(@brush)
+    @modeler = TreeModeler.new
     @tree_model = @modeler.create_tree_model
     @window.treeView.set_model(@tree_model)
     @window.treeView.set_alternating_row_colors(true)

@@ -3,8 +3,8 @@
 class TreeModeler
     MAX_ARRAY_FIELDS = 30
 
-    def initialize(brush)
-        @brush = brush
+    def initialize
+
     end
     
     # Generates empty tree model.
@@ -29,9 +29,7 @@ class TreeModeler
         unless item
             # Item not found. Create new item and add it to the model.
             item = Qt::StandardItem.new(item_name)
-            item.set_background(@brush)
             item2 = Qt::StandardItem.new
-            item2.set_background(@brush)
             item2.set_text(sample.class.to_s.match('/(.*)>$')[1])
             root_item.append_row(item)
             root_item.set_child(item.row,1,item2)
@@ -46,6 +44,7 @@ class TreeModeler
     # children will be added to parent_item. See generate_tree. Returns 
     # the updated parent_item.
     def generate_sub_tree(sample, item_name, parent_item)
+        puts "Generating sub tree for #{item_name}, sample.class = #{sample.class}"
         # Try to find item in model. Is there already a matching 
         # descendant item for sample in parent_item?
         
@@ -56,10 +55,12 @@ class TreeModeler
             #puts "*** No item for item_name '#{item_name}'found. Generating one and appending it to parent_item."
             # Item not found. Create new item and add it to the model.
             item = Qt::StandardItem.new(item_name)
-            item.set_background(@brush)
             item2 = Qt::StandardItem.new
-            item2.set_background(@brush)
-            item2.set_text(sample.class.to_s.match('/(.*)>$')[1])
+            text = nil
+            unless sample.class == NilClass
+                text = sample.class.to_s.match('/(.*)>$')[1]
+            end
+            item2.set_text(text)
             parent_item.append_row(item)
             #puts "*** item.row = #{item.row} "
             parent_item.set_child(item.row,1,item2)
@@ -69,8 +70,6 @@ class TreeModeler
         add_object(sample, item)
         #parent_item
     end
-    
-private
 
     # Adds object to parent_item as a child. Object's children will be 
     # added in the original tree structure as well.
@@ -82,8 +81,6 @@ private
             item.set_text name
             item2.set_text value.class.name
             add_object(value,item)
-            # item.set_background(@brush)
-            # item2.set_background(@brush)
             row += 1
           end
           #delete all other rows
@@ -151,11 +148,14 @@ private
       item2 = parent_item.child(row,1)
       unless item
         #item = Qt::StandardItem.new(name.to_s)
-        item = Qt::StandardItem.new("*******TESTTEST*******") # TODO debug
+        item = Qt::StandardItem.new
         parent_item.append_row(item)
         item2 = Qt::StandardItem.new
         parent_item.set_child(item.row,1,item2)
+        item.setEditable(false)
+        item2.setEditable(false)
       end
+      
       [item,item2]
     end
     
