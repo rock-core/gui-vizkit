@@ -211,8 +211,8 @@ class TaskInspector < Qt::Widget
             else
               item7, item8 = get_item(key,port.name, item5)
               reader = port_reader(task,port)
-              #update_item(reader.read,item7)
-              @modeler.generate_sub_tree(reader.read, port.name, item7)
+              update_item(reader.read,item7)
+              #@modeler.update_sub_tree(reader.read, port.name, item7)
             end
             item8.setText(port.type_name.to_s)
           end
