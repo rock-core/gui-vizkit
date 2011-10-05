@@ -49,7 +49,7 @@ class TreeModeler
         # descendant item for sample in parent_item?
         
         # item = find_descendant(parent_item, item_name)
-        item = direct_child?(parent_item, item_name)
+        item = direct_child(parent_item, item_name)
         
         unless item
             #puts "*** No item for item_name '#{item_name}'found. Generating one and appending it to parent_item."
@@ -121,19 +121,20 @@ class TreeModeler
         end
     end
     
-    # Checks if there is a direct child of parent_item corresponding to item_name. 
+    # Checks if there is a direct child of parent_item corresponding to item_name.
+    # If yes, the child will be returned; nil otherwise. 
     # 'Direct' refers to a difference in (tree) depth of 1 between parent and child.
-    def direct_child?(parent_item, item_name)
+    def direct_child(parent_item, item_name)
         #puts "*** direct_child? begin"
         rc = 0
         child = nil
         #puts "*** direct_child? parent_item.row_count = #{parent_item.row_count}"
         while rc < parent_item.row_count
-            #puts "*** direct_child? loop"
+            #puts "*** direct_child loop"
             child = parent_item.child(rc)
             #puts "*** checking #{child.text}"
             if child.text.eql?(item_name)
-                #puts "*** direct_child?: #{child.text} == #{item_name}"
+                #puts "*** direct_child: #{child.text} == #{item_name}"
                 return child
             end
             rc+=1
