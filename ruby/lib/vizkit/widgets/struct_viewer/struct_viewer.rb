@@ -20,7 +20,7 @@ class StructViewer < Qt::Widget
   def update(data, port_name)
      #puts "*** Updating port_name: #{port_name}"
      
-     @modeler.generate_sub_tree(data, port_name, @tree_model.invisible_root_item)
+     @modeler.update_sub_tree(data, port_name, @tree_model.invisible_root_item)
      
      #puts "*** root item rowCount = #{@tree_model.invisible_root_item.row_count}"
   end

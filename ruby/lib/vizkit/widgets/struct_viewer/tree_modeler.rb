@@ -4,46 +4,19 @@ class TreeModeler
     MAX_ARRAY_FIELDS = 30
 
     def initialize
-
     end
     
     # Generates empty tree model.
+    # Default layout: 2 columns: (Property, Value)
     def create_tree_model
         model = Qt::StandardItemModel.new
         model.set_horizontal_header_labels(["Property","Value"])
         model
     end
     
-    # Generates a tree model with sample as root item of the first sub tree.
-    # Default layout: 2 columns: (Property, Value)
-    def generate_tree(sample, item_name, model=nil)
-        if not model
-            # Create new model
-            model = create_tree_model
-        end
-        
-        root_item = model.invisible_root_item
-        
-        # Try to find item in model
-        item = find_item(model, item_name)
-        unless item
-            # Item not found. Create new item and add it to the model.
-            item = Qt::StandardItem.new(item_name)
-            item2 = Qt::StandardItem.new
-            item2.set_text(sample.class.to_s.match('/(.*)>$')[1])
-            root_item.append_row(item)
-            root_item.set_child(item.row,1,item2)
-        end
-        
-        # Update model with new sample.
-        add_object(sample, item)
-        model
-    end
-    
-    # Generates a sub tree for an existing parent item. Non-existent 
-    # children will be added to parent_item. See generate_tree. Returns 
-    # the updated parent_item.
-    def generate_sub_tree(sample, item_name, parent_item)
+    # Updates a sub tree for an existing parent item. Non-existent 
+    # children will be added to parent_item. See generate_tree.
+    def update_sub_tree(sample, item_name, parent_item)
         puts "Generating sub tree for #{item_name}, sample.class = #{sample.class}"
         # Try to find item in model. Is there already a matching 
         # descendant item for sample in parent_item?
@@ -68,7 +41,6 @@ class TreeModeler
         
         # Update sub tree with new sample.
         add_object(sample, item)
-        #parent_item
     end
 
     # Adds object to parent_item as a child. Object's children will be 
@@ -108,19 +80,6 @@ class TreeModeler
         end
     end
     
-    # Search for item in the model. Returns nil if the item is not found.
-    def find_item(model, item_name)
-        found_items = model.find_items(item_name, Qt::MatchFixedString || Qt::MatchCaseSensitive)
-        case found_items.size
-            when 0
-                return nil
-            when 1
-                return found_items.first
-            else
-                raise "Found more items than expected. Use unique names!"
-        end
-    end
-    
     # Checks if there is a direct child of parent_item corresponding to item_name.
     # If yes, the child will be returned; nil otherwise. 
     # 'Direct' refers to a difference in (tree) depth of 1 between parent and child.
@@ -156,7 +115,6 @@ class TreeModeler
         item.setEditable(false)
         item2.setEditable(false)
       end
-      
       [item,item2]
     end
     
