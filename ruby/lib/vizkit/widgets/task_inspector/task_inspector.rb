@@ -12,7 +12,7 @@ class TaskInspector < Qt::Widget
   def initialize(parent=nil)
     super
     load File.join(File.dirname(__FILE__), 'task_inspector_window.ui.rb')
-    load File.join(File.dirname(__FILE__), '..', 'struct_viewer', 'tree_modeler.rb')
+    load File.join(File.dirname(__FILE__), '../..', 'tree_modeler.rb')
     @window = Ui_Form.new
     @window.setupUi(self)
     @brush = Qt::Brush.new(Qt::Color.new(200,200,200))

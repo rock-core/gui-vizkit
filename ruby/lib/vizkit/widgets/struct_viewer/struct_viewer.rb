@@ -1,11 +1,12 @@
 #!/usr/bin/env ruby
+require 'vizkit'
 
 class StructViewer < Qt::Widget
 
   def initialize(parent=nil)
     super
     load File.join(File.dirname(__FILE__),'struct_viewer_window.ui.rb')
-    load File.join(File.dirname(__FILE__),'tree_modeler.rb')
+    load File.join(File.dirname(__FILE__), '../..', 'tree_modeler.rb')
     @window = Ui_Form.new
     @window.setup_ui(self)
     @brush = Qt::Brush.new(Qt::Color.new(200,200,200))
@@ -14,15 +15,11 @@ class StructViewer < Qt::Widget
     @window.treeView.set_model(@tree_model)
     @window.treeView.set_alternating_row_colors(true)
     @window.treeView.set_sorting_enabled(true)
-    
   end
 
   def update(data, port_name)
-     #puts "*** Updating port_name: #{port_name}"
-     
      @modeler.update_sub_tree(data, port_name, @tree_model.invisible_root_item)
      @window.treeView.resizeColumnToContents(0)
-     #puts "*** root item rowCount = #{@tree_model.invisible_root_item.row_count}"
   end
 
 end
