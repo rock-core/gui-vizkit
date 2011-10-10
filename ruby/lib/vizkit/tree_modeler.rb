@@ -35,8 +35,15 @@ module Vizkit
                 item = Qt::StandardItem.new(item_name)
                 item2 = Qt::StandardItem.new
                 text = nil
-                unless sample.class == NilClass
-                    text = sample.class.to_s.match('/(.*)>$')[1]
+                Vizkit.debug "sample.class = #{sample.class}"
+                
+                match = sample.class.to_s.match('/(.*)>$')
+                if sample
+                    unless match
+                        text = sample.class.to_s
+                    else
+                        text = match[1]
+                    end
                 end
                 item2.set_text(text)
                 parent_item.append_row(item)
@@ -99,6 +106,7 @@ module Vizkit
               end
             else
               item2 = parent_item.parent.child(parent_item.row,parent_item.column+1)
+
               if object
                 item2.set_text(object.to_s)
               else
