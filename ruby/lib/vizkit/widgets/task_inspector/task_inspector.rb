@@ -66,7 +66,10 @@ class TaskInspector < Qt::Widget
     end
   end
 
-  def update_item(object, parent_item,read_obj=false,row=0,name_hint=nil)
+  def update_item(object, object_name, parent_item,read_obj=false,row=0,name_hint=nil)
+      puts "Updating #{object_name} of class type #{object.class}"
+      @modeler.update_sub_tree(object, object_name, parent_item)
+=begin    
     if object.kind_of?(Typelib::CompoundType)
       row = 0;
       object.each_field do |name,value|
@@ -137,6 +140,7 @@ class TaskInspector < Qt::Widget
       end
     end
     object
+=end
   end
 
   def port_reader(task, port)
@@ -194,7 +198,7 @@ class TaskInspector < Qt::Widget
               item6.setText(attribute.read.to_s) 
               @hash[item6]=pair if !@hash.has_key? item6
             else
-              update_item(attribute.read,item5)
+              update_item(attribute.read, attribute.name, item5)
             end
           end
 
@@ -211,8 +215,13 @@ class TaskInspector < Qt::Widget
             else
               item7, item8 = get_item(key,port.name, item5)
               reader = port_reader(task,port)
-              update_item(reader.read,item7)
-              #@modeler.update_sub_tree(reader.read, port.name, item7)
+              if reader.read.kind_of?(Typelib::CompoundType)
+                # Submit output_ports node as parent because a new node 
+                # will be generated as parent for the compound items.
+                update_item(reader.read, port.name, item5)
+              else
+                update_item(reader.read, port.name, item7)
+              end
             end
             item8.setText(port.type_name.to_s)
           end
