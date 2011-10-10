@@ -16,7 +16,7 @@ class TaskInspector < Qt::Widget
     @window = Ui_Form.new
     @window.setupUi(self)
     @brush = Qt::Brush.new(Qt::Color.new(200,200,200))
-    @modeler = TreeModeler.new
+    @modeler = Vizkit::TreeModeler.new
     @tree_model = @modeler.create_tree_model
     @root_item = @tree_model.invisibleRootItem
     @window.treeView.setModel(@tree_model)
