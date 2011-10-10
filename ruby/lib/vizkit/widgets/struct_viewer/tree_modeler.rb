@@ -17,7 +17,7 @@ class TreeModeler
     # Updates a sub tree for an existing parent item. Non-existent 
     # children will be added to parent_item. See generate_tree.
     def update_sub_tree(sample, item_name, parent_item)
-        puts "Generating sub tree for #{item_name}, sample.class = #{sample.class}"
+        #puts "Generating sub tree for #{item_name}, sample.class = #{sample.class}"
         # Try to find item in model. Is there already a matching 
         # descendant item for sample in parent_item?
         
@@ -42,6 +42,25 @@ class TreeModeler
         # Update sub tree with new sample.
         add_object(sample, item)
     end
+    
+    # Gets a pair of parent_item's direct children in the specified row. 
+    # Constraint: There are only two children in each row (columns 0 and 1).
+    def child_items(parent_item,row)
+      item = parent_item.child(row)
+      item2 = parent_item.child(row,1)
+      unless item
+        #item = Qt::StandardItem.new(name.to_s)
+        item = Qt::StandardItem.new
+        parent_item.append_row(item)
+        item2 = Qt::StandardItem.new
+        parent_item.set_child(item.row,1,item2)
+        item.setEditable(false)
+        item2.setEditable(false)
+      end
+      [item,item2]
+    end
+
+private
 
     # Adds object to parent_item as a child. Object's children will be 
     # added in the original tree structure as well.
@@ -76,7 +95,11 @@ class TreeModeler
           end
         else
           item2 = parent_item.parent.child(parent_item.row,parent_item.column+1)
-          item2.set_text(object.to_s)
+          if object
+            item2.set_text(object.to_s)
+          else
+            item2.setText "no samples received"
+          end
         end
     end
     
@@ -101,22 +124,7 @@ class TreeModeler
         nil
     end
     
-    # Gets a pair of parent_item's direct children in the specified row. 
-    # Constraint: There are only two children in each row (columns 0 and 1).
-    def child_items(parent_item,row)
-      item = parent_item.child(row)
-      item2 = parent_item.child(row,1)
-      unless item
-        #item = Qt::StandardItem.new(name.to_s)
-        item = Qt::StandardItem.new
-        parent_item.append_row(item)
-        item2 = Qt::StandardItem.new
-        parent_item.set_child(item.row,1,item2)
-        item.setEditable(false)
-        item2.setEditable(false)
-      end
-      [item,item2]
-    end
+
     
     
 end
