@@ -67,80 +67,8 @@ class TaskInspector < Qt::Widget
   end
 
   def update_item(object, object_name, parent_item,read_obj=false,row=0,name_hint=nil)
-      puts "Updating #{object_name} of class type #{object.class}"
-      @modeler.update_sub_tree(object, object_name, parent_item)
-=begin    
-    if object.kind_of?(Typelib::CompoundType)
-      row = 0;
-      object.each_field do |name,value|
-        if read_obj
-          object.set_field(name,update_item(value,parent_item,read_obj,row,name))
-        else
-          update_item(value,parent_item,read_obj,row,name)
-        end
-        row += 1
-      end
-      #delete all other rows
-      parent_item.removeRows(row,parent_item.rowCount-row) if row < parent_item.rowCount
-    elsif object.is_a?(Array) || (object.kind_of?(Typelib::Type) && object.respond_to?(:each) )
-      if object.size > MAX_ARRAY_FIELDS
-        item, item2 = @modeler.child_items(parent_item,0)
-        item2.setText "#{object.size} fields ..."
-      elsif object.size > 0
-        row = 0
-        object.each_with_index do |val,row|
-          if read_obj
-            object[row]=  update_item(val,parent_item,read_obj,row)
-          else
-            update_item(val,parent_item,read_obj,row)
-          end
-          row += 1
-        end
-        #delete all other rows
-        parent_item.removeRows(row,parent_item.rowCount-row) if row < parent_item.rowCount
-      elsif read_obj
-        a = (update_item(object.to_ruby,parent_item,read_obj,0))
-        object << a
-      end
-    else
-      item, item2 = @modeler.child_items(parent_item,row)
-      if object 
-        if read_obj
-          raise "name differs" if(object.respond_to?(:name) && item.text != object.name)
-          #convert type
-          type = object
-          if object.is_a? Typelib::Type
-            type = object.to_ruby 
-          end
-          data = item2.text if type.is_a? String
-          data = item2.text.to_f if type.is_a? Float
-          data = item2.text.to_i if type.is_a? File
-          data = item2.text.to_i == 0 if type.is_a? FalseClass
-          data = item2.text.to_i == 1 if type.is_a? TrueClass
-          data = item2.text.to_sym if type.is_a? Symbol
-          data = Time.new(item2.text) if type.is_a? Time
-          if object.is_a? Typelib::Type
-            Typelib.copy(object,Typelib.from_ruby(data, object.class))
-          else
-            object = data
-          end
-        else
-          if object.respond_to? :name
-            item.setText object.name 
-          elsif name_hint
-            item.setText name_hint
-          else
-            item.setText "[#{row}]"
-          end
-          item2.setText object.to_s 
-        end
-      else
-        raise 'No data available' if read_obj
-        item2.setText "no samples received" 
-      end
-    end
-    object
-=end
+      #puts "Updating #{object_name} of class type #{object.class}"
+      @modeler.update_sub_tree(object, object_name, parent_item, read_obj)
   end
 
   def port_reader(task, port)
