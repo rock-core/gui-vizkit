@@ -200,12 +200,14 @@ module VizkitPluginLoaderExtension
                 Kernel.raise "#{lib_name} is not a builtin plugin, nor lib#{lib_name}-viz.so in VIZKIT_PLUGIN_RUBY_PATH. Available builtin plugins are: #{builtin.join(", ")}."
             end
             plugin = load_plugin(path)
-            if !plugin
-                if plugin_name
-                    Kernel.raise "library #{lib_name} does not have any vizkit plugin called #{plugin_name}"
-                else
-                    Kernel.raise "#{lib_name} either defines no vizkit plugin, or multiple ones (and you must select one explicitely)"
+            if plugin.class_name.eql?("vizkit::VizkitPluginFactory")
+                if !plugin_name
+                    Kernel.raise "#{lib_name} either defines multiple plugins (and you must select one explicitely)"
                 end
+                if !plugin.getAvailablePlugins.include?(plugin_name)
+                    Kernel.raise "library #{lib_name} does not have any vizkit plugin called #{plugin_name}"
+                end
+                plugin = plugin.createPlugin(plugin_name)
             end
             addPlugin(plugin)
             plugin_name = lib_name unless plugin_name
