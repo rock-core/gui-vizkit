@@ -1,8 +1,8 @@
 =begin
 ** Form generated from reading ui file 'task_inspector_window.ui'
 **
-** Created: Fri Sep 3 17:18:15 2010
-**      by: Qt User Interface Compiler version 4.5.2
+** Created: Mo. Okt 17 15:36:28 2011
+**      by: Qt User Interface Compiler version 4.6.3
 **
 ** WARNING! All changes made in this file will be lost when recompiling ui file!
 =end
@@ -11,12 +11,13 @@ class Ui_Form
     attr_reader :formLayout
     attr_reader :verticalLayout
     attr_reader :treeView
+    attr_reader :setPropButton
 
     def setupUi(form)
     if form.objectName.nil?
         form.objectName = "form"
     end
-    form.resize(400, 473)
+    form.resize(400, 500)
     @sizePolicy = Qt::SizePolicy.new(Qt::SizePolicy::Expanding, Qt::SizePolicy::Expanding)
     @sizePolicy.setHorizontalStretch(1)
     @sizePolicy.setVerticalStretch(1)
@@ -37,7 +38,7 @@ class Ui_Form
     @verticalLayout.objectName = "verticalLayout"
     @verticalLayout.sizeConstraint = Qt::Layout::SetDefaultConstraint
 
-    @formLayout.setLayout(0, Qt::FormLayout::LabelRole, @verticalLayout)
+    @formLayout.setLayout(1, Qt::FormLayout::LabelRole, @verticalLayout)
 
     @treeView = Qt::TreeView.new(form)
     @treeView.objectName = "treeView"
@@ -62,7 +63,13 @@ class Ui_Form
     @treeView.setProperty("showDropIndicator", Qt::Variant.new(false))
     @treeView.alternatingRowColors = true
 
-    @formLayout.setWidget(1, Qt::FormLayout::FieldRole, @treeView)
+    @formLayout.setWidget(2, Qt::FormLayout::FieldRole, @treeView)
+
+    @setPropButton = Qt::PushButton.new(form)
+    @setPropButton.objectName = "setPropButton"
+    @setPropButton.checkable = true
+
+    @formLayout.setWidget(1, Qt::FormLayout::FieldRole, @setPropButton)
 
 
     retranslateUi(form)
@@ -76,6 +83,7 @@ class Ui_Form
 
     def retranslateUi(form)
     form.windowTitle = Qt::Application.translate("Form", "Task Inspector", nil, Qt::Application::UnicodeUTF8)
+    @setPropButton.text = Qt::Application.translate("Form", "Set properties", nil, Qt::Application::UnicodeUTF8)
     end # retranslateUi
 
     def retranslate_ui(form)
