@@ -146,7 +146,7 @@ class TaskInspector < Qt::Widget
               item7, item8 = get_item(key,port.name, item5)
               reader = port_reader(task,port)
               if reader.read.kind_of?(Typelib::CompoundType)
-                # Submit output_ports node as parent because a new node 
+                # Submit 'output_ports' node as parent because a new node 
                 # will be generated as parent for the compound items.
                 update_item(reader.read, port.name, item5)
               else
@@ -174,7 +174,6 @@ class TaskInspector < Qt::Widget
         puts "Please enter your attribute changes."
     else
         Vizkit.info("Property changes will be processed.")
-        # TODO
         @tasks.each_value do |pair|
             next if !pair || !pair.task || !pair.task.reachable?
             
@@ -184,9 +183,10 @@ class TaskInspector < Qt::Widget
             key = task.name + "__ATTRIBUTES__"
             item3, item4 = get_item(key,"Attributes", item)
             task.each_property do |attribute|
-                sample = attribute.new_sample
+                Vizkit.debug("Changing attribute '#{attribute.name}', old value: '#{attribute.read}'")
+                sample = attribute.new_sample.zero!
                 update_item(sample, attribute.name, item3, true)
-                Vizkit.debug("updated attribute value = #{sample}")
+                Vizkit.debug("Updated attribute value = #{sample}")
                 attribute.write sample
             end
         end
