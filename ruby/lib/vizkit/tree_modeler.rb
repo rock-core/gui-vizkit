@@ -1,7 +1,6 @@
 #!/usr/bin/env ruby
 
 require 'utilrb/logger'
-require 'ruby-debug'
 
 module Vizkit
 
