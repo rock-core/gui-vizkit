@@ -1,13 +1,14 @@
 #!/usr/bin/env ruby
 
+require 'vizkit'
+
 class TaskInspector < Qt::Widget
   MAX_ARRAY_FIELDS = 32
 
-  slots 'refresh()','set_task_attribute(QStandardItem*)'
+  slots 'refresh()','set_task_attributes(bool)','itemChangeRequest(QStandardItem*)'
   attr_reader :multi  #widget supports displaying of multi tasks
   PropertyConfig = Struct.new(:name, :attribute, :type)
   DataPair = Struct.new :name, :task
-
 
   def initialize(parent=nil)
     super
@@ -28,8 +29,9 @@ class TaskInspector < Qt::Widget
     @tasks = Hash.new
 
     @multi = true
-    connect(@tree_model, SIGNAL('itemChanged(QStandardItem*)'),self,SLOT('set_task_attribute(QStandardItem*)'))
-
+    @read_obj = false
+    #connect(@tree_model, SIGNAL('itemChanged(QStandardItem*)'),self,SLOT('itemChangeRequest(QStandardItem*)'))
+    connect(@window.setPropButton, SIGNAL('toggled(bool)'),self,SLOT('set_task_attributes(bool)'))
     @timer = Qt::Timer.new(self)
     connect(@timer,SIGNAL('timeout()'),self,SLOT('refresh()'))
   end
@@ -161,7 +163,36 @@ class TaskInspector < Qt::Widget
     @window.treeView.resizeColumnToContents(0)
   end
 
-  def set_task_attribute(item2)
+  def set_task_attributes(checked)
+    # TODO change name of flag 'checked'
+    
+    @read_obj = checked
+    
+    Vizkit.info("Attribute change request received.")
+    
+    if @read_obj
+        puts "Please enter your attribute changes."
+    else
+        Vizkit.info("Property changes will be processed.")
+        # TODO
+        @tasks.each_value do |pair|
+            next if !pair || !pair.task || !pair.task.reachable?
+            
+            item, item2 = get_item(pair.name, pair.name, @root_item)
+            task = pair.task
+            
+            key = task.name + "__ATTRIBUTES__"
+            item3, item4 = get_item(key,"Attributes", item)
+            task.each_property do |attribute|
+                sample = attribute.new_sample
+                update_item(sample, attribute.name, item3, true)
+                Vizkit.debug("updated attribute value = #{sample}")
+                attribute.write sample
+            end
+        end
+        
+    end
+  
   #   return if !item2.parent
   #   item = item2.parent.child(item2.row,0) 
   #   pair = @hash[item2]
@@ -172,6 +203,7 @@ class TaskInspector < Qt::Widget
   #   update_item(sample,item.parent,true,item.row)
   #   property.write sample
   end
+  
 end
 
 
