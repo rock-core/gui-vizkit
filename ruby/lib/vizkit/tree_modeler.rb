@@ -24,9 +24,6 @@ module Vizkit
         # Updates a sub tree for an existing parent item. Non-existent 
         # children will be added to parent_item. See generate_tree.
         def update_sub_tree(sample, item_name, parent_item, read_obj=false)
-            if read_obj
-                debugger
-            end
             
             Vizkit.debug("Updating subtree for #{item_name}, sample.class = #{sample.class}")
             # Try to find item in model. Is there already a matching 
@@ -119,8 +116,6 @@ module Vizkit
                 parent_item.remove_rows(row,parent_item.row_count-row) if row < parent_item.row_count
               elsif read_obj
                 a = (add_object(object.to_ruby,parent_item,read_obj,0))
-                Vizkit.debug("a = '#{a}'")
-                debugger
                 if a.kind_of? String
                   # Append char by char because Typelib::ContainerType.<<(value) does not support argument strings longer than 1.
                   a.each_char do |c|
@@ -136,7 +131,7 @@ module Vizkit
 
               if object
                 if read_obj
-                  Vizkit.info("Mode: Reading user input")
+                  Vizkit.debug("Mode: Reading user input")
                   raise "name differs" if(object.respond_to?(:name) && item.text != object.name)
                   #convert type
                   type = object
@@ -145,7 +140,7 @@ module Vizkit
                     type = object.to_ruby 
                   end
                   
-                  Vizkit.info("Changing property '#{item.text}' to value '#{item2.text}'")
+                  Vizkit.debug("Changing property '#{item.text}' to value '#{item2.text}'")
                   Vizkit.debug("object of class type #{object.class}, object.to_ruby (if applicable) is of class type #{type.class}")
                   
                   data = item2.text if type.is_a? String
@@ -164,7 +159,7 @@ module Vizkit
                     object = data
                   end
                 else
-                  Vizkit.info("Mode: Displaying data")
+                  Vizkit.debug("Mode: Displaying data")
                   item2.set_text(object.to_s)
                 end
                 
