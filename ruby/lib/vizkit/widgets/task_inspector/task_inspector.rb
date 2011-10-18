@@ -181,12 +181,12 @@ class TaskInspector < Qt::Widget
     
     @read_obj = checked
     
-    Vizkit.info("Attribute change request received.")
+    Vizkit.debug("Attribute change request received.")
     
     if @read_obj
         puts "Please enter your attribute changes."
     else
-        Vizkit.info("Property changes will be processed.")
+        Vizkit.debug("Property changes will be processed.")
         @tasks.each_value do |pair|
             next if !pair || !pair.task || !pair.task.reachable?
             
@@ -218,9 +218,9 @@ class TaskInspector < Qt::Widget
   end
   
     def itemChangeRequest(index)
-        Vizkit.info("Doubleclicked view")
+        Vizkit.debug("Doubleclicked view")
         if @tree_model.item_from_index(index).is_editable
-            Vizkit.info("Item is editable. Setting button checked.")
+            Vizkit.debug("Item is editable. Setting button checked.")
             @window.setPropButton.set_checked(true)
         end
     end
