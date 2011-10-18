@@ -144,6 +144,7 @@ module Vizkit
                   Vizkit.debug("object of class type #{object.class}, object.to_ruby (if applicable) is of class type #{type.class}")
                   
                   data = item2.text if type.is_a? String
+                  data = item2.text.gsub(',', '.').to_f if type.is_a? Float
                   data = item2.text.to_f if type.is_a? Float
                   data = item2.text.to_i if type.is_a? Fixnum
                   data = item2.text.to_i if type.is_a? File
@@ -160,7 +161,11 @@ module Vizkit
                   end
                 else
                   Vizkit.debug("Mode: Displaying data")
-                  item2.set_text(object.to_s)
+                  if object.is_a? Float
+                    item2.set_text(object.to_s.gsub(',', '.'))
+                  else
+                    item2.set_text(object.to_s)
+                  end
                 end
                 
               else
