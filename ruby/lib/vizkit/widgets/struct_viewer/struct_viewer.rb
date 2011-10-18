@@ -19,6 +19,7 @@ class StructViewer < Qt::Widget
 
   def update(data, port_name)
      @modeler.update_sub_tree(data, port_name, @tree_model.invisible_root_item)
+     @modeler.set_all_children_editable(@tree_model.invisible_root_item, false)
      @window.treeView.resizeColumnToContents(0)
   end
 

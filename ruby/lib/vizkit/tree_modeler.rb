@@ -71,6 +71,23 @@ module Vizkit
           end
           [item,item2]
         end
+        
+        # Sets all child items' editable status to the value of <i>editable</i> 
+        # except items acting as parent. 'Child item' refers to the value of 
+        # the (property,value) pair.
+        def set_all_children_editable(parent_item, editable)
+            row = 0;
+            while row < parent_item.row_count
+                item, item2 = child_items(parent_item, row)
+                if item.has_children
+                    item2.set_editable(false)
+                    set_all_children_editable(item, editable)
+                else
+                    item2.set_editable(editable)
+                end
+                row += 1
+            end
+        end
 
     private
 

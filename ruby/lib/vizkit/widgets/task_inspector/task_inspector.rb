@@ -132,17 +132,18 @@ class TaskInspector < Qt::Widget
                 Vizkit.debug("Attribute '#{attribute.name}' is of class type '#{attribute.read.class}'")
                 
                 if attribute.read.is_a?(String)||attribute.read.is_a?(Float)||attribute.read.is_a?(Fixnum)
-                  item6.setEditable true
                   item6.setText(attribute.read.to_s.gsub(',', '.')) 
                   @hash[item6]=pair if !@hash.has_key? item6
                 elsif attribute.read.kind_of?(Typelib::CompoundType)
                     # Submit 'attributes' node as parent because a new node 
                     # will be generated as parent for the compound items.
                     update_item(attribute.read, attribute.name, item3)
+                    
                 else
                     update_item(attribute.read, attribute.name, item5)
                 end
               end
+              @modeler.set_all_children_editable(item3, true) # attributes
           end
 
           #setting ports
@@ -168,6 +169,8 @@ class TaskInspector < Qt::Widget
             end
             item8.setText(port.type_name.to_s)
           end
+          @modeler.set_all_children_editable(item3, false) # input ports
+          @modeler.set_all_children_editable(item5, false) # output ports
         rescue Orocos::CORBA::ComError
           pair.task = nil
         end
