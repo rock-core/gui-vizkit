@@ -1,7 +1,6 @@
 #!/usr/bin/env ruby
 
 require 'vizkit'
-require 'ruby-debug'
 
 class TaskInspector < Qt::Widget
   MAX_ARRAY_FIELDS = 32
