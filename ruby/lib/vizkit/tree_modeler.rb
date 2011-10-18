@@ -145,7 +145,6 @@ module Vizkit
                   
                   data = item2.text if type.is_a? String
                   data = item2.text.gsub(',', '.').to_f if type.is_a? Float
-                  data = item2.text.to_f if type.is_a? Float
                   data = item2.text.to_i if type.is_a? Fixnum
                   data = item2.text.to_i if type.is_a? File
                   data = item2.text.to_i == 0 if type.is_a? FalseClass
