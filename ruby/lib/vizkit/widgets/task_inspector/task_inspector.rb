@@ -1,11 +1,12 @@
 #!/usr/bin/env ruby
 
 require 'vizkit'
+require 'ruby-debug'
 
 class TaskInspector < Qt::Widget
   MAX_ARRAY_FIELDS = 32
 
-  slots 'refresh()','set_task_attributes(bool)','itemChangeRequest(QStandardItem*)'
+  slots 'refresh()','set_task_attributes(bool)','itemChangeRequest(const QModelIndex&)'
   attr_reader :multi  #widget supports displaying of multi tasks
   PropertyConfig = Struct.new(:name, :attribute, :type)
   DataPair = Struct.new :name, :task
@@ -30,7 +31,7 @@ class TaskInspector < Qt::Widget
 
     @multi = true
     @read_obj = false
-    #connect(@tree_model, SIGNAL('itemChanged(QStandardItem*)'),self,SLOT('itemChangeRequest(QStandardItem*)'))
+    connect(@window.treeView, SIGNAL('doubleClicked(const QModelIndex&)'), self, SLOT('itemChangeRequest(const QModelIndex&)'))
     connect(@window.setPropButton, SIGNAL('toggled(bool)'),self,SLOT('set_task_attributes(bool)'))
     @timer = Qt::Timer.new(self)
     connect(@timer,SIGNAL('timeout()'),self,SLOT('refresh()'))
@@ -116,20 +117,33 @@ class TaskInspector < Qt::Widget
         begin
           task = pair.task
           item2.setText(task.state.to_s) 
-          #setting attributes
-          key = task.name + "__ATTRIBUTES__"
-          item3, item4 = get_item(key,"Attributes", item)
+          
+          #setting attributes unless user changes them right now (GUI)
+          unless @read_obj
+              key = task.name + "__ATTRIBUTES__"
+              item3, item4 = get_item(key,"Attributes", item)
 
-          task.each_property do |attribute|
-            key = task.name+"_"+ attribute.name
-            item5, item6 = get_item(key,attribute.name, item3)
-            if attribute.read.is_a?(String)||attribute.read.is_a?(Float)||attribute.read.is_a?(Fixnum)
-              item6.setEditable true
-              item6.setText(attribute.read.to_s) 
-              @hash[item6]=pair if !@hash.has_key? item6
-            else
-              update_item(attribute.read, attribute.name, item5)
-            end
+              task.each_property do |attribute|
+                key = task.name+"_"+ attribute.name
+                
+                unless attribute.read.kind_of?(Typelib::CompoundType)
+                    item5, item6 = get_item(key,attribute.name, item3)
+                end
+                
+                Vizkit.debug("Attribute '#{attribute.name}' is of class type '#{attribute.read.class}'")
+                
+                if attribute.read.is_a?(String)||attribute.read.is_a?(Float)||attribute.read.is_a?(Fixnum)
+                  item6.setEditable true
+                  item6.setText(attribute.read.to_s.gsub(',', '.')) 
+                  @hash[item6]=pair if !@hash.has_key? item6
+                elsif attribute.read.kind_of?(Typelib::CompoundType)
+                    # Submit 'attributes' node as parent because a new node 
+                    # will be generated as parent for the compound items.
+                    update_item(attribute.read, attribute.name, item3)
+                else
+                    update_item(attribute.read, attribute.name, item5)
+                end
+              end
           end
 
           #setting ports
@@ -203,6 +217,14 @@ class TaskInspector < Qt::Widget
   #   update_item(sample,item.parent,true,item.row)
   #   property.write sample
   end
+  
+    def itemChangeRequest(index)
+        Vizkit.info("Doubleclicked view")
+        if @tree_model.item_from_index(index).is_editable
+            Vizkit.info("Item is editable. Setting button checked.")
+            @window.setPropButton.set_checked(true)
+        end
+    end
   
 end
 
