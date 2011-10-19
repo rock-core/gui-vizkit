@@ -172,7 +172,7 @@ module Vizkit
   def self.auto_reconnect()
     @connections.each do |connection|
       if connection.auto_reconnect && (!connection.widget.is_a?(Qt::Widget) || connection.widget.visible) && !connection.alive?
-        puts "Warning lost connection to #{connection.port_full_name}. Trying to reconnect."
+        puts "Warning lost connection to #{connection.port_full_name}. Trying to reconnect." if connection.broken?
         connection.reconnect    
       end
     end
@@ -310,6 +310,12 @@ module Vizkit
     attr_reader :port_name
     def port_full_name
       "#{@task_name}.#{@port_name}"
+    end
+
+    #returns ture if the connection was established at some point 
+    #otherwise false
+    def broken?
+        reader ? true : false 
     end
 
     def discover_callback_fct
