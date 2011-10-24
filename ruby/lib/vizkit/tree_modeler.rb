@@ -104,7 +104,7 @@ module Vizkit
               object.each_field do |name,value|
                 item, item2 = child_items(parent_item,row)
                 item.set_text name
-                item2.set_text value.class.name
+                #item2.set_text value.class.name
                 if read_obj
                   object.set_field(name,add_object(value,item,read_obj,row,name))
                 else
