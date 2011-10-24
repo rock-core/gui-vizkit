@@ -5,7 +5,12 @@ require 'utilrb/logger'
 module Vizkit
 
     extend Logger::Root('tree_modeler.rb', Logger::INFO)
-
+    
+    # The TreeModeler class' purpose is to provide useful functionality for
+    # working with Qt's StandardItemModel (handled as TreeModel). The main focus
+    # is the generation of (sub) trees out of (compound) data structures such as sensor samples
+    # with possibly multiple layers of data. 
+    # Multilayer recognition only works with Typelib::CompoundType.
     class TreeModeler
 
         MAX_ARRAY_FIELDS = 30
@@ -24,7 +29,6 @@ module Vizkit
         # Updates a sub tree for an existing parent item. Non-existent 
         # children will be added to parent_item. See generate_tree.
         def update_sub_tree(sample, item_name, parent_item, read_obj=false)
-            
             Vizkit.debug("Updating subtree for #{item_name}, sample.class = #{sample.class}")
             # Try to find item in model. Is there already a matching 
             # child item for sample in parent_item?
@@ -92,7 +96,7 @@ module Vizkit
     private
 
         # Adds object to parent_item as a child. Object's children will be 
-        # added in the original tree structure as well.
+        # added as well. The original tree structure will be preserved.
         def add_object(object, parent_item, read_obj=false, row=0, name_hint=nil)
             if object.kind_of?(Typelib::CompoundType)
               Vizkit.debug("add_object->CompoundType")
@@ -142,7 +146,6 @@ module Vizkit
               end
             else
               Vizkit.debug("add_object->else")
-              #item,_ = child_items(parent_item,row)
               item = parent_item.parent.child(parent_item.row,parent_item.column)
               item2 = parent_item.parent.child(parent_item.row,parent_item.column+1)
 
@@ -161,7 +164,7 @@ module Vizkit
                   Vizkit.debug("object of class type #{object.class}, object.to_ruby (if applicable) is of class type #{type.class}")
                   
                   data = item2.text if type.is_a? String
-                  data = item2.text.gsub(',', '.').to_f if type.is_a? Float
+                  data = item2.text.gsub(',', '.').to_f if type.is_a? Float # use international decimal point
                   data = item2.text.to_i if type.is_a? Fixnum
                   data = item2.text.to_i if type.is_a? File
                   data = item2.text.to_i == 0 if type.is_a? FalseClass
@@ -178,7 +181,7 @@ module Vizkit
                 else
                   Vizkit.debug("Mode: Displaying data")
                   if object.is_a? Float
-                    item2.set_text(object.to_s.gsub(',', '.'))
+                    item2.set_text(object.to_s.gsub(',', '.')) # use international decimal point
                   else
                     item2.set_text(object.to_s)
                   end

@@ -132,7 +132,7 @@ class TaskInspector < Qt::Widget
                 Vizkit.debug("Attribute '#{attribute.name}' is of class type '#{attribute.read.class}'")
                 
                 if attribute.read.is_a?(String)||attribute.read.is_a?(Float)||attribute.read.is_a?(Fixnum)
-                  item6.setText(attribute.read.to_s.gsub(',', '.')) 
+                  item6.setText(attribute.read.to_s.gsub(',', '.')) # use international decimal point 
                   @hash[item6]=pair if !@hash.has_key? item6
                 elsif attribute.read.kind_of?(Typelib::CompoundType)
                     # Submit 'attributes' node as parent because a new node 
@@ -179,10 +179,9 @@ class TaskInspector < Qt::Widget
     @window.treeView.resizeColumnToContents(0)
   end
 
-  def set_task_attributes(checked)
-    # TODO change name of flag 'checked'
+  def set_task_attributes(button_checked)
     
-    @read_obj = checked
+    @read_obj = button_checked
     
     Vizkit.debug("Attribute change request received.")
     
@@ -206,6 +205,7 @@ class TaskInspector < Qt::Widget
                 attribute.write sample
             end
         end
+        puts "Attributes updated."
         
     end
   
