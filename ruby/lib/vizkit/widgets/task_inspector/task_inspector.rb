@@ -3,9 +3,8 @@
 require 'vizkit'
 
 class TaskInspector < Qt::Widget
-  MAX_ARRAY_FIELDS = 32
 
-  slots 'refresh()','set_task_attributes(bool)','itemChangeRequest(const QModelIndex&)'
+  slots 'refresh()','set_task_attributes()','cancel_set_task_attributes()','itemChangeRequest(const QModelIndex&)'
   attr_reader :multi  #widget supports displaying of multi tasks
   PropertyConfig = Struct.new(:name, :attribute, :type)
   DataPair = Struct.new :name, :task
@@ -16,6 +15,7 @@ class TaskInspector < Qt::Widget
     load File.join(File.dirname(__FILE__), '../..', 'tree_modeler.rb')
     @window = Ui_Form.new
     @window.setupUi(self)
+    @window.buttonFrame.hide
     @brush = Qt::Brush.new(Qt::Color.new(200,200,200))
     @modeler = Vizkit::TreeModeler.new
     @tree_model = @modeler.create_tree_model
@@ -31,7 +31,8 @@ class TaskInspector < Qt::Widget
     @multi = true
     @read_obj = false
     connect(@window.treeView, SIGNAL('doubleClicked(const QModelIndex&)'), self, SLOT('itemChangeRequest(const QModelIndex&)'))
-    connect(@window.setPropButton, SIGNAL('toggled(bool)'),self,SLOT('set_task_attributes(bool)'))
+    connect(@window.setPropButton, SIGNAL('clicked()'),self,SLOT('set_task_attributes()'))
+    connect(@window.cancelPropButton, SIGNAL('clicked()'),self,SLOT('cancel_set_task_attributes()'))
     @timer = Qt::Timer.new(self)
     connect(@timer,SIGNAL('timeout()'),self,SLOT('refresh()'))
   end
@@ -179,53 +180,41 @@ class TaskInspector < Qt::Widget
     @window.treeView.resizeColumnToContents(0)
   end
 
-  def set_task_attributes(button_checked)
-    
-    @read_obj = button_checked
-    
-    Vizkit.debug("Attribute change request received.")
-    
-    if @read_obj
-        puts "Please enter your attribute changes."
-    else
-        Vizkit.debug("Property changes will be processed.")
-        @tasks.each_value do |pair|
-            next if !pair || !pair.task || !pair.task.reachable?
-            
-            item, item2 = get_item(pair.name, pair.name, @root_item)
-            task = pair.task
-            
-            key = task.name + "__ATTRIBUTES__"
-            item3, item4 = get_item(key,"Attributes", item)
-            task.each_property do |attribute|
-                Vizkit.debug("Changing attribute '#{attribute.name}', old value: '#{attribute.read}'")
-                sample = attribute.new_sample.zero!
-                update_item(sample, attribute.name, item3, true)
-                Vizkit.debug("Updated attribute value = #{sample}")
-                attribute.write sample
-            end
-        end
-        puts "Attributes updated."
+  def set_task_attributes
+    Vizkit.debug("Property changes will be processed.")
+    @tasks.each_value do |pair|
+        next if !pair || !pair.task || !pair.task.reachable?
         
+        item, item2 = get_item(pair.name, pair.name, @root_item)
+        task = pair.task
+        
+        key = task.name + "__ATTRIBUTES__"
+        item3, item4 = get_item(key,"Attributes", item)
+        task.each_property do |attribute|
+            Vizkit.debug("Changing attribute '#{attribute.name}', old value: '#{attribute.read}'")
+            sample = attribute.new_sample.zero!
+            update_item(sample, attribute.name, item3, true)
+            Vizkit.debug("Updated attribute value = #{sample}")
+            attribute.write sample
+        end
     end
-  
-  #   return if !item2.parent
-  #   item = item2.parent.child(item2.row,0) 
-  #   pair = @hash[item2]
-  #   return if !pair || !pair.task || !pair.task.reachable?
-
-  #   property = pair.task.property item.text
-  #   sample = property.new_sample
-  #   update_item(sample,item.parent,true,item.row)
-  #   property.write sample
+    Vizkit.debug("Attributes updated.")
+    @window.buttonFrame.hide
+    @read_obj = false;
   end
   
     def itemChangeRequest(index)
         Vizkit.debug("Doubleclicked view")
         if @tree_model.item_from_index(index).is_editable
             Vizkit.debug("Item is editable. Setting button checked.")
-            @window.setPropButton.set_checked(true)
+            @read_obj = true;
+            @window.buttonFrame.show
         end
+    end
+    
+    def cancel_set_task_attributes
+        @read_obj = false;
+        @window.buttonFrame.hide
     end
   
 end
