@@ -4,10 +4,14 @@ require 'vizkit'
 
 class TaskInspector < Qt::Widget
 
-  slots 'refresh()','set_task_attributes()','cancel_set_task_attributes()','itemChangeRequest(const QModelIndex&)'
+  slots 'refresh()','set_task_attributes()','cancel_set_task_attributes()','itemChangeRequest(const QModelIndex&)','contextMenuRequest(const QPoint&)'
   attr_reader :multi  #widget supports displaying of multi tasks
   PropertyConfig = Struct.new(:name, :attribute, :type)
   DataPair = Struct.new :name, :task
+  
+  LABEL_ATTRIBUTES = "Attributes"
+  LABEL_INPUT_PORTS = "Input Ports"
+  LABEL_OUTPUT_PORTS = "Output Ports"
 
   def initialize(parent=nil)
     super
@@ -23,6 +27,7 @@ class TaskInspector < Qt::Widget
     @window.treeView.setModel(@tree_model)
     @window.treeView.setAlternatingRowColors(true)
     @window.treeView.setSortingEnabled(true)
+    @window.treeView.setContextMenuPolicy(Qt::CustomContextMenu)
     
     @hash = Hash.new
     @reader_hash = Hash.new
@@ -33,6 +38,7 @@ class TaskInspector < Qt::Widget
     connect(@window.treeView, SIGNAL('doubleClicked(const QModelIndex&)'), self, SLOT('itemChangeRequest(const QModelIndex&)'))
     connect(@window.setPropButton, SIGNAL('clicked()'),self,SLOT('set_task_attributes()'))
     connect(@window.cancelPropButton, SIGNAL('clicked()'),self,SLOT('cancel_set_task_attributes()'))
+    connect(@window.treeView, SIGNAL('customContextMenuRequested(const QPoint&)'), self, SLOT('contextMenuRequest(const QPoint&)'))
     @timer = Qt::Timer.new(self)
     connect(@timer,SIGNAL('timeout()'),self,SLOT('refresh()'))
   end
@@ -121,7 +127,7 @@ class TaskInspector < Qt::Widget
           #setting attributes unless user changes them right now (GUI)
           unless @read_obj
               key = task.name + "__ATTRIBUTES__"
-              item3, item4 = get_item(key,"Attributes", item)
+              item3, item4 = get_item(key, LABEL_ATTRIBUTES, item)
 
               task.each_property do |attribute|
                 key = task.name+"_"+ attribute.name
@@ -150,8 +156,8 @@ class TaskInspector < Qt::Widget
           #setting ports
           key = task.name + "__IPORTS__"
           key2 = task.name + "__OPORTS__"
-          item3, item4 = get_item(key,"Input Ports", item)
-          item5, item6 = get_item(key2,"Output Ports", item)
+          item3, item4 = get_item(key, LABEL_INPUT_PORTS, item)
+          item5, item6 = get_item(key2, LABEL_OUTPUT_PORTS, item)
 
           task.each_port do |port|
             key = task.name+"_"+ port.name
@@ -189,7 +195,7 @@ class TaskInspector < Qt::Widget
         task = pair.task
         
         key = task.name + "__ATTRIBUTES__"
-        item3, item4 = get_item(key,"Attributes", item)
+        item3, item4 = get_item(key, LABEL_ATTRIBUTES, item)
         task.each_property do |attribute|
             Vizkit.debug("Changing attribute '#{attribute.name}', old value: '#{attribute.read}'")
             sample = attribute.new_sample.zero!
@@ -215,6 +221,29 @@ class TaskInspector < Qt::Widget
     def cancel_set_task_attributes
         @read_obj = false;
         @window.buttonFrame.hide
+    end
+    
+    def contextMenuRequest(pos)
+        puts "context menu requested"
+        model_index = @window.treeView.index_at(pos)
+        item = @tree_model.item_from_index(model_index)
+        if item && item.parent && item.parent.text.eql?(LABEL_OUTPUT_PORTS)
+            # Clicked on an item in the view. Display context menu.
+            menu = Qt::Menu.new(self)
+            
+            # TODO: start specific widget by clicking on it's context menu entry.
+            loader = Vizkit.default_loader
+            widgets = loader.widget_names_for_value(item.text)
+            if widgets.empty?
+                widgets << "StructViewer"
+            end
+            
+            widgets.each do |w|
+                menu.add_action(w)
+            end
+            
+            menu.exec(pos)
+        end
     end
   
 end
