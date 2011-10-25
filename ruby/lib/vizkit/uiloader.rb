@@ -64,6 +64,24 @@ module Vizkit
       def extend_cplusplus_widget_class(class_name,&block)
         @current_loader_instance.extend_cplusplus_widget_class(class_name,&block)
       end
+      def register_3d_plugin(widget_name,lib_name,plugin_name)
+        # This is used to share the plugin instance between the creation method
+        # and the display method
+        creation_method = lambda do |parent|
+          if !Orocos.initialized?
+            Orocos.initialize
+          end
+          widget = Vizkit.vizkit3d_widget
+          widget.plugins[widget_name] = widget.createPlugin(lib_name, plugin_name)
+          widget
+        end
+        register_ruby_widget(widget_name,creation_method)
+      end
+      def register_3d_plugin_for(widget_name,type_name,display_method = nil,&filter)
+        @current_loader_instance.register_callback_fct('vizkit::Vizkit3DWidget',type_name,:update)
+        VizkitPluginLoaderExtension.type_to_widget_name[type_name] = [widget_name,display_method,filter]
+        register_widget_for(widget_name,type_name,"not_used")
+      end
 
       def define_widget_for_methods(name,*klasses,&map)
         if klasses.last != :no_auto     #widget can not be reached via widget_for value if no_auto is set
@@ -362,14 +380,18 @@ module Vizkit
       self
     end
 
+    def register_callback_fct(class_name,value,callback_fct=:update)
+      @callback_fct_hash[class_name] ||= Hash.new
+      @callback_fct_hash[class_name][value] = callback_fct
+    end
+
     def register_widget_for(class_name,value,callback_fct=:update)
       #check if widget is available
       if !widget? class_name
  #       puts "Widget #{class_name} is unknown to the loader. Cannot extend it!" 
         return nil
       end
-      @callback_fct_hash[class_name] ||= Hash.new
-      @callback_fct_hash[class_name][value] = callback_fct
+      register_callback_fct(class_name,value,callback_fct)
 
       @widget_for_hash[value] ||= Array.new
       @widget_for_hash[value] << class_name if !@widget_for_hash[value].include?(class_name)

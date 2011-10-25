@@ -1,7 +1,6 @@
 require 'vizkittypelib'
 module VizkitPluginExtension
     attr_reader :plugins 
-    attr_reader :expected_ruby_type
 
     def load_adapters
         if !Orocos.master_project # Check if Orocos has been initialized
@@ -15,18 +14,13 @@ module VizkitPluginExtension
             Qt::Object.connect(bridge, SIGNAL('changeVariant(QVariant&, bool)'), plugin, SLOT('update(QVariant&, bool)'))
             @bridges[plugin.getRubyMethod] = bridge
             @plugins[plugin.getRubyMethod] = plugin
-            typename = plugin.getDataType
+            cxx_typename = plugin.getDataType
             # the plugin reports a C++ type name. We need a typelib type name
-            typename = Typelib::GCCXMLLoader.cxx_to_typelib(typename)
-            expected_ruby_type =
-                begin Orocos.typelib_type_for(typename)
-                rescue Typelib::NotFound
-                    # Make sure we have loaded the typekit that will allow us to handle
-                    # this type
-                    Orocos.load_typekit_for(typename, true)
-                    Orocos.typelib_type_for(typename)
-                end
-
+            typename = Typelib::GCCXMLLoader.cxx_to_typelib(cxx_typename)
+            if !Orocos.registered_type?(cxx_typename)
+                Orocos.load_typekit_for(typename, true) 
+            end
+            expected_ruby_type = Orocos.typelib_type_for(typename)
             is_opaque = (expected_ruby_type.name != typename)
 
             singleton_class = (class << self; self end)
@@ -77,16 +71,14 @@ module VizkitPluginExtension
 
         pp.breakable 
         pp.text "  Methods:"
-        pp.breakable
         @plugins.each_value do |plugin|
-            if plugin.getRubyMethod.match("update")
-                pp.text "    updateData(#{plugin.expected_ruby_type.name})" 
+            pp.breakable
+            if plugin.getRubyMethod.match(/^update/)
+                pp.text "    updateData(#{plugin.expected_ruby_type.name}) (alias of #{plugin.getRubyMethod})" 
             else
                 pp.text "    #{plugin.getRubyMethod}(#{plugin.expected_ruby_type.name})"
             end
-            pp.breakable
         end
-        pp.breakable
     end
 end
 
@@ -229,6 +221,29 @@ module VizkitPluginLoaderExtension
         end
         plugin.load_adapters
         plugin
+    end
+
+    # The set of plugins loaded by display-a-type infrastructure. It is a
+    # mapping from class name (as declared in #register_ruby_widget) to the
+    # corresponding plugin instance
+    attribute(:plugins) { Hash.new }
+
+    class << self
+        # A mapping from the type names to the plugin widget name (as provided by
+        # #register_3d_plugin_for)
+        attr_reader :type_to_widget_name
+    end
+    @type_to_widget_name = Hash.new
+
+    # Dispatcher method, that dispatches the data to the different plugins
+    def update(data, port_name)
+        widget_name, update_method, filter = VizkitPluginLoaderExtension.type_to_widget_name[data.class.name]
+        plugin = plugins[widget_name]
+        if filter
+            filter.call(plugin,data,port_name)
+        else
+            plugin.send(update_method,data)
+        end
     end
 end
 

@@ -11,6 +11,9 @@ module Vizkit
     define_widget_for_methods("task_control",Orocos::TaskContext) do |task|
       task.model.name
     end
+    define_widget_for_methods("task",Orocos::TaskContext,Orocos::Log::TaskContext) do |task|
+      task.class
+    end
   end
 end
 
@@ -67,8 +70,14 @@ module Vizkit
         value.connect_to widget,options ,&block
         widget.show
         return widget
+      when Orocos::TaskContext
+        widget = @default_loader.widget_for(value)
+        raise "Cannot handle #{value.class}" unless widget
+        widget.config(value)
+        widget.show
+        return widget
       else
-          raise "Cannot handle #{value.class}"
+        raise "Cannot handle #{value.class}"
       end
     end
     nil
@@ -174,8 +183,10 @@ module Vizkit
   def self.connect(widget)
     if widget.is_a?(Qt::Object)
       @connections.each do |connection|
-        if connection.widget.is_a?(Qt::Object) && widget.findChild(Qt::Object,connection.widget.objectName)
-          connection.connect
+        if connection.widget.is_a?(Qt::Object) 
+          if connection.objectName() && widget.findChild(Qt::Object,connection.widget.objectName) || connection.widget == widget
+            connection.connect
+          end
         end
       end
     else
@@ -310,7 +321,9 @@ module Vizkit
 
         #use default callback_fct
         @callback_fct ||= :update if @widget.respond_to?(:update)
-        @callback_fct = @widget.method(@callback_fct) if @callback_fct.is_a? Symbol
+        if !@callback_fct.respond_to?(:call)
+          @callback_fct = @widget.method(@callback_fct) 
+        end
         raise "Widget #{@widget.objectName}(#{@widget.class_name}) has no callback function "if !@callback_fct
       else
         @callback_fct = nil
