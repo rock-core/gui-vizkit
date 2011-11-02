@@ -4,7 +4,7 @@ require 'vizkit'
 
 class TaskInspector < Qt::Widget
 
-  slots 'refresh()','set_task_attributes()','cancel_set_task_attributes()','itemChangeRequest(const QModelIndex&)','contextMenuRequest(const QPoint&)'
+  slots 'refresh()','set_task_attributes()','cancel_set_task_attributes()','itemChangeRequest(const QModelIndex&)','contextMenuRequest(const QPoint&)','clickedAction(const QString&)'
   attr_reader :multi  #widget supports displaying of multi tasks
   PropertyConfig = Struct.new(:name, :attribute, :type)
   DataPair = Struct.new :name, :task
@@ -29,6 +29,8 @@ class TaskInspector < Qt::Widget
     @window.treeView.setSortingEnabled(true)
     #@window.treeView.setContextMenuPolicy(Qt::CustomContextMenu)
     @window.treeView.setContextMenuPolicy(Qt::DefaultContextMenu)
+    
+    @signal_mapper = nil
     
     @hash = Hash.new
     @reader_hash = Hash.new
@@ -227,26 +229,45 @@ class TaskInspector < Qt::Widget
     def contextMenuEvent(event)
 
         pos = event.pos
-        model_index = @window.treeView.index_at(Qt::Point.new(pos.x,pos.y-30)) # TODO Hard coded offset! Better: use correct coordinate system conversion.
+        model_index = @window.treeView.index_at(Qt::Point.new(pos.x,pos.y-31)) # TODO Hard coded offset! Only works for mouse click. Better: use correct coordinate system conversion.
         item = @tree_model.item_from_index(model_index)
         if item && item.parent && item.parent.text.eql?(LABEL_OUTPUT_PORTS)
             # Clicked on an item in the view. Display context menu.
             menu = Qt::Menu.new(self)
             
-            # TODO: start specific widget by clicking on it's context menu entry.
             loader = Vizkit.default_loader
+            
+            widgets = []
             widgets = loader.widget_names_for_value(item.text)
-            if widgets.empty?
+            
+            # Always offer struct viewer if not yet present.
+            if not widgets.include? "StructViewer"
                 widgets << "StructViewer"
             end
             
-            widgets.each do |w|
-                menu.add_action(w)
-            end
+            # TODO: get task and port for clicked item
+            # like this:
+            # task = item.parent.parent.text
+            # port = ...
             
-            #menu.exec(pos)
+            @signal_mapper = Qt::SignalMapper.new(self)
+            connect(@signal_mapper, SIGNAL('mapped(const QString&)'), self, SLOT('clickedAction(const QString&)'))
+            
+            widgets.each do |w|
+                a = Qt::Action.new(w, self)
+                menu.add_action(a)
+                connect(a, SIGNAL('triggered()'), @signal_mapper, SLOT('map()'));
+                @signal_mapper.set_mapping(a, w);
+            end
+         
             menu.exec(event.global_pos)
         end
+    end
+    
+    def clickedAction(name)
+        Vizkit.info "You triggerred action #{name}"
+        widget = Vizkit.default_loader.create_widget(name)
+        widget.show
     end
   
 end
