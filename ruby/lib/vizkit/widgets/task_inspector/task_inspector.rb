@@ -27,7 +27,8 @@ class TaskInspector < Qt::Widget
     @window.treeView.setModel(@tree_model)
     @window.treeView.setAlternatingRowColors(true)
     @window.treeView.setSortingEnabled(true)
-    @window.treeView.setContextMenuPolicy(Qt::CustomContextMenu)
+    #@window.treeView.setContextMenuPolicy(Qt::CustomContextMenu)
+    @window.treeView.setContextMenuPolicy(Qt::DefaultContextMenu)
     
     @hash = Hash.new
     @reader_hash = Hash.new
@@ -38,7 +39,7 @@ class TaskInspector < Qt::Widget
     connect(@window.treeView, SIGNAL('doubleClicked(const QModelIndex&)'), self, SLOT('itemChangeRequest(const QModelIndex&)'))
     connect(@window.setPropButton, SIGNAL('clicked()'),self,SLOT('set_task_attributes()'))
     connect(@window.cancelPropButton, SIGNAL('clicked()'),self,SLOT('cancel_set_task_attributes()'))
-    connect(@window.treeView, SIGNAL('customContextMenuRequested(const QPoint&)'), self, SLOT('contextMenuRequest(const QPoint&)'))
+    #connect(@window.treeView, SIGNAL('customContextMenuRequested(const QPoint&)'), self, SLOT('contextMenuRequest(const QPoint&)'))
     @timer = Qt::Timer.new(self)
     connect(@timer,SIGNAL('timeout()'),self,SLOT('refresh()'))
   end
@@ -223,9 +224,10 @@ class TaskInspector < Qt::Widget
         @window.buttonFrame.hide
     end
     
-    def contextMenuRequest(pos)
-        puts "context menu requested"
-        model_index = @window.treeView.index_at(pos)
+    def contextMenuEvent(event)
+
+        pos = event.pos
+        model_index = @window.treeView.index_at(Qt::Point.new(pos.x,pos.y-30)) # TODO Hard coded offset! Better: use correct coordinate system conversion.
         item = @tree_model.item_from_index(model_index)
         if item && item.parent && item.parent.text.eql?(LABEL_OUTPUT_PORTS)
             # Clicked on an item in the view. Display context menu.
@@ -242,7 +244,8 @@ class TaskInspector < Qt::Widget
                 menu.add_action(w)
             end
             
-            menu.exec(pos)
+            #menu.exec(pos)
+            menu.exec(event.global_pos)
         end
     end
   
