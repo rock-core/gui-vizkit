@@ -1,6 +1,6 @@
 #include "Vizkit3DWidget.hpp"
 #include <QVBoxLayout>
-#include <GridNode.hpp>
+#include <QSplitter>
 #include <vizkit/MotionCommandVisualization.hpp>
 #include <vizkit/TrajectoryVisualization.hpp>
 #include <vizkit/WaypointVisualization.hpp>
@@ -15,30 +15,51 @@ Vizkit3DWidget::Vizkit3DWidget( QWidget* parent, Qt::WindowFlags f )
 
     QWidget* viewWidget = new QWidget;
     QVBoxLayout* layout = new QVBoxLayout;
-    layout->addWidget( viewWidget );
+    QSplitter* splitter = new QSplitter(Qt::Horizontal);
+    layout->addWidget( splitter );
     this->setLayout( layout );
+    
+    // create propertyBrowserWidget
+    propertyBrowserWidget = new QProperyBrowserWidget( parent );
+    propertyBrowserWidget->setSizePolicy( QSizePolicy( QSizePolicy::Expanding, QSizePolicy::Expanding ) );
+    splitter->addWidget(propertyBrowserWidget);
 
     view = new ViewQOSG( viewWidget );
     view->setSizePolicy( QSizePolicy( QSizePolicy::Expanding, QSizePolicy::Expanding ) );
     view->setData( root );
     addView( view );
+    splitter->addWidget(viewWidget);
 
     // pickhandler is for selecting objects in the opengl view
     pickHandler = new PickHandler();
     view->addEventHandler( pickHandler );
     
+    // set root node as default tracked node
+    view->setTrackedNode(getRootNode());
+    
     // add visualization of ground grid 
-    GridNode *gn = new GridNode();
-    root->addChild(gn);
+    groundGrid = new GridNode();
+    root->addChild(groundGrid);
+    
+    // create visualization of the coordinate axes
+    coordinateFrame = new CoordinateFrame();
     
     pluginNames = new QStringList;
     
     changeCameraView(osg::Vec3d(0,0,0), osg::Vec3d(0,-5,5));
+    
+    // add some properties of this widget as global properties
+    QStringList property_names("show_grid");
+    property_names.push_back("show_axes");
+    propertyBrowserWidget->addGlobalProperties(this, property_names);
+    
+    connect(this, SIGNAL(addPlugins()), this, SLOT(addPluginIntern()), Qt::QueuedConnection);
+    connect(this, SIGNAL(removePlugins()), this, SLOT(removePluginIntern()), Qt::QueuedConnection);
 }
 
 QSize Vizkit3DWidget::sizeHint() const
 {
-    return QSize( 800, 600 );
+    return QSize( 1000, 600 );
 }
 
 osg::ref_ptr<osg::Group> Vizkit3DWidget::getRootNode() const
@@ -154,86 +175,71 @@ void Vizkit3DWidget::changeCameraView(const osg::Vec3* lookAtPos, const osg::Vec
     view->home();
 }
 
-
-
-QStringList* Vizkit3DWidget::getListOfExternalPlugins(QObject* qt_plugin)
+/**
+ * Puts the plugin in a list and emits a signal.
+ * Adding the new Plugin will be handled by the main thread.
+ * @param plugin Vizkit Plugin
+ */
+void Vizkit3DWidget::addPlugin(QObject* plugin)
 {
-    vizkit::VizkitQtPluginBase* qtPlugin = dynamic_cast<vizkit::VizkitQtPluginBase*>(qt_plugin);
-    if (qtPlugin) 
+    vizkit::VizPluginBase* viz_plugin = dynamic_cast<vizkit::VizPluginBase*>(plugin);
+    if (viz_plugin)
     {
-        return new QStringList(qtPlugin->getAvailablePlugins());
-    }
-    else 
-    {
-        std::cerr << "The given attribute is no Vizkit Qt Plugin!" << std::endl;
-        return NULL;
+        pluginsToAdd.push_back(viz_plugin);
+        emit addPlugins();
     }
 }
 
-QObject* Vizkit3DWidget::createExternalPlugin(QObject* plugin, QString const& name)
+/**
+ * Puts the plugin in a list and emits a signal.
+ * Removing the new Plugin will be handled by the main thread.
+ * @param plugin Vizkit Plugin
+ */
+void Vizkit3DWidget::removePlugin(QObject* plugin)
 {
-    vizkit::VizkitQtPluginBase* qtPlugin = dynamic_cast<vizkit::VizkitQtPluginBase*>(plugin);
-    if (qtPlugin) 
+    vizkit::VizPluginBase* viz_plugin = dynamic_cast<vizkit::VizPluginBase*>(plugin);
+    if (viz_plugin)
     {
-        QStringList plugins = qtPlugin->getAvailablePlugins();
-        vizkit::VizPluginBase* plugin = 0;
-        if (name.isEmpty())
-        {
-            if (plugins.size() == 0)
-            {
-                std::cerr << "this Qt Designer plugin defines no vizkit plugins" << std::endl;
-                return NULL;
-            }
-            else if (plugins.size() > 1)
-            {
-                std::cerr << "this Qt Designer plugin defines more than one vizkit plugin, you must select one explicitely" << std::endl;
-                std::cerr << "available plugins are:" << std::endl;
-                for (QStringList::const_iterator it = plugins.begin(); it != plugins.end(); ++it)
-                    std::cerr << "  " << it->toStdString() << std::endl;
-                return NULL;
-            }
-
-            plugin = qtPlugin->createPlugin(*plugins.begin());
-        }
-        else if (!plugins.contains(name))
-        {
-            if (plugins.contains(name + "Visualization"))
-                plugin = qtPlugin->createPlugin(name + "Visualization");
-            else
-            {
-                std::cerr << "there is no Vizkit plugin available called " << name.toStdString() << std::endl;
-                std::cerr << "available plugins are:" << std::endl;
-                for (QStringList::const_iterator it = plugins.begin(); it != plugins.end(); ++it)
-                    std::cerr << "  " << it->toStdString() << std::endl;
-
-                return NULL;
-            }
-        }
-        else
-        {
-            plugin = qtPlugin->createPlugin(name);
-        }
-
-        if (!plugin)
-        {
-            std::cerr << "createPlugin returned NULL" << std::endl;
-            return NULL;
-        }
-        addDataHandler(plugin);
-        return plugin->getRubyAdapterCollection();
+        pluginsToRemove.push_back(viz_plugin);
+        emit removePlugins();
     }
-    else 
+}
+
+/**
+ * This slot adds all plugins in the list to the OSG and
+ * their properties to the property browser widget.
+ */
+void Vizkit3DWidget::addPluginIntern()
+{
+    for(std::vector<vizkit::VizPluginBase*>::iterator pluginIt = pluginsToAdd.begin(); pluginIt != pluginsToAdd.end(); pluginIt++)
+    { 
+        addDataHandler(*pluginIt);
+        propertyBrowserWidget->addProperties(*pluginIt);
+        connect(*pluginIt, SIGNAL(pluginActivityChanged(bool)), this, SLOT(pluginActivityChanged(bool)));
+    }
+    pluginsToAdd.clear();
+}
+
+/**
+ * This slot removes all plugins in the list from the OSG and
+ * their properties to the property browser widget.
+ */
+void Vizkit3DWidget::removePluginIntern()
+{
+    for(std::vector<vizkit::VizPluginBase*>::iterator pluginIt = pluginsToRemove.begin(); pluginIt != pluginsToRemove.end(); pluginIt++)
     {
-        std::cerr << "The given attribute is no Vizkit Qt Plugin!" << std::endl;
-        return NULL;
+        removeDataHandler(*pluginIt);
+        propertyBrowserWidget->removeProperties(*pluginIt);
+        disconnect(*pluginIt, SIGNAL(pluginActivityChanged(bool)), this, SLOT(pluginActivityChanged(bool)));
     }
+    pluginsToRemove.clear();
 }
 
 /**
  * Creates an instance of a visualization plugin given by its name 
  * and returns the adapter collection of the plugin, used in ruby.
  * @param pluginName Name of the plugin
- * @return Instance of the adapter collection of this plugin
+ * @return Instance of the plugin
  */
 QObject* Vizkit3DWidget::createPluginByName(QString pluginName)
 {
@@ -257,9 +263,7 @@ QObject* Vizkit3DWidget::createPluginByName(QString pluginName)
 
     if (plugin) 
     {
-        addDataHandler(plugin);
-        VizPluginRubyAdapterCollection* adapterCollection = plugin->getRubyAdapterCollection();
-        return adapterCollection;
+        return plugin;
     }
     else {
         std::cerr << "The Pluginname " << pluginName.toStdString() << " is unknown!" << std::endl;
@@ -281,4 +285,90 @@ QStringList* Vizkit3DWidget::getListOfAvailablePlugins()
         pluginNames->push_back("RigidBodyStateVisualization");
     }
     return pluginNames;
+}
+
+/**
+ * Adds or removes a plugin if the plugin activity 
+ * has changed.
+ * @param enabled 
+ */
+void Vizkit3DWidget::pluginActivityChanged(bool enabled)
+{
+    QObject* obj = QObject::sender();
+    vizkit::VizPluginBase* viz_plugin = dynamic_cast<vizkit::VizPluginBase*>(obj);
+    if(viz_plugin)
+    {
+        // check if root node has plugin as child
+        bool has_child_plugin = false;
+        if(root->getChildIndex(viz_plugin->getVizNode()) < root->getNumChildren())
+            has_child_plugin = true;
+        
+        // add or remove plugin from root node
+        if(enabled && !has_child_plugin)
+        {
+            addDataHandler(viz_plugin);
+        }
+        else if (!enabled && has_child_plugin)
+        {
+            removeDataHandler(viz_plugin);
+        }
+    }
+}
+
+/**
+ * @return property browser widget
+ */
+QWidget* Vizkit3DWidget::getPropertyWidget()
+{
+    return propertyBrowserWidget;
+}
+
+/**
+ * @return true if ground grid is enabled
+ */
+bool Vizkit3DWidget::isGridEnabled()
+{
+    return (root->getChildIndex(groundGrid) < root->getNumChildren());
+}
+
+/**
+ * Enable or disable ground grid.
+ * @param enabled
+ */
+void Vizkit3DWidget::setGridEnabled(bool enabled)
+{
+    if(!enabled && isGridEnabled())
+    {
+        root->removeChild(groundGrid);
+    }
+    else if(enabled && !isGridEnabled())
+    {
+        root->addChild(groundGrid);
+    }
+    emit propertyChanged("show_grid");
+}
+
+/**
+ * @return true if axes coordinates are enabled
+ */
+bool Vizkit3DWidget::areAxesEnabled()
+{
+    return (root->getChildIndex(coordinateFrame) < root->getNumChildren());
+}
+
+/**
+ * Enable or disable axes of the coordinate system.
+ * @param enabled
+ */
+void Vizkit3DWidget::setAxesEnabled(bool enabled)
+{
+    if(!enabled && areAxesEnabled())
+    {
+        root->removeChild(coordinateFrame);
+    }
+    else if(enabled && !areAxesEnabled())
+    {
+        root->addChild(coordinateFrame);
+    }
+    emit propertyChanged("show_axes");
 }

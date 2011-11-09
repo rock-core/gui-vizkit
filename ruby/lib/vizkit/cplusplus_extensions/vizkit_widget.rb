@@ -8,8 +8,9 @@ module VizkitPluginExtension
 	end
         @bridges = Hash.new
         @plugins = Hash.new
-        getListOfAvailableAdapter.each do |name|
-            plugin = getAdapter(name)
+        @adapter_collection = getRubyAdapterCollection
+        @adapter_collection.getListOfAvailableAdapter.each do |name|
+            plugin = @adapter_collection.getAdapter(name)
             bridge = TypelibToQVariant.create_bridge
             Qt::Object.connect(bridge, SIGNAL('changeVariant(QVariant&, bool)'), plugin, SLOT('update(QVariant&, bool)'))
             @bridges[plugin.getRubyMethod] = bridge
@@ -190,6 +191,7 @@ module VizkitPluginLoaderExtension
         builtin = getListOfAvailablePlugins
         if builtin.include?(lib_name)
             plugin = createPluginByName(lib_name)
+            addPlugin(plugin)
             plugin_name = lib_name
             lib_name = "builtin"
         else
@@ -198,14 +200,19 @@ module VizkitPluginLoaderExtension
                 Kernel.raise "#{lib_name} is not a builtin plugin, nor lib#{lib_name}-viz.so in VIZKIT_PLUGIN_RUBY_PATH. Available builtin plugins are: #{builtin.join(", ")}."
             end
             plugin = load_plugin(path)
-            plugin = createExternalPlugin(plugin, plugin_name || "")
-            if !plugin
-                if plugin_name
-                    Kernel.raise "library #{lib_name} does not have any vizkit plugin called #{plugin_name}"
+            if !plugin_name
+                if plugin.getAvailablePlugins.size > 1
+                    Kernel.raise "#{lib_name} either defines multiple plugins (and you must select one explicitely)"
                 else
-                    Kernel.raise "#{lib_name} either defines no vizkit plugin, or multiple ones (and you must select one explicitely)"
+                    plugin_name = plugin.getAvailablePlugins.first
                 end
             end
+
+            if !plugin.getAvailablePlugins.include?(plugin_name)
+                Kernel.raise "library #{lib_name} does not have any vizkit plugin called #{plugin_name}"
+            end
+            plugin = plugin.createPlugin(plugin_name)
+            addPlugin(plugin)
             plugin_name = lib_name unless plugin_name
             lib_name = "lib#{lib_name}-viz.so"
         end

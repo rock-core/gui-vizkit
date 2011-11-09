@@ -172,7 +172,7 @@ module Vizkit
   def self.auto_reconnect()
     @connections.each do |connection|
       if connection.auto_reconnect && (!connection.widget.is_a?(Qt::Widget) || connection.widget.visible) && !connection.alive?
-        puts "Warning lost connection to #{connection.port_full_name}. Trying to reconnect."
+        puts "Warning lost connection to #{connection.port_full_name}. Trying to reconnect." if connection.broken?
         connection.reconnect    
       end
     end
@@ -312,6 +312,12 @@ module Vizkit
       "#{@task_name}.#{@port_name}"
     end
 
+    #returns ture if the connection was established at some point 
+    #otherwise false
+    def broken?
+        reader ? true : false 
+    end
+
     def discover_callback_fct
       if @widget && @port 
         #try to find callback_fct for port this is not working if no port is given
@@ -321,7 +327,7 @@ module Vizkit
 
         #use default callback_fct
         @callback_fct ||= :update if @widget.respond_to?(:update)
-        if !@callback_fct.respond_to?(:call)
+        if @callback_fct && !@callback_fct.respond_to?(:call)
           @callback_fct = @widget.method(@callback_fct) 
         end
         raise "Widget #{@widget.objectName}(#{@widget.class_name}) has no callback function "if !@callback_fct
@@ -404,7 +410,21 @@ module Vizkit
   end
 
   class OQLogConnection < OQConnection
+    def initialize(port,options = Hash.new,widget=nil,&block)
+      super 
+      # do not use a timer if frequency < 0
+      if @update_frequency < 0
+        @port.org_connect_to nil, @policy do |sample,_|
+          sample = @block.call(sample,port_full_name) if @block
+          @callback_fct.call sample,port_full_name if @callback_fct && sample
+          @last_sample = sample
+        end
+      end
+    end
+
     def reconnect()
+      return true if @update_frequency < 0
+
       @reader =@port.reader @policy
       if @reader
         @timer_id = startTimer(1000/@update_frequency) if !@timer_id
@@ -431,7 +451,7 @@ module Vizkit
     end
 
     def alive?
-      return (nil != @timer_id)
+      return (nil != @timer_id || @update_frequency < 0)
     end
 
     alias :connected? :alive?

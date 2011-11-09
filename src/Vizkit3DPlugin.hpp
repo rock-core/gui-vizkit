@@ -107,8 +107,12 @@ class VizPluginRubyAdapterCollection : public QObject
  * within the updateMainNode(). Note that updateMainNode() is most likely called
  * from a different thread context than the rest.
  */
-class VizPluginBase
+class VizPluginBase : public QObject
 {
+    Q_OBJECT
+    Q_PROPERTY(QString vizkit3d_plugin_name READ getPluginName)
+    Q_PROPERTY(bool enabled READ isPluginEnabled WRITE setPluginEnabled)
+    
     public:
         VizPluginBase();
 
@@ -121,9 +125,18 @@ class VizPluginBase
          * plugin's nodes */
 	osg::ref_ptr<osg::Group> getVizNode() const;
 
-	/** @return the name of the plugin, it's needed to save the 
-         *  configuration data in a YAML file */
-	virtual const std::string getPluginName() const;
+	/** @return the name of the plugin */
+	virtual const QString getPluginName() const;
+    
+       /**
+        * @return true if plugin is enabled
+        */
+        bool isPluginEnabled();
+        
+       /**
+        * @param enabled set plugin enabled or disabled
+        */
+        void setPluginEnabled(bool enabled);
 
 	/** override this method to save configuration data. Always call the
 	 * superclass as well.
@@ -144,10 +157,22 @@ class VizPluginBase
          */
         std::vector<QDockWidget*> getDockWidgets();
         
+    public slots:
         /**
-         * @return an instance of the ruby adapter collection.
-         */
-        VizPluginRubyAdapterCollection* getRubyAdapterCollection();
+        * @return an instance of the ruby adapter collection.
+        */
+        QObject* getRubyAdapterCollection();
+        
+    signals:
+       /**
+        * must be emitted if a property of an inherited plugin changes
+        */
+        void propertyChanged(QString property_name);
+        
+       /**
+        * will emitted if the plugin activity changes
+        */
+        void pluginActivityChanged(bool);
 
     protected:
 	/** override this function to update the visualisation.
@@ -182,6 +207,7 @@ class VizPluginBase
         osg::ref_ptr<osg::Node> mainNode;
         osg::ref_ptr<osg::Group> vizNode;
 	bool dirty;
+        bool plugin_enabled;
 };
 
 template <typename T> class Vizkit3DPlugin;
@@ -244,20 +270,18 @@ class Vizkit3DPlugin : public VizPluginBase,
 };
 
 /** 
- * Interface class for all Vizkit Qt plugins.
- * Vizkit Qt plugins are only helper classes to create an
- * instance of the Vizkit plugin using ruby.
+ * Interface class to create multiple vizkit plugins.
  */
-class VizkitQtPluginBase : public QObject
+class VizkitPluginFactory : public QObject
 {
     Q_OBJECT
     
     public:
-        VizkitQtPluginBase(QObject* parent = 0) : QObject(parent){};
+        VizkitPluginFactory(QObject* parent = 0) : QObject(parent){};
     
     public slots:
-        virtual VizPluginBase* createPlugin(QString const& name) = 0;
-        virtual QStringList getAvailablePlugins() const = 0;
+        virtual QObject* createPlugin(QString const& name) = 0;
+        virtual QStringList* getAvailablePlugins() const = 0;
 };
 
 /**
@@ -273,6 +297,7 @@ class VizkitQtPluginBase : public QObject
  *     //if you want to call any other method of your plugin in ruby
  *     VizPluginRubyConfig(Pluginname, bool, enableSomething)
  * }
+ * </code>
  */
 #define VizPluginRubyAdapterCommon(pluginName, dataType, methodName, rubyMethodName)\
     class VizPluginRubyAdapter##pluginName##rubyMethodName : public VizPluginRubyAdapterBase {\
@@ -312,28 +337,33 @@ class VizkitQtPluginBase : public QObject
 
 
 /**
- * Macro that adds a Vizkit Qt plugin to a Vizkit plugin.
- * This is needed to create an instance of the plugin in ruby, if
- * the plugin is part of a external library.
- * The ruby adapter macro is also needed in this case.
+ * Macro that exports a Vizkit3D plugin so that it can be dynamically loaded by vizkit
  * 
- * Use this to provide a Vizkit Qt plugin:
+ * Example:
  *
  * <code>
- *     class WaypointVisualization{..};
- *     
+ *     class WaypointVisualization : public vizkit::Vizkit3DPlugin {..};
  *     VizkitQtPlugin(WaypointVisualization)
+ * </code>
+ *
+ * This works if your shared library exports only one plugin. To export multiple
+ * plugins, you need to create a subclass of vizkit::VizkitPluginFactory which
+ * handles the plugins, and export it with
+ *
+ * <code>
+ * Q_EXPORT_PLUGIN2(FactoryClass, FactoryClass)
+ * </code>
  */
 #define VizkitQtPlugin(pluginName)\
-    class QtPlugin##pluginName : public vizkit::VizkitQtPluginBase {\
+    class QtPlugin##pluginName : public vizkit::VizkitPluginFactory {\
         public:\
-        virtual QStringList getAvailablePlugins() const\
+        virtual QStringList* getAvailablePlugins() const\
         {\
-            QStringList result; \
-            result.push_back(#pluginName); \
+            QStringList* result = new QStringList; \
+            result->push_back(#pluginName); \
             return result;\
         } \
-        virtual vizkit::VizPluginBase* createPlugin(QString const& name)\
+        virtual QObject* createPlugin(QString const& name)\
         {\
             if (name == #pluginName) \
                 return new pluginName;\
@@ -341,7 +371,6 @@ class VizkitQtPluginBase : public QObject
         };\
     };\
     Q_EXPORT_PLUGIN2(QtPlugin##pluginName, QtPlugin##pluginName)
-
 
 /** @deprecated adapter item for legacy visualizations. Do not derive from this
  * class for new designs. Use VizPlugin directly instead.

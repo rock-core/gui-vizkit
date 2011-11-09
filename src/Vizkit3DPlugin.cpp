@@ -1,5 +1,7 @@
 #include <osg/Group>
 #include "VizPlugin.hpp"
+#include <typeinfo>
+#include <cxxabi.h>
 
 using namespace vizkit;
 
@@ -17,7 +19,7 @@ struct VizPluginBase::CallbackAdapter : public osg::NodeCallback
 };
 
 VizPluginBase::VizPluginBase()
-    : dirty( false )
+    : dirty( false ), plugin_enabled(true)
 {
     vizNode = new osg::Group();
     nodeCallback = new CallbackAdapter( this );
@@ -29,9 +31,9 @@ osg::ref_ptr<osg::Group> VizPluginBase::getVizNode() const
     return vizNode;
 }
 
-const std::string VizPluginBase::getPluginName() const 
+const QString VizPluginBase::getPluginName() const 
 {
-    return "VizPlugin";
+    return abi::__cxa_demangle(typeid(*this).name(), 0, 0, 0);
 }
 
 osg::ref_ptr<osg::Node> VizPluginBase::createMainNode()
@@ -77,7 +79,19 @@ void VizPluginBase::setDirty()
     dirty = true;
 }
 
-vizkit::VizPluginRubyAdapterCollection* vizkit::VizPluginBase::getRubyAdapterCollection()
+QObject* vizkit::VizPluginBase::getRubyAdapterCollection()
 {
     return &adapterCollection;
+}
+
+bool VizPluginBase::isPluginEnabled()
+{
+    return plugin_enabled;
+}
+
+void VizPluginBase::setPluginEnabled(bool enabled)
+{
+    plugin_enabled = enabled;
+    emit pluginActivityChanged(enabled);
+    emit propertyChanged("enabled");
 }
