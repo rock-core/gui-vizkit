@@ -84,7 +84,6 @@ class TaskInspector < Qt::Widget
   end
 
   def update_item(object, object_name, parent_item,read_obj=false,row=0,name_hint=nil)
-      #puts "Updating #{object_name} of class type #{object.class}"
       @modeler.update_sub_tree(object, object_name, parent_item, read_obj)
   end
 
@@ -301,7 +300,7 @@ class TaskInspector < Qt::Widget
     # Action handler for context menu clicks. 
     def clicked_action(widget_name)
         info = @widget_action_hash[widget_name]
-        Vizkit.info "You triggered widget '#{info[ActionInfo::WIDGET_NAME]}'"
+        Vizkit.info "Triggered widget '#{info[ActionInfo::WIDGET_NAME]}'"
         
         # Set up and display widget
         widget = Vizkit.default_loader.create_widget(info[ActionInfo::WIDGET_NAME])
