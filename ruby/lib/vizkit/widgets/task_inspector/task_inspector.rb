@@ -186,6 +186,13 @@ class TaskInspector < Qt::Widget
           end
           @modeler.set_all_children_editable(item3, false) # input ports
           @modeler.set_all_children_editable(item5, false) # output ports
+          
+          @modeler.get_direct_children(item5).each do |child,child2|
+            tooltip = "Right-click for a list of available display widgets for this data type."
+            child.set_tool_tip(tooltip)
+            child2.set_tool_tip(tooltip)
+          end
+          
         rescue Orocos::CORBA::ComError
           pair.task = nil
         end
