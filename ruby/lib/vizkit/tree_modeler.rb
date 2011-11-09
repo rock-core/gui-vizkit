@@ -76,6 +76,32 @@ module Vizkit
           [item,item2]
         end
         
+        # Checks if there is a direct child of parent_item corresponding to item_name.
+        # If yes, the child will be returned; nil otherwise. 
+        # 'Direct' refers to a difference in (tree) depth of 1 between parent and child.
+        def direct_child(parent_item, item_name)
+            rc = 0
+            children = get_direct_children(parent_item).each do |child,_|
+                if child.text.eql?(item_name)
+                    return child
+                end
+            end
+            nil
+        end
+        
+        # Returns pairs of all direct children (pair: row 0, row 1) as an array.
+        def get_direct_children(parent_item)
+            children = []
+            rc = 0;
+            while rc < parent_item.row_count
+                item = parent_item.child(rc,0)
+                item2 = parent_item.child(rc,1)
+                children << [item,item2]
+                rc+=1
+            end
+            children
+        end
+        
         # Sets all child items' editable status to the value of <i>editable</i> 
         # except items acting as parent. 'Child item' refers to the value of 
         # the (property,value) pair.
@@ -192,22 +218,6 @@ module Vizkit
               end
             end
         object
-        end
-        
-        # Checks if there is a direct child of parent_item corresponding to item_name.
-        # If yes, the child will be returned; nil otherwise. 
-        # 'Direct' refers to a difference in (tree) depth of 1 between parent and child.
-        def direct_child(parent_item, item_name)
-            rc = 0
-            child = nil
-            while rc < parent_item.row_count
-                child = parent_item.child(rc)
-                if child.text.eql?(item_name)
-                    return child
-                end
-                rc+=1
-            end
-            nil
         end
 
     end
