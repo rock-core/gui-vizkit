@@ -4,7 +4,7 @@ require 'vizkit'
 
 class TaskInspector < Qt::Widget
 
-  slots 'refresh()','set_task_attributes()','cancel_set_task_attributes()','itemChangeRequest(const QModelIndex&)','contextMenuRequest(const QPoint&)','clickedAction(const QString&)'
+  slots 'refresh()','set_task_attributes()','cancel_set_task_attributes()','itemChangeRequest(const QModelIndex&)','contextMenuRequest(const QPoint&)','clicked_action(const QString&)'
   attr_reader :multi  #widget supports displaying of multi tasks
   PropertyConfig = Struct.new(:name, :attribute, :type)
   DataPair = Struct.new :name, :task
@@ -31,7 +31,12 @@ class TaskInspector < Qt::Widget
     @window.treeView.setContextMenuPolicy(Qt::DefaultContextMenu)
     
     @signal_mapper = nil
-    
+
+    # Information about the recent displayed context menu actions.
+    # key: widget name
+    # value: ActionInfo
+    @widget_action_hash = Hash.new 
+        
     @hash = Hash.new
     @reader_hash = Hash.new
     @tasks = Hash.new
@@ -232,46 +237,87 @@ class TaskInspector < Qt::Widget
         model_index = @window.treeView.index_at(Qt::Point.new(pos.x,pos.y-31)) # TODO Hard coded offset! Only works for mouse click. Better: use correct coordinate system conversion.
         item = @tree_model.item_from_index(model_index)
         if item && item.parent && item.parent.text.eql?(LABEL_OUTPUT_PORTS)
-            # Clicked on an item in the view. Display context menu.
+            # Clicked on an output port item in the view. Set up context menu.
             menu = Qt::Menu.new(self)
+            
+            task_name = item.parent.parent.text
+            
+            # Assign port name and type correctly depending on the clicked column.
+            port_name = "";
+            port_type = "";
+            if item.column == 0
+                port_name = item.text
+                port_type = item.parent.child(item.row,1).text
+            elsif item.column == 1
+                port_name = item.parent.child(item.row, 0).text
+                port_type = item.text
+            end
             
             loader = Vizkit.default_loader
             
+            # Determine applicable widgets for the output port
             widgets = []
-            widgets = loader.widget_names_for_value(item.text)
+            widgets = loader.widget_names_for_value(port_type)
             
-            # Always offer struct viewer if not yet present.
+            # Always offer struct viewer as widget if not yet present.
             if not widgets.include? "StructViewer"
                 widgets << "StructViewer"
             end
             
-            # TODO: get task and port for clicked item
-            # like this:
-            # task = item.parent.parent.text
-            # port = ...
-            
+            # Give action handler information about the caller 
+            # -- i.e. the specific widget entry in the menu -- 
+            # in order to display the correct widget.
             @signal_mapper = Qt::SignalMapper.new(self)
-            connect(@signal_mapper, SIGNAL('mapped(const QString&)'), self, SLOT('clickedAction(const QString&)'))
+            connect(@signal_mapper, SIGNAL('mapped(const QString&)'), self, SLOT('clicked_action(const QString&)'))
             
             widgets.each do |w|
                 a = Qt::Action.new(w, self)
                 menu.add_action(a)
                 connect(a, SIGNAL('triggered()'), @signal_mapper, SLOT('map()'));
+
+                # Saving information for action handler
+                action_info = ActionInfo.new
+                action_info[ActionInfo::WIDGET_NAME] = w
+                action_info[ActionInfo::TASK_NAME] = task_name
+                action_info[ActionInfo::PORT_NAME] = port_name
+                action_info[ActionInfo::PORT_TYPE] = port_type
+                @widget_action_hash[w] = action_info;
+                
                 @signal_mapper.set_mapping(a, w);
             end
          
+            # Display context menu at cursor position.
             menu.exec(event.global_pos)
         end
     end
     
-    def clickedAction(name)
-        Vizkit.info "You triggerred action #{name}"
-        widget = Vizkit.default_loader.create_widget(name)
+    # Action handler for context menu clicks. 
+    def clicked_action(widget_name)
+        info = @widget_action_hash[widget_name]
+        Vizkit.info "You triggered widget '#{info[ActionInfo::WIDGET_NAME]}'"
+        
+        # Set up and display widget
+        widget = Vizkit.default_loader.create_widget(info[ActionInfo::WIDGET_NAME])
+        task_context = @tasks[info[ActionInfo::TASK_NAME]][1]
+        port = task_context.port(info[ActionInfo::PORT_NAME])
+        port.connect_to(widget)
         widget.show
+        
+        @widget_action_hash.clear
     end
   
 end
 
+class ActionInfo < Array
+    WIDGET_NAME = 0
+    TASK_NAME = 1
+    PORT_NAME = 2
+    PORT_TYPE = 3
+
+    def initialize
+        super(4)
+    end
+end
 
 Vizkit::UiLoader.register_ruby_widget("task_inspector",TaskInspector.method(:new))
 Vizkit::UiLoader.register_widget_for("task_inspector",Orocos::TaskContext)
