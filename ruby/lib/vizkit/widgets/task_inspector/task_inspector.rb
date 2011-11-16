@@ -4,10 +4,14 @@ require 'vizkit'
 
 class TaskInspector < Qt::Widget
 
-  slots 'refresh()','set_task_attributes()','cancel_set_task_attributes()','itemChangeRequest(const QModelIndex&)'
+  slots 'refresh()','set_task_attributes()','cancel_set_task_attributes()','itemChangeRequest(const QModelIndex&)','contextMenuRequest(const QPoint&)','clicked_action(const QString&)'
   attr_reader :multi  #widget supports displaying of multi tasks
   PropertyConfig = Struct.new(:name, :attribute, :type)
   DataPair = Struct.new :name, :task
+  
+  LABEL_ATTRIBUTES = "Attributes"
+  LABEL_INPUT_PORTS = "Input Ports"
+  LABEL_OUTPUT_PORTS = "Output Ports"
 
   def initialize(parent=nil)
     super
@@ -23,7 +27,16 @@ class TaskInspector < Qt::Widget
     @window.treeView.setModel(@tree_model)
     @window.treeView.setAlternatingRowColors(true)
     @window.treeView.setSortingEnabled(true)
+    #@window.treeView.setContextMenuPolicy(Qt::CustomContextMenu)
+    @window.treeView.setContextMenuPolicy(Qt::DefaultContextMenu)
     
+    @signal_mapper = nil
+
+    # Information about the recent displayed context menu actions.
+    # key: widget name
+    # value: ActionInfo
+    @widget_action_hash = Hash.new 
+        
     @hash = Hash.new
     @reader_hash = Hash.new
     @tasks = Hash.new
@@ -33,6 +46,7 @@ class TaskInspector < Qt::Widget
     connect(@window.treeView, SIGNAL('doubleClicked(const QModelIndex&)'), self, SLOT('itemChangeRequest(const QModelIndex&)'))
     connect(@window.setPropButton, SIGNAL('clicked()'),self,SLOT('set_task_attributes()'))
     connect(@window.cancelPropButton, SIGNAL('clicked()'),self,SLOT('cancel_set_task_attributes()'))
+    #connect(@window.treeView, SIGNAL('customContextMenuRequested(const QPoint&)'), self, SLOT('contextMenuRequest(const QPoint&)'))
     @timer = Qt::Timer.new(self)
     connect(@timer,SIGNAL('timeout()'),self,SLOT('refresh()'))
   end
@@ -70,7 +84,6 @@ class TaskInspector < Qt::Widget
   end
 
   def update_item(object, object_name, parent_item,read_obj=false,row=0,name_hint=nil)
-      #puts "Updating #{object_name} of class type #{object.class}"
       @modeler.update_sub_tree(object, object_name, parent_item, read_obj)
   end
 
@@ -121,7 +134,7 @@ class TaskInspector < Qt::Widget
           #setting attributes unless user changes them right now (GUI)
           unless @read_obj
               key = task.name + "__ATTRIBUTES__"
-              item3, item4 = get_item(key,"Attributes", item)
+              item3, item4 = get_item(key, LABEL_ATTRIBUTES, item)
 
               task.each_property do |attribute|
                 key = task.name+"_"+ attribute.name
@@ -150,8 +163,8 @@ class TaskInspector < Qt::Widget
           #setting ports
           key = task.name + "__IPORTS__"
           key2 = task.name + "__OPORTS__"
-          item3, item4 = get_item(key,"Input Ports", item)
-          item5, item6 = get_item(key2,"Output Ports", item)
+          item3, item4 = get_item(key, LABEL_INPUT_PORTS, item)
+          item5, item6 = get_item(key2, LABEL_OUTPUT_PORTS, item)
 
           task.each_port do |port|
             key = task.name+"_"+ port.name
@@ -172,6 +185,13 @@ class TaskInspector < Qt::Widget
           end
           @modeler.set_all_children_editable(item3, false) # input ports
           @modeler.set_all_children_editable(item5, false) # output ports
+          
+          @modeler.get_direct_children(item5).each do |child,child2|
+            tooltip = "Right-click for a list of available display widgets for this data type."
+            child.set_tool_tip(tooltip)
+            child2.set_tool_tip(tooltip)
+          end
+          
         rescue Orocos::CORBA::ComError
           pair.task = nil
         end
@@ -189,7 +209,7 @@ class TaskInspector < Qt::Widget
         task = pair.task
         
         key = task.name + "__ATTRIBUTES__"
-        item3, item4 = get_item(key,"Attributes", item)
+        item3, item4 = get_item(key, LABEL_ATTRIBUTES, item)
         task.each_property do |attribute|
             Vizkit.debug("Changing attribute '#{attribute.name}', old value: '#{attribute.read}'")
             sample = attribute.new_sample.zero!
@@ -216,9 +236,94 @@ class TaskInspector < Qt::Widget
         @read_obj = false;
         @window.buttonFrame.hide
     end
+    
+    def contextMenuEvent(event)
+
+        pos = event.pos
+        model_index = @window.treeView.index_at(Qt::Point.new(pos.x,pos.y-31)) # TODO Hard coded offset! Only works for mouse click. Better: use correct coordinate system conversion.
+        item = @tree_model.item_from_index(model_index)
+        if item && item.parent && item.parent.text.eql?(LABEL_OUTPUT_PORTS)
+            # Clicked on an output port item in the view. Set up context menu.
+            menu = Qt::Menu.new(self)
+            
+            task_name = item.parent.parent.text
+            
+            # Assign port name and type correctly depending on the clicked column.
+            port_name = "";
+            port_type = "";
+            if item.column == 0
+                port_name = item.text
+                port_type = item.parent.child(item.row,1).text
+            elsif item.column == 1
+                port_name = item.parent.child(item.row, 0).text
+                port_type = item.text
+            end
+            
+            loader = Vizkit.default_loader
+            
+            # Determine applicable widgets for the output port
+            widgets = []
+            widgets = loader.widget_names_for_value(port_type)
+            
+            # Always offer struct viewer as widget if not yet present.
+            if not widgets.include? "StructViewer"
+                widgets << "StructViewer"
+            end
+            
+            # Give action handler information about the caller 
+            # -- i.e. the specific widget entry in the menu -- 
+            # in order to display the correct widget.
+            @signal_mapper = Qt::SignalMapper.new(self)
+            connect(@signal_mapper, SIGNAL('mapped(const QString&)'), self, SLOT('clicked_action(const QString&)'))
+            
+            widgets.each do |w|
+                a = Qt::Action.new(w, self)
+                menu.add_action(a)
+                connect(a, SIGNAL('triggered()'), @signal_mapper, SLOT('map()'));
+
+                # Saving information for action handler
+                action_info = ActionInfo.new
+                action_info[ActionInfo::WIDGET_NAME] = w
+                action_info[ActionInfo::TASK_NAME] = task_name
+                action_info[ActionInfo::PORT_NAME] = port_name
+                action_info[ActionInfo::PORT_TYPE] = port_type
+                @widget_action_hash[w] = action_info;
+                
+                @signal_mapper.set_mapping(a, w);
+            end
+         
+            # Display context menu at cursor position.
+            menu.exec(event.global_pos)
+        end
+    end
+    
+    # Action handler for context menu clicks. 
+    def clicked_action(widget_name)
+        info = @widget_action_hash[widget_name]
+        Vizkit.info "Triggered widget '#{info[ActionInfo::WIDGET_NAME]}'"
+        
+        # Set up and display widget
+        widget = Vizkit.default_loader.create_widget(info[ActionInfo::WIDGET_NAME])
+        task_context = @tasks[info[ActionInfo::TASK_NAME]][1]
+        port = task_context.port(info[ActionInfo::PORT_NAME])
+        port.connect_to(widget)
+        widget.show
+        
+        @widget_action_hash.clear
+    end
   
 end
 
+class ActionInfo < Array
+    WIDGET_NAME = 0
+    TASK_NAME = 1
+    PORT_NAME = 2
+    PORT_TYPE = 3
+
+    def initialize
+        super(4)
+    end
+end
 
 Vizkit::UiLoader.register_ruby_widget("task_inspector",TaskInspector.method(:new))
 Vizkit::UiLoader.register_widget_for("task_inspector",Orocos::TaskContext)
