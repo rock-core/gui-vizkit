@@ -153,7 +153,7 @@ module Vizkit
                   item2.set_text val.class.name
                   item.set_text "[#{row}]"
                   if read_obj
-                    object[row] = update_item(val,item,read_obj,row)
+                    object[row] = add_object(val,item,read_obj,row)
                   else
                     add_object(val,item,read_obj,row)
                   end
