@@ -27,7 +27,6 @@ class TaskInspector < Qt::Widget
     @window.treeView.setModel(@tree_model)
     @window.treeView.setAlternatingRowColors(true)
     @window.treeView.setSortingEnabled(true)
-    #@window.treeView.setContextMenuPolicy(Qt::CustomContextMenu)
     @window.treeView.setContextMenuPolicy(Qt::DefaultContextMenu)
     
     @signal_mapper = nil
@@ -46,7 +45,6 @@ class TaskInspector < Qt::Widget
     connect(@window.treeView, SIGNAL('doubleClicked(const QModelIndex&)'), self, SLOT('itemChangeRequest(const QModelIndex&)'))
     connect(@window.setPropButton, SIGNAL('clicked()'),self,SLOT('set_task_attributes()'))
     connect(@window.cancelPropButton, SIGNAL('clicked()'),self,SLOT('cancel_set_task_attributes()'))
-    #connect(@window.treeView, SIGNAL('customContextMenuRequested(const QPoint&)'), self, SLOT('contextMenuRequest(const QPoint&)'))
     @timer = Qt::Timer.new(self)
     connect(@timer,SIGNAL('timeout()'),self,SLOT('refresh()'))
   end
