@@ -27,7 +27,7 @@ module Vizkit
         end
         
         # Updates a sub tree for an existing parent item. Non-existent 
-        # children will be added to parent_item. See generate_tree.
+        # children will be added to parent_item.
         def update_sub_tree(sample, item_name, parent_item, read_obj=false)
             Vizkit.debug("Updating subtree for #{item_name}, sample.class = #{sample.class}")
             # Try to find item in model. Is there already a matching 
