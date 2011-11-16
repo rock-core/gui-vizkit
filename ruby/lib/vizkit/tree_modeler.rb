@@ -172,8 +172,15 @@ module Vizkit
               end
             else
               Vizkit.debug("add_object->else")
-              item = parent_item.parent.child(parent_item.row,parent_item.column)
-              item2 = parent_item.parent.child(parent_item.row,parent_item.column+1)
+              
+              # Handle atomic types properly if they do not have grandparents
+              if parent_item.parent
+                item = parent_item # == parent_item.parent.child(parent_item.row,parent_item.column)
+                item2 = parent_item.parent.child(parent_item.row,parent_item.column+1)
+              else
+                item, item2 = child_items(parent_item,row)
+                item.set_text parent_item.text
+              end
 
               if object
                 if read_obj
