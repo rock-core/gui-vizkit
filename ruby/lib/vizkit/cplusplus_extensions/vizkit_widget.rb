@@ -209,7 +209,11 @@ module VizkitPluginLoaderExtension
             end
 
             if !plugin.getAvailablePlugins.include?(plugin_name)
-                Kernel.raise "library #{lib_name} does not have any vizkit plugin called #{plugin_name}"
+                if plugin.getAvailablePlugins.include?("#{plugin_name}Visualization")
+                    plugin_name = "#{plugin_name}Visualization"
+                else
+                    Kernel.raise "library #{lib_name} does not have any vizkit plugin called #{plugin_name}, available plugins are: #{plugin.getAvailablePlugins.join(", ")}"
+                end
             end
             plugin = plugin.createPlugin(plugin_name)
             addPlugin(plugin)
