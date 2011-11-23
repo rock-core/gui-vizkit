@@ -1,4 +1,4 @@
-load '../../action_info.rb'
+require 'vizkit/action_info'
 
 class LogControl
 

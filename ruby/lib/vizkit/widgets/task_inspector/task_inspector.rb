@@ -1,8 +1,10 @@
 #!/usr/bin/env ruby
 
 require 'vizkit'
+require 'vizkit/action_info'
 
-load '../../action_info.rb'
+require File.join(File.dirname(__FILE__), 'task_inspector_window.ui.rb')
+require 'vizkit/tree_modeler'
 
 class TaskInspector < Qt::Widget
 
@@ -17,8 +19,6 @@ class TaskInspector < Qt::Widget
 
   def initialize(parent=nil)
     super
-    load File.join(File.dirname(__FILE__), 'task_inspector_window.ui.rb')
-    load File.join(File.dirname(__FILE__), '../..', 'tree_modeler.rb')
     @window = Ui_Form.new
     @window.setupUi(self)
     @window.buttonFrame.hide
