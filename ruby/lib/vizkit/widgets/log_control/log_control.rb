@@ -86,6 +86,11 @@ class LogControl
           @mapping[item2] = port
           @mapping[item3] = port
           item3.setText(port.type_name.to_s)
+          
+          # Set tooltip informing about context menu
+          tooltip = "Right-click for a list of available display widgets for this data type."
+          item2.set_tool_tip(tooltip)
+          item3.set_tool_tip(tooltip)
 
           item4, item5 = get_item(key,"Samples", item2)
           item5.setText(port.number_of_samples.to_s)
