@@ -2,6 +2,8 @@
 
 require 'vizkit'
 
+load '../../action_info.rb'
+
 class TaskInspector < Qt::Widget
 
   slots 'refresh()','set_task_attributes()','cancel_set_task_attributes()','itemChangeRequest(const QModelIndex&)','contextMenuRequest(const QPoint&)','clicked_action(const QString&)'
@@ -310,17 +312,6 @@ class TaskInspector < Qt::Widget
         @widget_action_hash.clear
     end
   
-end
-
-class ActionInfo < Array
-    WIDGET_NAME = 0
-    TASK_NAME = 1
-    PORT_NAME = 2
-    PORT_TYPE = 3
-
-    def initialize
-        super(4)
-    end
 end
 
 Vizkit::UiLoader.register_ruby_widget("task_inspector",TaskInspector.method(:new))
