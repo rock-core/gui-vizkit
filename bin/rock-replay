@@ -5,6 +5,9 @@ require 'optparse'
 
 @search_filter = Hash.new
 @show_and_exit = false
+replay_into = nil
+replay_connections = []
+replay_configuration = nil
 parser = OptionParser.new do |opt|
     opt.banner = <<-EOT
 
@@ -38,6 +41,20 @@ Examples:
     opt.on('-s', '--show', 'displays all replayed tasks on the consol and exits.') do
         @show_and_exit = true
     end
+    opt.on('--into TASK', String, 'the task model name of a task in which we should replay into') do |task_model|
+        replay_into = task_model
+    end
+    opt.on('--config CONF', String, 'if --into is given, apply the given configuration to the started task. CONF is FILE[:section1,section2] or DIR[:section1,section2]') do |confspec|
+        path, sections = confspec.split(':')
+        sections = (sections || '').split(',')
+        if sections.empty?
+            sections << "default"
+        end
+        replay_configuration = [path, sections]
+    end
+    opt.on('--connect OUTPUT:INPUT', String, 'if --into is given, this specifies a connection that should be made to the target task. OUTPUT is a stream name while INPUT is an input port on the task') do |conn|
+        replay_connections << conn.split(':')
+    end
     opt.on('--debug') do
         debug = true
     end
@@ -51,13 +68,10 @@ if remaining.empty?
 end
 
 log = Orocos::Log::Replay.open(remaining)
-
 #select only ports which are not filtered out
-log.track(true,@search_filter)
+log.track(true, @search_filter)
 
-if @show_and_exit
-    pp log
-else
+def replay(log)
     unless log.replay?
         puts "No ports are selected!"; 
         exit 0
@@ -65,5 +79,37 @@ else
     puts "Aligning streams. This can take a long time"
     Vizkit.control log, :show_marker=>true, :marker_type=>"/logger/Marker"
     Vizkit.exec
+end
+
+
+if @show_and_exit
+    pp log
+elsif replay_into
+    Orocos.initialize
+    Orocos.run replay_into => "replay#{Process.pid}" do
+        task = Orocos::TaskContext.get "replay#{Process.pid}"
+
+        if replay_configuration
+            Orocos.apply_conf(task, *replay_configuration)
+        end
+
+        replay_connections.each do |from, to|
+            input_task, input_port = from.split('.')
+            log.send(input_task).port(input_port).connect_to(task.port(to), :type => :buffer, :size => 100)
+        end
+
+        if task.rtt_state == :PRE_OPERATIONAL
+            task.configure
+        end
+
+        if task.rtt_state == :STOPPED
+            task.start
+        end
+        Vizkit.display(task)
+        
+        replay(log)
+    end
+else
+    replay(log)
 end
 
