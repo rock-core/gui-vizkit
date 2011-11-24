@@ -18,6 +18,7 @@ module Vizkit
 end
 
 module Vizkit
+
   Qt::Application.new(ARGV)
   @@auto_reconnect = 2000       #timer interval after which
                                 #ports are reconnected if they are no longer alive
@@ -27,6 +28,13 @@ module Vizkit
 
   def self.default_loader
     @default_loader
+  end
+
+  #TODO 
+  #this should be handled by uiloader
+  def self.struct_viewer
+    @struct_viewer ||= default_loader.StructViewer
+    @struct_viewer
   end
 
   def self.control value, options=Hash.new,&block
@@ -58,20 +66,16 @@ module Vizkit
       return result
     else 
       #if value is not a array 
+      local_options,options = Kernel::filter_options(options,{:widget => nil})
       case value
       when Orocos::OutputPort, Orocos::Log::OutputPort
-        widget = @default_loader.widget_for(value)
-        unless widget 
-          @struct_viewer ||= @default_loader.StructViewer
-          Vizkit.connect(@struct_viewer) unless @struct_viewer.visible
-          widget = @struct_viewer
-        end
-        #widget.setAttribute(Qt::WA_QuitOnClose, false)
+        widget = widget_for(value,local_options)
+        widget.config(value) if widget.respond_to? :config
         value.connect_to widget,options ,&block
         widget.show
         return widget
       when Orocos::TaskContext
-        widget = @default_loader.widget_for(value)
+        widget = widget_for(value,local_options)
         raise "Cannot handle #{value.class}" unless widget
         widget.config(value)
         widget.show
