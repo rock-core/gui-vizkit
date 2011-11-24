@@ -437,7 +437,13 @@ module Vizkit
       disconnect if @widget && @widget.is_a?(Qt::Widget) && !@widget.visible
       while(sample = reader.read_new)
         sample = @block.call(sample,port_full_name) if @block
-        @callback_fct.call sample,port_full_name if @callback_fct && sample
+        begin
+          @callback_fct.call sample,port_full_name if @callback_fct && sample
+        rescue Exception => e
+          puts "Cannot call callback_fct:"
+          pp @callback_fct
+          puts e
+        end
         @last_sample = sample
       end
     end
