@@ -83,6 +83,26 @@ module Vizkit
     nil
   end
 
+  #TODO this should be handled by 
+  #the ui loader 
+  def self.widget_for(value,options)
+    widget = options[:widget] ? options[:widget] : @default_loader.widget_for(value)
+    widget = if widget.is_a? String
+               if widget == "StructViewer"
+                 struct_viewer
+               else
+                 @default_loader.create_widget(widget)
+               end
+             else
+               widget
+             end
+    unless widget 
+      Vizkit.connect(struct_viewer) unless struct_viewer.visible
+      widget = struct_viewer
+    end
+    widget
+  end
+
   def self.connections
     @connections
   end
