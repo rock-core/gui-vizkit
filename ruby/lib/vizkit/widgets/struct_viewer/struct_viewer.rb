@@ -1,12 +1,12 @@
 #!/usr/bin/env ruby
 require 'vizkit'
+require File.join(File.dirname(__FILE__), '../..', 'tree_modeler.rb')
 
 class StructViewer < Qt::Widget
 
   def initialize(parent=nil)
     super
     load File.join(File.dirname(__FILE__),'struct_viewer_window.ui.rb')
-    load File.join(File.dirname(__FILE__), '../..', 'tree_modeler.rb')
     @window = Ui_Form.new
     @window.setup_ui(self)
     @brush = Qt::Brush.new(Qt::Color.new(200,200,200))
@@ -23,6 +23,11 @@ class StructViewer < Qt::Widget
      @window.treeView.resizeColumnToContents(0)
   end
 
+  #add a default value 
+  def config(port)
+      #add place holder
+     @modeler.add_parent_item(port.new_sample, "#{port.task.name}.#{port.name}", @tree_model.invisible_root_item)
+  end
 end
 
 Vizkit::UiLoader.register_ruby_widget("StructViewer",StructViewer.method(:new))
