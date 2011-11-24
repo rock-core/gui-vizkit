@@ -1,14 +1,13 @@
 #!/usr/bin/env ruby
 
 require 'vizkit'
-require 'vizkit/action_info'
 
 require File.join(File.dirname(__FILE__), 'task_inspector_window.ui.rb')
 require 'vizkit/tree_modeler'
 
 class TaskInspector < Qt::Widget
 
-  slots 'refresh()','set_task_attributes()','cancel_set_task_attributes()','itemChangeRequest(const QModelIndex&)','contextMenuRequest(const QPoint&)','clicked_action(const QString&)'
+  slots 'context_menu(QPoint)','refresh()','set_task_attributes()','cancel_set_task_attributes()','itemChangeRequest(const QModelIndex&)','contextMenuRequest(const QPoint&)','clicked_action(const QString&)'
   attr_reader :multi  #widget supports displaying of multi tasks
   PropertyConfig = Struct.new(:name, :attribute, :type)
   DataPair = Struct.new :name, :task
@@ -19,6 +18,7 @@ class TaskInspector < Qt::Widget
 
   def initialize(parent=nil)
     super
+
     @window = Ui_Form.new
     @window.setupUi(self)
     @window.buttonFrame.hide
@@ -31,19 +31,14 @@ class TaskInspector < Qt::Widget
     @window.treeView.setSortingEnabled(true)
     @window.treeView.setContextMenuPolicy(Qt::DefaultContextMenu)
     
-    @signal_mapper = nil
-
-    # Information about the recent displayed context menu actions.
-    # key: widget name
-    # value: ActionInfo
-    @widget_action_hash = Hash.new 
-        
+    @widget_hash = Hash.new
     @hash = Hash.new
     @reader_hash = Hash.new
     @tasks = Hash.new
 
     @multi = true
     @read_obj = false
+
     connect(@window.treeView, SIGNAL('doubleClicked(const QModelIndex&)'), self, SLOT('itemChangeRequest(const QModelIndex&)'))
     connect(@window.setPropButton, SIGNAL('clicked()'),self,SLOT('set_task_attributes()'))
     connect(@window.cancelPropButton, SIGNAL('clicked()'),self,SLOT('cancel_set_task_attributes()'))
@@ -122,6 +117,7 @@ class TaskInspector < Qt::Widget
         end
       end
 
+      #TODO this should be moved to treemodeler as well
       item, item2 = get_item(pair.name, pair.name, @root_item)
       if !pair.task
         item2.setText("not reachable")
@@ -236,82 +232,41 @@ class TaskInspector < Qt::Widget
         @read_obj = false;
         @window.buttonFrame.hide
     end
-    
+
+    def item_to_names(item)
+      task_name = item.parent.parent.text
+      # Assign port name and type correctly depending on the clicked column.
+      port_name,type_name  = if item.column == 0
+                              [item.text, item.parent.child(item.row,1).text]
+                            elsif item.column == 1
+                              [item.parent.child(item.row, 0).text,item.text]
+                            else
+                              raise 'Cannot handle TreeViews with more than two columns!'
+                            end
+      [task_name,port_name,type_name]
+    end
+
     def contextMenuEvent(event)
-
-        pos = event.pos
-        model_index = @window.treeView.index_at(Qt::Point.new(pos.x,pos.y-31)) # TODO Hard coded offset! Only works for mouse click. Better: use correct coordinate system conversion.
-        item = @tree_model.item_from_index(model_index)
-        if item && item.parent && item.parent.text.eql?(LABEL_OUTPUT_PORTS)
-            # Clicked on an output port item in the view. Set up context menu.
-            menu = Qt::Menu.new(self)
-            
-            task_name = item.parent.parent.text
-            
-            # Assign port name and type correctly depending on the clicked column.
-            port_name = "";
-            port_type = "";
-            if item.column == 0
-                port_name = item.text
-                port_type = item.parent.child(item.row,1).text
-            elsif item.column == 1
-                port_name = item.parent.child(item.row, 0).text
-                port_type = item.text
-            end
-            
-            loader = Vizkit.default_loader
-            
-            # Determine applicable widgets for the output port
-            widgets = []
-            widgets = loader.widget_names_for_value(port_type)
-            
-            # Always offer struct viewer as widget if not yet present.
-            if not widgets.include? "StructViewer"
-                widgets << "StructViewer"
-            end
-            
-            # Give action handler information about the caller 
-            # -- i.e. the specific widget entry in the menu -- 
-            # in order to display the correct widget.
-            @signal_mapper = Qt::SignalMapper.new(self)
-            connect(@signal_mapper, SIGNAL('mapped(const QString&)'), self, SLOT('clicked_action(const QString&)'))
-            
-            widgets.each do |w|
-                a = Qt::Action.new(w, self)
-                menu.add_action(a)
-                connect(a, SIGNAL('triggered()'), @signal_mapper, SLOT('map()'));
-
-                # Saving information for action handler
-                action_info = ActionInfo.new
-                action_info[ActionInfo::WIDGET_NAME] = w
-                action_info[ActionInfo::TASK_NAME] = task_name
-                action_info[ActionInfo::PORT_NAME] = port_name
-                action_info[ActionInfo::PORT_TYPE] = port_type
-                @widget_action_hash[w] = action_info;
-                
-                @signal_mapper.set_mapping(a, w);
-            end
-         
-            # Display context menu at cursor position.
-            menu.exec(event.global_pos)
+      pos = @window.treeView.mapFromParent(event.pos)
+      pos.y -= @window.treeView.header.height
+      item = @tree_model.item_from_index(@window.treeView.index_at(pos))
+      if item && item.parent && item.parent.text.eql?(LABEL_OUTPUT_PORTS)
+        task_name,port_name,type_name = item_to_names(item)
+        widget_name = Vizkit::ContextMenu.widget_for(type_name,@window.treeView,pos)
+        if widget_name
+          port = @tasks[task_name][1].port(port_name)
+          widget = @widget_hash[port]
+          if widget
+            Vizkit.connect(widget)
+            widget.show
+          else
+            widget = Vizkit.display port, :widget => widget_name
+            @widget_hash[port]=widget
+            widget.setAttribute(Qt::WA_QuitOnClose, false) if widget
+          end
         end
+      end
     end
-    
-    # Action handler for context menu clicks. 
-    def clicked_action(widget_name)
-        info = @widget_action_hash[widget_name]
-        Vizkit.info "Triggered widget '#{info[ActionInfo::WIDGET_NAME]}'"
-        
-        # Set up and display widget
-        widget = Vizkit.default_loader.create_widget(info[ActionInfo::WIDGET_NAME])
-        task_context = @tasks[info[ActionInfo::TASK_NAME]][1]
-        port = task_context.port(info[ActionInfo::PORT_NAME])
-        port.connect_to(widget)
-        widget.show
-        
-        @widget_action_hash.clear
-    end
-  
 end
 
 Vizkit::UiLoader.register_ruby_widget("task_inspector",TaskInspector.method(:new))
