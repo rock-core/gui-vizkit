@@ -1,9 +1,6 @@
-require 'vizkit/action_info'
-
 class LogControl
-
   module Functions
-    
+
     def control(replay,options=Hash.new)
       raise "Cannot control #{replay.class}" if !replay.instance_of?(Orocos::Log::Replay)
       
@@ -12,18 +9,11 @@ class LogControl
       @slider_pressed = false
       @user_speed = @log_replay.speed
       @show_marker = false 
-      @signal_mapper = nil
       
-      # Information about the recent displayed context menu actions.
-      # key: widget name
-      # value: ActionInfo
-      @widget_action_hash = Hash.new 
-
       dir = File.dirname(__FILE__)
       @pause_icon =  Qt::Icon.new(File.join(dir,'pause.png'))
       @play_icon = Qt::Icon.new(File.join(dir,'play.png'))
      # setFixedSize(253,146)
-      #
       setAttribute(Qt::WA_QuitOnClose, true);
 
       connect(slider, SIGNAL('valueChanged(int)'), lcd_index, SLOT('display(int)'))
@@ -35,7 +25,7 @@ class LogControl
       bstop.connect(SIGNAL('clicked()'),self,:bstop_clicked)
       bplay.connect(SIGNAL('clicked()'),self,:bplay_clicked)
       treeView.connect(SIGNAL('doubleClicked(const QModelIndex&)'),self,:tree_double_clicked)
-      treeView.connect(SIGNAL('customContextMenuRequested(const QPoint&)'),self,:contextMenuHandler)
+      treeView.connect(SIGNAL('customContextMenuRequested(const QPoint&)'),self,:context_menu)
       slider.connect(SIGNAL(:sliderPressed)) {@slider_pressed = true;}
       
       if(options.has_key?(:show_marker))
@@ -44,7 +34,6 @@ class LogControl
              end
       end
      
-
       if(options.has_key?(:marker_type) and @show_marker == true)
           @log_replay.add_marker_stream_by_type(options[:marker_type])
           add_marker_from_replay if not @log_replay.markers.empty?
@@ -69,11 +58,7 @@ class LogControl
       
       @brush = Qt::Brush.new(Qt::Color.new(200,200,200))
       @widget_hash = Hash.new
-      @mapping = Hash.new
-     
-		 	#if not @log_replay.tasks
-			#	STDERR.puts "Cannot handle empty Task"
-			#else
+
         @log_replay.tasks.each do |task|
         next if !task.used?
         item, item2 = get_item(task.name,task.name, @root_item)
@@ -83,8 +68,6 @@ class LogControl
           next unless port.used?
           key = task.name+"_"+ port.name
           item2, item3 = get_item(key,port.name, item)
-          @mapping[item2] = port
-          @mapping[item3] = port
           item3.setText(port.type_name.to_s)
           
           # Set tooltip informing about context menu
@@ -158,16 +141,25 @@ class LogControl
 
     def tree_double_clicked(model_index)
       item = @tree_model.itemFromIndex(model_index)
-      return unless @mapping.has_key? item
-      port = @mapping[item]
+      return unless item && item.parent && !item.parent.parent
+
+      task_name,port_name,type_name = item_to_names(item)
+      port = @log_replay.task(task_name).port(port_name)
       widget = @widget_hash[port]
       if widget
         Vizkit.connect(widget)
         widget.show
       else
-        widget = Vizkit.display port
-        widget.setAttribute(Qt::WA_QuitOnClose, false) if widget
-        @widget_hash[port]=widget
+        #check if there is a default widget 
+        begin 
+          widget = Vizkit.display port
+          widget.setAttribute(Qt::WA_QuitOnClose, false) if widget
+          @widget_hash[port]=widget
+        rescue RuntimeError 
+          pos = treeView.mapFromGlobal(Qt::Cursor::pos())
+          pos.y -= treeView.header.size.height
+          context_menu(pos)
+        end
       end
     end
     
@@ -300,91 +292,34 @@ class LogControl
         auto_replay
       end
     end
-  
-  def contextMenuHandler(pos)
-    item = @tree_model.item_from_index(treeView.index_at(pos))
-    if item && item.parent && !item.parent.parent
-        # Clicked on an output port item in the view. Set up context menu.
-        menu = Qt::Menu.new(treeView)
-        #debugger
-        
-        task_name = item.parent.text
-        
-        # Assign port name and type correctly depending on the clicked column.
-        port_name = "";
-        port_type = "";
-        if item.column == 0
-            port_name = item.text
-            port_type = item.parent.child(item.row,1).text
-        elsif item.column == 1
-            port_name = item.parent.child(item.row, 0).text
-            port_type = item.text
-        end
-        
-        loader = Vizkit.default_loader
-        
-        # Determine applicable widgets for the output port
-        widgets = []
-        widgets = loader.widget_names_for_value(port_type)
-        
-        # Always offer struct viewer as widget if not yet present.
-        if not widgets.include? "StructViewer"
-            widgets << "StructViewer"
-        end
 
-        # Give action handler information about the caller 
-        # -- i.e. the specific widget entry in the menu -- 
-        # in order to display the correct widget.
-        @signal_mapper = Qt::SignalMapper.new(self)
-        @signal_mapper.connect(SIGNAL('mapped(const QString&)'), self, :clicked_action)
-        
-        widgets.each do |w|
-            a = Qt::Action.new(w, self)
-            menu.add_action(a)
-            connect(a, SIGNAL('triggered()'), @signal_mapper, SLOT('map()'));
-
-            # Saving information for action handler
-            action_info = ActionInfo.new
-            action_info[ActionInfo::WIDGET_NAME] = w
-            action_info[ActionInfo::TASK_NAME] = task_name
-            action_info[ActionInfo::PORT_NAME] = port_name
-            action_info[ActionInfo::PORT_TYPE] = port_type
-            @widget_action_hash[w] = action_info;
-            
-            @signal_mapper.set_mapping(a, w);
-        end
-        
-#        item = @tree_model.item_from_index(treeView.index_at(pos))
-        
-        # Display context menu at cursor position.
-        menu.exec(treeView.viewport.map_to_global(pos))
+    def item_to_names(item)
+      task_name = item.parent.text
+      # Assign port name and type correctly depending on the clicked column.
+      port_name,type_name  = if item.column == 0
+                              [item.text, item.parent.child(item.row,1).text]
+                            elsif item.column == 1
+                              [item.parent.child(item.row, 0).text,item.text]
+                            else
+                              raise 'Cannot handle TreeViews with more than two columns!'
+                            end
+      [task_name,port_name,type_name]
     end
-  end
-  
-      # Action handler for context menu clicks. 
-    def clicked_action(widget_name)
-        info = @widget_action_hash[widget_name]
-        #Vizkit.info "Triggered widget '#{info[ActionInfo::WIDGET_NAME]}'"
 
-        # Set up and display widget
-        widget = Vizkit.default_loader.create_widget(info[ActionInfo::WIDGET_NAME])
+    def context_menu(pos)
+      item = @tree_model.item_from_index(treeView.index_at(pos))
+      if item && item.parent && !item.parent.parent
+        task_name,port_name,type_name = item_to_names(item)
 
-        task_context = nil;
-        @log_replay.tasks.each do |task|
-            if task.name.eql? info[ActionInfo::TASK_NAME]
-                task_context = task
-            end
+        widget_name = Vizkit::ContextMenu.widget_for(type_name,treeView,pos)
+        if widget_name
+          port = @log_replay.task(task_name).port(port_name)
+          widget = Vizkit.display port, :widget => widget_name
+          @widget_hash[port]=widget
+          widget.setAttribute(Qt::WA_QuitOnClose, false) if widget
         end
-        if !task_context
-            raise "Problem getting task context for logged port!"
-        end
-        port = task_context.port(info[ActionInfo::PORT_NAME])
-        port.connect_to(widget)
-        widget.show
-        
-        @widget_action_hash.clear
+      end
     end
-  
   end # module Functions
 
   def self.create_widget(parent = nil)
@@ -404,10 +339,8 @@ class LogControl
         form.refresh
     end
 
-
-
     #workaround
-    #it is not possible to define virtual functions for qidgets which are loaded
+    #it is not possible to define virtual functions for qwidgets which are loaded
     #via UiLoader (qtruby1.8)
     #stop replay if all windows are closed
     $qApp.connect(SIGNAL(:lastWindowClosed)) do 

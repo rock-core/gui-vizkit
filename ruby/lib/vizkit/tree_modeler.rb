@@ -5,6 +5,26 @@ require 'utilrb/logger'
 module Vizkit
 
     extend Logger::Root('tree_modeler.rb', Logger::INFO)
+    class ContextMenu
+        def self.widget_for(type_name,parent,pos)
+            menu = Qt::Menu.new(parent)
+
+            # Determine applicable widgets for the output port
+            widgets = Vizkit.default_loader.widget_names_for_value(type_name)
+
+            #TODO this should be handled by the uiloader at some point
+            # Always offer struct viewer as widget if not yet present.
+            widgets << "StructViewer" unless widgets.include? "StructViewer"
+
+            widget_action_hash = Hash.new
+            widgets.each do |w|
+                menu.add_action(Qt::Action.new(w, parent))
+            end
+            # Display context menu at cursor position.
+            action = menu.exec(parent.viewport.map_to_global(pos))
+            action.text if action
+        end
+    end
     
     # The TreeModeler class' purpose is to provide useful functionality for
     # working with Qt's StandardItemModel (handled as TreeModel). The main focus
@@ -12,10 +32,8 @@ module Vizkit
     # with possibly multiple layers of data. 
     # Multilayer recognition only works with Typelib::CompoundType.
     class TreeModeler
-
-        MAX_ARRAY_FIELDS = 30
-
         def initialize
+            @max_array_fields = 30 
         end
         
         # Generates empty tree model.
@@ -25,10 +43,8 @@ module Vizkit
             model.set_horizontal_header_labels(["Property","Value"])
             model
         end
-        
-        # Updates a sub tree for an existing parent item. Non-existent 
-        # children will be added to parent_item.
-        def update_sub_tree(sample, item_name, parent_item, read_obj=false)
+
+        def add_parent_item(sample, item_name, parent_item)
             Vizkit.debug("Updating subtree for #{item_name}, sample.class = #{sample.class}")
             # Try to find item in model. Is there already a matching 
             # child item for sample in parent_item?
@@ -54,7 +70,13 @@ module Vizkit
                 parent_item.append_row(item)
                 parent_item.set_child(item.row,1,item2)
             end
-            
+            item 
+        end
+        
+        # Updates a sub tree for an existing parent item. Non-existent 
+        # children will be added to parent_item.
+        def update_sub_tree(sample, item_name, parent_item, read_obj=false)
+            item = add_parent_item(sample,item_name,parent_item)
             # Update sub tree with new sample.
             add_object(sample, item, read_obj)
         end
@@ -109,6 +131,7 @@ module Vizkit
             row = 0;
             while row < parent_item.row_count
                 item, item2 = child_items(parent_item, row)
+                item.setEditable(false)
                 if item.has_children
                     item2.set_editable(false)
                     set_all_children_editable(item, editable)
@@ -143,7 +166,7 @@ module Vizkit
 
             elsif object.is_a?(Array) || (object.kind_of?(Typelib::Type) && object.respond_to?(:each))
               Vizkit.debug("add_object->Array||Typelib+each")
-              if object.size > MAX_ARRAY_FIELDS
+              if object.size > @max_array_fields
                 item2 = parent_item.parent.child(parent_item.row,parent_item.column+1)
                 item2.set_text "#{object.size} fields ..."
               elsif object.size > 0
@@ -226,7 +249,6 @@ module Vizkit
             end
         object
         end
-
     end
 end
 
