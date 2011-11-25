@@ -1,3 +1,5 @@
+require File.join(File.dirname(__FILE__), '../..', 'tree_modeler.rb')
+
 class LogControl
   module Functions
 
@@ -8,185 +10,43 @@ class LogControl
       @replay_on = false 
       @slider_pressed = false
       @user_speed = @log_replay.speed
-      @show_marker = false 
       
       dir = File.dirname(__FILE__)
       @pause_icon =  Qt::Icon.new(File.join(dir,'pause.png'))
       @play_icon = Qt::Icon.new(File.join(dir,'play.png'))
-     # setFixedSize(253,146)
       setAttribute(Qt::WA_QuitOnClose, true);
 
       connect(slider, SIGNAL('valueChanged(int)'), lcd_index, SLOT('display(int)'))
       slider.connect(SIGNAL('sliderReleased()'),self,:slider_released)
       bnext.connect(SIGNAL('clicked()'),self,:bnext_clicked)
-      #bnext.connect(SIGNAL('clicked()'),self,:bnextmarker_clicked)
       bback.connect(SIGNAL('clicked()'),self,:bback_clicked)
-      #bback.connect(SIGNAL('clicked()'),self,:bprevmarker_clicked)
       bstop.connect(SIGNAL('clicked()'),self,:bstop_clicked)
       bplay.connect(SIGNAL('clicked()'),self,:bplay_clicked)
-      treeView.connect(SIGNAL('doubleClicked(const QModelIndex&)'),self,:tree_double_clicked)
-      treeView.connect(SIGNAL('customContextMenuRequested(const QPoint&)'),self,:context_menu)
       slider.connect(SIGNAL(:sliderPressed)) {@slider_pressed = true;}
       
-      if(options.has_key?(:show_marker))
-             if options[:show_marker] == true
-                 @show_marker = true
-             end
-      end
-     
-      if(options.has_key?(:marker_type) and @show_marker == true)
-          @log_replay.add_marker_stream_by_type(options[:marker_type])
-          add_marker_from_replay if not @log_replay.markers.empty?
-      end
-      if(options.has_key?(:marker_stream) and @show_marker == true)
-          @log_replay.add_marker_stream_by_name(options[:marker_stream])
-          add_marker_from_replay if not @log_replay.markers.empy?
-      end
-
       @log_replay.align unless @log_replay.aligned?
       return if !@log_replay.replay?
       @log_replay.process_qt_events = true
       slider.maximum = @log_replay.size-1
 
       #add replayed streams to tree view 
-      @tree_model = Qt::StandardItemModel.new
-      @tree_model.setHorizontalHeaderLabels(["Replayed Tasks","Information"])
-      @root_item = @tree_model.invisibleRootItem
-      treeView.setModel(@tree_model)
-      treeView.setAlternatingRowColors(true)
-      treeView.setSortingEnabled(true)
+      @tree_view = Vizkit::TreeModeler.new
+      @tree_view.setup_tree_view(treeView)
+      @tree_view.model.setHorizontalHeaderLabels(["Replayed Tasks","Information"])
+      @tree_view.update(@log_replay, nil)
+      treeView.resizeColumnToContents(0)
       
       @brush = Qt::Brush.new(Qt::Color.new(200,200,200))
       @widget_hash = Hash.new
 
-        @log_replay.tasks.each do |task|
-        next if !task.used?
-        item, item2 = get_item(task.name,task.name, @root_item)
-        item2.setText(task.file_path)
-        #setting ports
-        task.each_port do |port|
-          next unless port.used?
-          key = task.name+"_"+ port.name
-          item2, item3 = get_item(key,port.name, item)
-          item3.setText(port.type_name.to_s)
-          
-          # Set tooltip informing about context menu
-          tooltip = "Right-click for a list of available display widgets for this data type."
-          item2.set_tool_tip(tooltip)
-          item3.set_tool_tip(tooltip)
-
-          item4, item5 = get_item(key,"Samples", item2)
-          item5.setText(port.number_of_samples.to_s)
-
-          item4, item5 = get_item(key,"Filter", item2)
-          if port.filter
-            item5.setText("yes")
-          else
-            item5.setText("no")
-          end
-        end
-      end
-			#end
-      treeView.resizeColumnToContents(0)
       display_info
     end
 
-
-    def initialize_marker_view()
-        if @show_marker
-            marker_view.show
-            geo = size()
-            geo.setHeight(460)
-            resize(geo)
-            @marker_mapping = Hash.new
-            @marker_model = Qt::StandardItemModel.new
-            @marker_model.setColumnCount(1)
-            @marker_model.setHorizontalHeaderLabels(["Information"])
-            @marker_root = @marker_model.invisibleRootItem
-            marker_view.setModel(@marker_model)
-            marker_view.setAlternatingRowColors(true)
-            marker_view.setSortingEnabled(true)
-            marker_view.connect(SIGNAL('doubleClicked(const QModelIndex&)'),self,:marker_tree_double_clicked)
-        end
-    end
-
-    def add_marker_from_replay()
-        initialize_marker_view
-        raise "Internal error marker_roor is not set, this souldn't occur" if not @marker_root
-
-        #don't use step, alining takes to much time we need only the header
-        #if later on more informations are requierd please re-read only current sample
-        @log_replay.markers.each do |sample|
-            time = sample.time
-            target_sample_pos = @log_replay.sample_index_for_time(time)
-            slider.addMarker(target_sample_pos)
-
-	    #Only getting first line, to prevent too log messages
-            string = sample.comment.split("\n")[0] 
-	    string = "<nil>" if not string
-
-            item = marker_item(sample.id,string, @marker_root)
-            marker_item("id_#{sample.id}","ID: #{sample.id}",item)
-            marker_item("comment_#{sample.id}",sample.comment,item)
-            marker_item("time_#{sample.id}",sample.time,item) 
-        end
-    end
-
-    def marker_tree_double_clicked(model_index)
-      item = @marker_model.itemFromIndex(model_index)
-      return unless @marker_mapping.has_key? item.text
-      @log_replay.seek(@marker_mapping[item.text]) if @marker_mapping[item.text].is_a? Time
-      display_info
-    end
-
-    def tree_double_clicked(model_index)
-      item = @tree_model.itemFromIndex(model_index)
-      return unless item && item.parent && !item.parent.parent
-
-      task_name,port_name,type_name = item_to_names(item)
-      port = @log_replay.task(task_name).port(port_name)
-      widget = @widget_hash[port]
-      if widget
-        Vizkit.connect(widget)
-        widget.show
-      else
-        #check if there is a default widget 
-        begin 
-          widget = Vizkit.display port
-          widget.setAttribute(Qt::WA_QuitOnClose, false) if widget
-          @widget_hash[port]=widget
-        rescue RuntimeError 
-          pos = treeView.mapFromGlobal(Qt::Cursor::pos())
-          pos.y -= treeView.header.size.height
-          context_menu(pos)
-        end
-      end
-    end
-    
     def playing?
       @replay_on
     end
 
-    def marker_item(key,name,root_item)
-      item = Qt::StandardItem.new(name.to_s)
-      item.setEditable(false)
-      root_item.appendRow(item)
-      @marker_mapping[name.to_s] = name
-      return item
-    end
-
-    def get_item(key,name,root_item)
-      item = Qt::StandardItem.new(name)
-      item.setEditable(false)
-      root_item.appendRow(item)
-      item2 = Qt::StandardItem.new
-      item2.setEditable(false)
-      root_item.setChild(item.row,1,item2)
-      return [item,item2]
-    end
-
     def display_info
-
       slider.setSliderPosition(@log_replay.sample_index) unless @slider_pressed
       if @log_replay.time
         timestamp.text = @log_replay.time.strftime("%a %D %H:%M:%S." + "%06d" % @log_replay.time.usec)
@@ -231,19 +91,6 @@ class LogControl
       display_info
     end
     
-    def bnextmarker_clicked
-      return if !@log_replay.replay?
-      @log_replay.next_marker()
-      display_info
-    end
-    
-    def bprevmarker_clicked
-      return if !@log_replay.replay?
-      @log_replay.prev_marker()
-      display_info
-    end
-
-
     def bnext_clicked
       return if !@log_replay.replay?
       if @replay_on
@@ -292,41 +139,11 @@ class LogControl
         auto_replay
       end
     end
-
-    def item_to_names(item)
-      task_name = item.parent.text
-      # Assign port name and type correctly depending on the clicked column.
-      port_name,type_name  = if item.column == 0
-                              [item.text, item.parent.child(item.row,1).text]
-                            elsif item.column == 1
-                              [item.parent.child(item.row, 0).text,item.text]
-                            else
-                              raise 'Cannot handle TreeViews with more than two columns!'
-                            end
-      [task_name,port_name,type_name]
-    end
-
-    def context_menu(pos)
-      item = @tree_model.item_from_index(treeView.index_at(pos))
-      if item && item.parent && !item.parent.parent
-        task_name,port_name,type_name = item_to_names(item)
-
-        widget_name = Vizkit::ContextMenu.widget_for(type_name,treeView,pos)
-        if widget_name
-          port = @log_replay.task(task_name).port(port_name)
-          widget = Vizkit.display port, :widget => widget_name
-          @widget_hash[port]=widget
-          widget.setAttribute(Qt::WA_QuitOnClose, false) if widget
-        end
-      end
-    end
   end # module Functions
 
   def self.create_widget(parent = nil)
     form = Vizkit.load(File.join(File.dirname(__FILE__),'LogControl.ui'),parent)
-
     form.extend Functions
-    form.marker_view.hide
     geo = form.size()
     geo.setHeight(260)
     form.resize(geo)

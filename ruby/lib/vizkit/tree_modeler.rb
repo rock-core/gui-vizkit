@@ -1,9 +1,9 @@
 #!/usr/bin/env ruby
 
 require 'utilrb/logger'
-
+require 'orocos/log'
+ 
 module Vizkit
-
     extend Logger::Root('tree_modeler.rb', Logger::INFO)
     class ContextMenu
         def self.widget_for(type_name,parent,pos)
@@ -25,112 +25,202 @@ module Vizkit
             action.text if action
         end
     end
-    
+
     # The TreeModeler class' purpose is to provide useful functionality for
     # working with Qt's StandardItemModel (handled as TreeModel). The main focus
     # is the generation of (sub) trees out of (compound) data structures such as sensor samples
     # with possibly multiple layers of data. 
     # Multilayer recognition only works with Typelib::CompoundType.
     class TreeModeler
+        attr_accessor :model,:root
+
         def initialize
             @max_array_fields = 30 
-        end
-        
-        # Generates empty tree model.
-        # Default layout: 2 columns: (Property, Value)
-        def create_tree_model
-            model = Qt::StandardItemModel.new
-            model.set_horizontal_header_labels(["Property","Value"])
-            model
+            @model = Qt::StandardItemModel.new
+            @model.set_horizontal_header_labels(["Property","Value"])
+            @root = @model.invisibleRootItem
+            @tooltip = "Right-click for a list of available display widgets for this data type."
+            @dirty_items = Array.new
         end
 
-        def add_parent_item(sample, item_name, parent_item)
-            Vizkit.debug("Updating subtree for #{item_name}, sample.class = #{sample.class}")
-            # Try to find item in model. Is there already a matching 
-            # child item for sample in parent_item?
-            item = direct_child(parent_item, item_name)
-            
-            unless item
-                Vizkit.debug("No item for item_name '#{item_name}'found. Generating one and appending it to parent_item.")
-                # Item not found. Create new item and add it to the model.
-                item = Qt::StandardItem.new(item_name)
-                item2 = Qt::StandardItem.new
-                text = nil
-                Vizkit.debug "sample.class = #{sample.class}"
-                
-                match = sample.class.to_s.match('/(.*)>$')
-                if sample
-                    unless match
-                        text = sample.class.to_s
-                    else
-                        text = match[1]
-                    end
-                end
-                item2.set_text(text)
-                parent_item.append_row(item)
-                parent_item.set_child(item.row,1,item2)
+        #call this to setup your Qt::TreeView object
+        def setup_tree_view(tree_view)
+            tree_view.setModel(@model)
+            tree_view.setAlternatingRowColors(true)
+            tree_view.setSortingEnabled(true)
+            tree_view.connect(SIGNAL('customContextMenuRequested(const QPoint&)')) do |pos|
+              context_menu(tree_view,pos)
             end
-            item 
+            tree_view.connect(SIGNAL('doubleClicked(const QModelIndex&)')) do |item|
+                item = @model.item_from_index(item)
+                if item.isEditable 
+                  @dirty_items << item unless @dirty_items.include? item
+                else
+                  pos = tree_view.mapFromGlobal(Qt::Cursor::pos())
+                  pos.y -= tree_view.header.size.height
+                  context_menu(tree_view,pos,true)
+                end
+            end
         end
-        
+
         # Updates a sub tree for an existing parent item. Non-existent 
         # children will be added to parent_item.
-        def update_sub_tree(sample, item_name, parent_item, read_obj=false)
-            item = add_parent_item(sample,item_name,parent_item)
-            # Update sub tree with new sample.
-            add_object(sample, item, read_obj)
+        def update(sample, item_name=nil, parent_item=@root, read_from_model=false)
+            Vizkit.debug("Updating subtree for #{item_name}, sample.class = #{sample.class}")
+            if item_name
+              # Try to find item in model. Is there already a matching 
+              # child item for sample in parent_item?
+              item = direct_child(parent_item, item_name)
+              unless item
+                  Vizkit.debug("No item for item_name '#{item_name}'found. Generating one and appending it to parent_item.")
+                  item,item2 = child_items(parent_item,-1)
+              end
+              item,item2 = child_items(parent_item,item.row)
+
+              item.setText(item_name)
+              if sample
+                  match = sample.class.to_s.match('/(.*)>$')
+                  text = if !match
+                             sample.class.to_s
+                         else
+                             match[1]
+                         end
+                  item2.set_text(text)
+              end
+              update_object(sample, item, read_from_model)
+            else
+              update_object(sample, parent_item, read_from_model)
+            end
         end
-        
+
+        #context menu to chose a widget for displaying the selected 
+        #item
+        #if auto == true the widget is selected automatically 
+        #if there is only one 
+        def context_menu(tree_view,pos,auto=false)
+            item = @model.item_from_index(tree_view.index_at(pos))
+            object = item_to_object(item)
+            if(object == Orocos::Log::OutputPort || object == Orocos::OutputPort)
+                _,task = find_parent(item,Vizkit::TaskProxy)
+                _,task = find_parent(item,Orocos::Log::TaskContext) if !task
+                raise "cannot find task for port #{item.text}" if !task
+                return if !task.ping
+                port = task.port(item.text)
+                return if !port #this happens if no samples are received
+                if auto
+                    #check if there is a default widget 
+                    begin 
+                        widget = Vizkit.display port
+                        widget.setAttribute(Qt::WA_QuitOnClose, false) if widget
+                    rescue RuntimeError 
+                        auto = false
+                    end
+                end
+                #auto can be modified in the other if block
+                if !auto
+                    widget_name = Vizkit::ContextMenu.widget_for(port.type_name,tree_view,pos)
+                    if widget_name
+                        #embed the struct viewer 
+                        if(widget_name == "StructViewer2") 
+                            if !item.has_children
+
+                            end
+                        else
+                            widget = Vizkit.display port, :widget => widget_name
+                            widget.setAttribute(Qt::WA_QuitOnClose, false) if widget
+                        end
+                    end
+                end
+            end
+        end
+
+        def update_dirty_items
+            properties = dirty_items(Orocos::Property)
+            properties.each do |item|
+                task_item,task = find_parent(item,Vizkit::TaskProxy)
+                raise "Found no task for #{item.text}" unless task
+                next if !task.ping
+                item = item.parent.child(item.row,0) if item.column == 1
+                prop = task.property(item.text)
+                raise "Found no property called #{item.text} for task #{task.name}"unless prop
+                sample = prop.new_sample.zero!
+                update_object(sample,item,true)
+                prop.write sample
+            end
+            unmark_dirty_items
+        end
+
+        def dirty_items(type=nil)
+            return @dirty_items if !type
+            items = dirty_items.map {|item| it,_=find_parent(item,type);it}
+            items.compact.uniq
+        end
+
+        def unmark_dirty_items
+            @dirty_items.clear
+        end
+
+        def find_parent(child,type)
+            object = item_to_object(child)
+            if object.class == type || object == type
+                [child,object]
+            else
+                if child.parent 
+                    find_parent(child.parent,type)
+                else
+                    puts "#{object.class}, #{type}"
+                    nil
+                end
+            end
+        end
+
         # Gets a pair of parent_item's direct children in the specified row. 
         # Constraint: There are only two children in each row (columns 0 and 1).
         def child_items(parent_item,row)
-          item = parent_item.child(row)
-          item2 = parent_item.child(row,1)
-          unless item
-            #item = Qt::StandardItem.new(name.to_s)
-            item = Qt::StandardItem.new
-            parent_item.append_row(item)
-            item2 = Qt::StandardItem.new
-            parent_item.set_child(item.row,1,item2)
-            item.setEditable(false)
-            item2.setEditable(false)
-          end
-          [item,item2]
+            item = parent_item.child(row)
+            item2 = parent_item.child(row,1)
+            unless item
+                item = Qt::StandardItem.new
+                parent_item.append_row(item)
+                item2 = Qt::StandardItem.new
+                parent_item.set_child(item.row,1,item2)
+
+                item.setEditable(false)
+                item2.setEditable(false)
+            end
+            [item,item2]
         end
-        
+
         # Checks if there is a direct child of parent_item corresponding to item_name.
         # If yes, the child will be returned; nil otherwise. 
         # 'Direct' refers to a difference in (tree) depth of 1 between parent and child.
         def direct_child(parent_item, item_name)
-            rc = 0
-            children = get_direct_children(parent_item).each do |child,_|
+            children = direct_children(parent_item) do |child,_|
                 if child.text.eql?(item_name)
                     return child
                 end
             end
             nil
         end
-        
+
         # Returns pairs of all direct children (pair: row 0, row 1) as an array.
-        def get_direct_children(parent_item)
+        def direct_children(parent_item,&block)
             children = []
-            rc = 0;
-            while rc < parent_item.row_count
+            0.upto(parent_item.row_count-1) do |rc|
                 item = parent_item.child(rc,0)
                 item2 = parent_item.child(rc,1)
                 children << [item,item2]
-                rc+=1
+
+                block.call(item,item2) if block_given?
             end
             children
         end
-        
+
         # Sets all child items' editable status to the value of <i>editable</i> 
         # except items acting as parent. 'Child item' refers to the value of 
         # the (property,value) pair.
         def set_all_children_editable(parent_item, editable)
-            row = 0;
-            while row < parent_item.row_count
-                item, item2 = child_items(parent_item, row)
+            direct_children(parent_item) do |item,item2|
                 item.setEditable(false)
                 if item.has_children
                     item2.set_editable(false)
@@ -138,120 +228,242 @@ module Vizkit
                 else
                     item2.set_editable(editable)
                 end
-                row += 1
             end
         end
 
-    private
+        private
+        def encode_data(item,object)
+            item.setData(Qt::Variant.new object.object_id)
+        end
+
+        def item_to_object(item)
+            ObjectSpace._id2ref item.data.to_i if item && item.data.isValid 
+        end
+
+        def dirty?(item)
+            @dirty_items.include?(item)
+        end
 
         # Adds object to parent_item as a child. Object's children will be 
         # added as well. The original tree structure will be preserved.
-        def add_object(object, parent_item, read_obj=false, row=0, name_hint=nil)
-            if object.kind_of?(Typelib::CompoundType)
-              Vizkit.debug("add_object->CompoundType")
-              row = 0;
-              object.each_field do |name,value|
-                item, item2 = child_items(parent_item,row)
-                item.set_text name
-                #item2.set_text value.class.name
-                if read_obj
-                  object.set_field(name,add_object(value,item,read_obj,row,name))
-                else
-                  add_object(value,item,read_obj,row,name)
-                end
-                row += 1
-              end
-              #delete all other rows
-              parent_item.remove_rows(row,parent_item.row_count-row) if row < parent_item.row_count
-
-            elsif object.is_a?(Array) || (object.kind_of?(Typelib::Type) && object.respond_to?(:each))
-              Vizkit.debug("add_object->Array||Typelib+each")
-              if object.size > @max_array_fields
-                item2 = parent_item.parent.child(parent_item.row,parent_item.column+1)
-                item2.set_text "#{object.size} fields ..."
-              elsif object.size > 0
+        def update_object(object, parent_item, read_from_model=false, row=0, name_hint=nil)
+            if object.kind_of?(Orocos::Log::Replay)
                 row = 0
-                object.each_with_index do |val,row|
-                  item,item2 = child_items(parent_item,row)
-                  item2.set_text val.class.name
-                  item.set_text "[#{row}]"
-                  if read_obj
-                    object[row] = add_object(val,item,read_obj,row)
-                  else
-                    add_object(val,item,read_obj,row)
-                  end
+                object.tasks.each do |task|
+                    next if !task.used?
+                    update_object(task,parent_item,read_from_model,row)
+                    row += 1
+                end
+            elsif object.kind_of?(Vizkit::TaskProxy)
+                item, item2 = child_items(parent_item,row)
+                item.setText(object.name)
+
+                encode_data(item,object)
+                encode_data(item2,object)
+
+                if !object.ping
+                    item2.setText("not reachable")
+                    item.removeRows(1,item.rowCount-1)
+                else
+                    item2.setText(object.state.to_s) 
+
+                    item3, item4 = child_items(item,0)
+                    item3.setText("Attributes")
+                    row = 0
+                    object.each_property do |attribute|
+                        update_object(attribute,item3,read_from_model,row)
+                        row+=1
+                    end
+
+                    #setting ports
+                    item3, item4 = child_items(item,1)
+                    item3.setText("Input Ports")
+                    item5, item6 = child_items(item,2)
+                    item5.setText("Output Ports")
+
+                    irow = 0
+                    orow = 0
+                    object.each_port do |port|
+                        if port.is_a?(Orocos::InputPort)
+                            update_object(port,item3,read_from_model,irow)
+                            irow += 1
+                        else
+                            update_object(port,item5,read_from_model,orow)
+                            orow +=1
+                        end
+                    end
+                end
+
+            elsif object.kind_of?(Orocos::Log::TaskContext)
+                item, item2 = child_items(parent_item,row)
+                item.setText(object.name)
+                item2.setText(object.file_path)
+                encode_data(item,object)
+                encode_data(item2,object)
+
+                row = 0
+                object.each_port do |port|
+                    next unless port.used?
+                    update_object(port,item,read_from_model,row)
+                    row += 1
+                end
+            elsif object.kind_of?(Orocos::Property)
+                item, item2 = child_items(parent_item,row)
+                item.setText(object.name)
+                update_object(object.read,item,read_from_model)
+                if item.has_children 
+                    set_all_children_editable(item,true)
+                else
+                    item2.set_editable(true)
+                end
+                encode_data(item,Orocos::Property)
+                encode_data(item2,Orocos::Property)
+            elsif object.kind_of?(Orocos::OutputPort)
+                item, item2 = child_items(parent_item,row)
+                item.setText(object.name)
+                item2.setText(object.type_name.to_s)
+
+                # Set tooltip informing about context menu
+                item.set_tool_tip(@tooltip)
+                item2.set_tool_tip(@tooltip)
+
+                #do not encode the object because 
+                #the port is only a temporary object!
+                encode_data(item,object.class)
+                encode_data(item2,object.class)
+
+                _,task = find_parent(parent_item,Vizkit::TaskProxy)
+                raise "cannot find task for port #{object.name}" if !task
+                reader = task.__reader_for_port(object.name)
+                update_object(reader.read,item) if reader
+            elsif object.kind_of?(Orocos::InputPort)
+                item, item2 = child_items(parent_item,row)
+                item.setText(object.name)
+                item2.setText(object.type_name.to_s)
+            elsif object.kind_of?(Orocos::Log::OutputPort)
+                item, item2 = child_items(parent_item,row)
+                item.setText(object.name)
+                item2.setText(object.type_name.to_s)
+
+                # Set tooltip informing about context menu
+                item.set_tool_tip(@tooltip)
+                item2.set_tool_tip(@tooltip)
+
+                #encode the object 
+                encode_data(item,object)
+                encode_data(item2,object)
+
+                item2, item3 = child_items(item,0)
+                item2.setText("Samples")
+                item3.setText(object.number_of_samples.to_s)
+
+                item2, item3 = child_items(item,1)
+                item2.setText("Filter")
+                if object.filter
+                    item3.setText("yes")
+                else
+                    item3.setText("no")
+                end
+            elsif object.kind_of?(Typelib::CompoundType)
+                Vizkit.debug("update_object->CompoundType")
+                row = 0;
+                object.each_field do |name,value|
+                    item, item2 = child_items(parent_item,row)
+                    item.set_text name
+                    if read_from_model
+                        object.set_field(name,update_object(value,item,read_from_model,row,name))
+                    else
+                        update_object(value,item,read_from_model,row,name)
+                    end
+                    row += 1
                 end
                 #delete all other rows
-                row += 1
                 parent_item.remove_rows(row,parent_item.row_count-row) if row < parent_item.row_count
-              elsif read_obj
-                a = (add_object(object.to_ruby,parent_item,read_obj,0))
-                if a.kind_of? String
-                  # Append char by char because Typelib::ContainerType.<<(value) does not support argument strings longer than 1.
-                  a.each_char do |c|
-                    object << c
-                  end
-                end
-              end
-            else
-              Vizkit.debug("add_object->else")
-              
-              # Handle atomic types properly if they do not have grandparents
-              if parent_item.parent
-                item = parent_item # == parent_item.parent.child(parent_item.row,parent_item.column)
-                item2 = parent_item.parent.child(parent_item.row,parent_item.column+1)
-              else
-                item, item2 = child_items(parent_item,row)
-                item.set_text parent_item.text
-              end
 
-              if object
-                if read_obj
-                  Vizkit.debug("Mode: Reading user input")
-                  raise "name differs" if(object.respond_to?(:name) && item.text != object.name)
-                  #convert type
-                  type = object
-                  if object.is_a? Typelib::Type
-                    Vizkit.debug("We have a Typelib::Type.")
-                    type = object.to_ruby 
-                  end
-                  
-                  Vizkit.debug("Changing property '#{item.text}' to value '#{item2.text}'")
-                  Vizkit.debug("object of class type #{object.class}, object.to_ruby (if applicable) is of class type #{type.class}")
-                  
-                  data = item2.text if type.is_a? String
-                  data = item2.text.gsub(',', '.').to_f if type.is_a? Float # use international decimal point
-                  data = item2.text.to_i if type.is_a? Fixnum
-                  data = item2.text.to_i if type.is_a? File
-                  data = item2.text.to_i == 0 if type.is_a? FalseClass
-                  data = item2.text.to_i == 1 if type.is_a? TrueClass
-                  data = item2.text.to_sym if type.is_a? Symbol
-                  data = Time.new(item2.text) if type.is_a? Time
-                  Vizkit.debug("Converted object data: '#{data}'")
-                  
-                  if object.is_a? Typelib::Type
-                    Typelib.copy(object,Typelib.from_ruby(data, object.class))
-                  else
-                    object = data
-                  end
-                else
-                  Vizkit.debug("Mode: Displaying data")
-                  if object.is_a? Float
-                    item2.set_text(object.to_s.gsub(',', '.')) # use international decimal point
-                  else
-                    item2.set_text(object.to_s)
-                  end
+            elsif object.is_a?(Array) || (object.kind_of?(Typelib::Type) && object.respond_to?(:each))
+                Vizkit.debug("update_object->Array||Typelib+each")
+                if object.size > @max_array_fields
+                    item2 = parent_item.parent.child(parent_item.row,parent_item.column+1)
+                    item2.set_text "#{object.size} fields ..."
+                elsif object.size > 0
+                    row = 0
+                    object.each_with_index do |val,row|
+                        item,item2 = child_items(parent_item,row)
+                        item2.set_text val.class.name
+                        item.set_text "[#{row}]"
+                        if read_from_model
+                            object[row] = update_object(val,item,read_from_model,row)
+                        else
+                            update_object(val,item,read_from_model,row)
+                        end
+                    end
+                    #delete all other rows
+                    row += 1
+                    parent_item.remove_rows(row,parent_item.row_count-row) if row < parent_item.row_count
+                elsif read_from_model
+                    a = (update_object(object.to_ruby,parent_item,read_from_model,0))
+                    if a.kind_of? String
+                        # Append char by char because Typelib::ContainerType.<<(value) does not support argument strings longer than 1.
+                        a.each_char do |c|
+                            object << c
+                        end
+                    end
                 end
-                
-              else
-                item2.setText "no samples received"
-              end
+            else
+                Vizkit.debug("update_object->else")
+
+                # Handle atomic types properly if they do not have grandparents
+                if parent_item.parent
+                    item = parent_item # == parent_item.parent.child(parent_item.row,parent_item.column)
+                    item2 = parent_item.parent.child(parent_item.row,parent_item.column+1)
+                else
+                    item, item2 = child_items(parent_item,row)
+                    item.set_text parent_item.text
+                end
+
+                if object
+                    if read_from_model
+                        Vizkit.debug("Mode: Reading user input")
+                        raise "name differs" if(object.respond_to?(:name) && item.text != object.name)
+                        #convert type
+                        type = object
+                        if object.is_a? Typelib::Type
+                            Vizkit.debug("We have a Typelib::Type.")
+                            type = object.to_ruby 
+                        end
+
+                        Vizkit.debug("Changing property '#{item.text}' to value '#{item2.text}'")
+                        Vizkit.debug("object of class type #{object.class}, object.to_ruby (if applicable) is of class type #{type.class}")
+
+                        data = item2.text if type.is_a? String
+                        data = item2.text.gsub(',', '.').to_f if type.is_a? Float # use international decimal point
+                        data = item2.text.to_i if type.is_a? Fixnum
+                        data = item2.text.to_i if type.is_a? File
+                        data = item2.text.to_i == 0 if type.is_a? FalseClass
+                        data = item2.text.to_i == 1 if type.is_a? TrueClass
+                        data = item2.text.to_sym if type.is_a? Symbol
+                        data = Time.new(item2.text) if type.is_a? Time
+                        Vizkit.debug("Converted object data: '#{data}'")
+
+                        if object.is_a? Typelib::Type
+                            Typelib.copy(object,Typelib.from_ruby(data, object.class))
+                        else
+                            object = data
+                        end
+                    else
+                        Vizkit.debug("Mode: Displaying data")
+                        if object.is_a? Float
+                            item2.set_text(object.to_s.gsub(',', '.')) if !dirty?(item2)
+                        else
+                            item2.set_text(object.to_s) if !dirty?(item2)
+                        end
+                    end
+
+                else
+                    item2.setText "no samples received"
+                end
             end
-        object
+            object
         end
     end
 end
-
-
-
-

@@ -10,24 +10,22 @@ class StructViewer < Qt::Widget
     @window = Ui_Form.new
     @window.setup_ui(self)
     @brush = Qt::Brush.new(Qt::Color.new(200,200,200))
-    @modeler = Vizkit::TreeModeler.new
-    @tree_model = @modeler.create_tree_model
-    @window.treeView.set_model(@tree_model)
-    @window.treeView.set_alternating_row_colors(true)
-    @window.treeView.set_sorting_enabled(true)
+    @tree_view = Vizkit::TreeModeler.new
+    @tree_view.setup_tree_view(@window.treeView)
   end
 
   def update(data, port_name)
-     @modeler.update_sub_tree(data, port_name, @tree_model.invisible_root_item)
-     @modeler.set_all_children_editable(@tree_model.invisible_root_item, false)
+     @tree_view.update(data, port_name )
+     @tree_view.set_all_children_editable(@tree_view.model.invisible_root_item, false)
      @window.treeView.resizeColumnToContents(0)
   end
 
   #add a default value 
   def config(port)
       #add place holder
-     @modeler.add_parent_item(port.new_sample, "#{port.task.name}.#{port.name}", @tree_model.invisible_root_item)
+     @tree_view.update("no data", "#{port.task.name}.#{port.name}")
   end
 end
 
 Vizkit::UiLoader.register_ruby_widget("StructViewer",StructViewer.method(:new))
+Vizkit::UiLoader.register_widget_for("StructViewer","/base/samples/frame/Frame", :update)
