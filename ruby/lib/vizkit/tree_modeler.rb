@@ -143,13 +143,7 @@ module Vizkit
                 type_name = item2.text
                 widget_name = Vizkit::ContextMenu.widget_for(type_name,tree_view,pos)
                 if widget_name
-                    #TODO let the uiloader handle this 
-                    widget = if widget_name != "StructViewer"
-                                 widget = Vizkit.default_loader.create_widget widget_name
-                             else
-                                 nil
-                             end
-                    widget = Vizkit.display port, :widget => widget,:subfield => subfield,:type_name=> type_name
+                    widget = Vizkit.display port, :widget => widget_name,:subfield => subfield,:type_name=> type_name
                     widget.setAttribute(Qt::WA_QuitOnClose, false) if widget
                 end
             end

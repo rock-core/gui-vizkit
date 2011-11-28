@@ -69,11 +69,7 @@ module Vizkit
       local_options,options = Kernel::filter_options(options,{:widget => nil})
       case value
       when Orocos::OutputPort, Orocos::Log::OutputPort
-        widget = if options[:widget]
-                   options[:widget]
-                 else
-                   widget_for(value,local_options)
-                 end
+        widget = widget_for(value,local_options)
         widget.config(value,options) if widget.respond_to? :config
         value.connect_to widget,options ,&block
         widget.show
