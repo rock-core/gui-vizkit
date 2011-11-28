@@ -52,7 +52,7 @@ class TaskInspector
         def config(task,options=Hash.new)
             if task.is_a? Orocos::TaskContext
                 @tasks[task.name] = Vizkit::TaskProxy.new(task.name)
-            elsif task.is_a Vizkit::TaskProxy
+            elsif task.is_a? Vizkit::TaskProxy
                 @tasks[task.name] = task
             end
             options = default_options.merge(options)
