@@ -263,7 +263,7 @@ module Vizkit
 
                 if !object.ping
                     item2.setText("not reachable")
-                    item.removeRows(1,item.rowCount-1)
+                    item.removeRows(0,item.rowCount)
                 else
                     item2.setText(object.state.to_s) 
 
