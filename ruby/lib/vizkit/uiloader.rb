@@ -327,7 +327,7 @@ module Vizkit
 
     def widget_names_for_value(value)
       array = @widget_for_hash[value]
-      array || Array.new
+      array ||= Array.new
     end
 
     def widget_for(value,parent=nil)
