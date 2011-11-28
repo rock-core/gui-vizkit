@@ -28,4 +28,4 @@ class StructViewer < Qt::Widget
 end
 
 Vizkit::UiLoader.register_ruby_widget("StructViewer",StructViewer.method(:new))
-Vizkit::UiLoader.register_widget_for("StructViewer","/base/samples/frame/Frame", :update)
+#Vizkit::UiLoader.register_widget_for("StructViewer","/base/samples/frame/Frame", :update)
