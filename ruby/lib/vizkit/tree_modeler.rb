@@ -68,7 +68,7 @@ module Vizkit
 
         # Updates a sub tree for an existing parent item. Non-existent 
         # children will be added to parent_item.
-        def update(sample, item_name=nil, parent_item=@root, read_from_model=false)
+        def update(sample, item_name=nil, parent_item=@root, read_from_model=false,row=0)
             Vizkit.debug("Updating subtree for #{item_name}, sample.class = #{sample.class}")
             if item_name
               # Try to find item in model. Is there already a matching 
@@ -90,59 +90,67 @@ module Vizkit
                          end
                   item2.set_text(text)
               end
-              update_object(sample, item, read_from_model)
+              update_object(sample, item, read_from_model,row)
             else
-              update_object(sample, parent_item, read_from_model)
+              update_object(sample, parent_item, read_from_model,row)
             end
+            [item,item2]
         end
 
         #context menu to chose a widget for displaying the selected 
         #item
         #if auto == true the widget is selected automatically 
         #if there is only one 
-        def context_menu(tree_view,pos,auto=false)
+        def context_menu(tree_view,pos,auto=false,port=nil)
             item = @model.item_from_index(tree_view.index_at(pos))
-            object = item_to_object(item)
-            if(object == Orocos::Log::OutputPort || object == Orocos::OutputPort || 
-               object.is_a?(Orocos::Log::OutputPort))
-
-                #get task of the port
-                _,task = find_parent(item,Vizkit::TaskProxy)
-                if !task
-                    _,task = find_parent(item,Orocos::Log::TaskContext) 
+            item2 = item
+            if item.parent
+                if item.column == 0
+                    item2 = item.parent.child(item.row,1)
                 else
-                    #check if task is reachable 
-                    #log tasks are always reachable we do not have to check it 
-                    #TODO combine TaskProxy should be used for log task as well
-                    return if !task.ping
+                    item = item.parent.child(item.row,0)
                 end
+            end
 
-                raise "cannot find task for port #{item.text}" if !task
-                port = task.port(item.text)
-                return if !port #this happens if no samples are received
-                if auto
-                    #check if there is a default widget 
-                    begin 
-                        widget = Vizkit.display port
-                        widget.setAttribute(Qt::WA_QuitOnClose, false) if widget
-                    rescue RuntimeError 
-                        auto = false
-                    end
+            object = item_to_object(item)
+            return if !object 
+            subfield = nil
+
+            #if not port is given try to find one by searching for a parent of type Port
+            if !port
+                if(object == Orocos::Log::OutputPort || object == Orocos::OutputPort) 
+                    port = port_from_item(item)
+                elsif(object.is_a? Typelib::CompoundType)
+                    port = port_from_item(item)
+                    subfield = subfield_from_item(item)
                 end
-                #auto can be modified in the other if block
-                if !auto
-                    widget_name = Vizkit::ContextMenu.widget_for(port.type_name,tree_view,pos)
-                    if widget_name
-                        #embed the struct viewer 
-                        if(widget_name == "StructViewer2") 
-                            if !item.has_children
+            end
 
-                            end
-                        else
-                            widget = Vizkit.display port, :widget => widget_name
-                            widget.setAttribute(Qt::WA_QuitOnClose, false) if widget
-                        end
-                    end
+            #TODO
+            #create a proxy class for subfields which behave like ports
+            return if !port #this happens if no samples are received or a wrong item was selected
+            if auto && !subfield
+                #check if there is a default widget 
+                begin 
+                    widget = Vizkit.display port,:subfield => subfield
+                    widget.setAttribute(Qt::WA_QuitOnClose, false) if widget
+                rescue RuntimeError 
+                    auto = false
+                end
+            end
+            #auto can be modified in the other if block
+            if !auto 
+                type_name = item2.text
+                widget_name = Vizkit::ContextMenu.widget_for(type_name,tree_view,pos)
+                if widget_name
+                    #TODO let the uiloader handle this 
+                    widget = if widget_name != "StructViewer"
+                                 widget = Vizkit.default_loader.create_widget widget_name
+                             else
+                                 nil
+                             end
+                    widget = Vizkit.display port, :widget => widget,:subfield => subfield,:type_name=> type_name
+                    widget.setAttribute(Qt::WA_QuitOnClose, false) if widget
                 end
             end
         end
@@ -243,13 +251,45 @@ module Vizkit
             end
         end
 
-        private
+        def subfield_from_item(item)
+            object = item_to_object(item)
+            fields = Array.new
+            if object == Orocos::OutputPort || object == Orocos::Log::OutputPort
+                fields 
+            else
+                if item.parent 
+                    fields = subfield_from_item(item.parent)
+                    fields << item.text
+                else
+                    fields
+                end
+            end
+        end
+
+        def port_from_item(item)
+            port_item,port = find_parent(item,Orocos::OutputPort)
+            port_item,port = find_parent(item,Orocos::Log::OutputPort) if !port
+            return nil if !port
+
+            _,task = find_parent(item,Vizkit::TaskProxy)
+            _,task = find_parent(item,Orocos::Log::TaskContext) if !task 
+            
+            return nil if !port || !task
+            if task.respond_to? :ping
+                task.port(port_item.text) if task.ping
+            else
+                task.port(port_item.text)
+            end
+        end
+
         def encode_data(item,object)
             #we cannot use object_id because on a 64 Bits system
             #the object_id cannot be stored insight a Qt::Variant 
             item.setData(Qt::Variant.new @object_storage.size)
             @object_storage << object 
         end
+
+        private
 
         def item_to_object(item)
             @object_storage[item.data.to_i] if item && item.data.isValid 
@@ -261,7 +301,7 @@ module Vizkit
 
         # Adds object to parent_item as a child. Object's children will be 
         # added as well. The original tree structure will be preserved.
-        def update_object(object, parent_item, read_from_model=false, row=0, name_hint=nil)
+        def update_object(object, parent_item, read_from_model=false, row=0)
             if object.kind_of?(Orocos::Log::Replay)
                 row = 0
                 object.tasks.each do |task|
@@ -365,8 +405,8 @@ module Vizkit
                 item2.set_tool_tip(@tooltip)
 
                 #encode the object 
-                encode_data(item,object)
-                encode_data(item2,object)
+                encode_data(item,Orocos::Log::OutputPort)
+                encode_data(item2,Orocos::Log::OutputPort)
 
                 item2, item3 = child_items(item,0)
                 item2.setText("Samples")
@@ -381,14 +421,24 @@ module Vizkit
                 end
             elsif object.kind_of?(Typelib::CompoundType)
                 Vizkit.debug("update_object->CompoundType")
+
                 row = 0;
                 object.each_field do |name,value|
                     item, item2 = child_items(parent_item,row)
                     item.set_text name
+                    
+                    #this is a workaround 
+                    #if each field is created by its self we cannot write 
+                    #the data back to the sample and we do not know its name 
+                    if(value.kind_of?(Typelib::CompoundType))
+                        encode_data(item,Typelib::CompoundType)
+                        encode_data(item2,Typelib::CompoundType)
+                        item2.set_text(value.class.name)
+                    end
                     if read_from_model
                         object.set_field(name,update_object(value,item,read_from_model,row,name))
                     else
-                        update_object(value,item,read_from_model,row,name)
+                        update_object(value,item,read_from_model,row)
                     end
                     row += 1
                 end
@@ -473,7 +523,6 @@ module Vizkit
                             item2.set_text(object.to_s) if !dirty?(item2)
                         end
                     end
-
                 else
                     item2.setText "no samples received"
                 end
