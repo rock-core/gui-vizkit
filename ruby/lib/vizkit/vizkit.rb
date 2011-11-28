@@ -69,15 +69,19 @@ module Vizkit
       local_options,options = Kernel::filter_options(options,{:widget => nil})
       case value
       when Orocos::OutputPort, Orocos::Log::OutputPort
-        widget = widget_for(value,local_options)
-        widget.config(value) if widget.respond_to? :config
+        widget = if options[:widget]
+                   options[:widget]
+                 else
+                   widget_for(value,local_options)
+                 end
+        widget.config(value,options) if widget.respond_to? :config
         value.connect_to widget,options ,&block
         widget.show
         return widget
       when Orocos::TaskContext
         widget = widget_for(value,local_options)
         raise "Cannot handle #{value.class}" unless widget
-        widget.config(value)
+        widget.config(value,options)
         widget.show
         return widget
       else
@@ -306,7 +310,8 @@ module Vizkit
         super(nil,&nil)
       end
 
-      this_options, @policy = Kernel.filter_options(options,[:update_frequency,:auto_reconnect])
+      #TODO implement an OutputPort proxy which can handle subfields 
+      this_options, @policy = Kernel.filter_options(options,[:update_frequency,:auto_reconnect,:subfield,:type_name])
       if port.respond_to?(:to_ary)
         @task_name, @port_name = *port
         @port = nil
@@ -316,8 +321,14 @@ module Vizkit
         @port = port
       end
       @widget = widget
+      @subfield = this_options[:subfield]
       @update_frequency = this_options[:update_frequency] 
       @auto_reconnect = this_options[:auto_reconnect]
+      @type_name = if this_options[:type_name]
+                     this_options[:type_name]
+                    else
+                      port.type_name
+                    end
       @update_frequency ||= OQConnection::update_frequency
       @auto_reconnect ||= OQConnection::auto_reconnect
       @block = block
@@ -333,7 +344,12 @@ module Vizkit
     attr_reader :task_name
     attr_reader :port_name
     def port_full_name
-      "#{@task_name}.#{@port_name}"
+      if @subfield && !@subfield.empty?
+        "#{@task_name}.#{@port_name}.#{@subfield.join(".")}"
+      else
+        "#{@task_name}.#{@port_name}"
+
+      end
     end
 
     #returns ture if the connection was established at some point 
@@ -346,7 +362,7 @@ module Vizkit
       if @widget && @port 
         #try to find callback_fct for port this is not working if no port is given
         if !@callback_fct && @widget.respond_to?(:loader)
-          @callback_fct = @widget.loader.callback_fct @widget.class_name,@port.type_name
+          @callback_fct = @widget.loader.callback_fct @widget.class_name,@type_name
         end
 
         #use default callback_fct
@@ -368,6 +384,15 @@ module Vizkit
       end
     end
 
+    #TODO implement an OutputPort proxy which can handle subfields 
+    def subfield(sample,field=Array.new)
+        return sample if !field
+        field.each do |f| 
+            sample = sample[f]
+        end
+        sample
+    end
+
     def timerEvent(event)
       #call disconnect if widget is no longer visible
       #this could lead to some problems if the widget wants to
@@ -379,6 +404,7 @@ module Vizkit
       end
 
       while(@reader.read_new(@last_sample))
+        @last_sample = subfield(@last_sample,@subfield)
         if @block
           @last_sample = @block.call(@last_sample,port_full_name)
           unless @last_sample.is_a? @sample_class
@@ -460,6 +486,7 @@ module Vizkit
     def timerEvent(event)
       disconnect if @widget && @widget.is_a?(Qt::Widget) && !@widget.visible
       while(sample = reader.read_new)
+        sample = subfield(sample,@subfield)
         sample = @block.call(sample,port_full_name) if @block
         begin
           @callback_fct.call sample,port_full_name if @callback_fct && sample
