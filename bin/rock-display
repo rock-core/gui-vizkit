@@ -27,13 +27,18 @@ Orocos.initialize
 task_inspector = nil
 remaining.each do |spec|
     task_name, port_name = spec.split(':')
-    task = Orocos::TaskContext.get task_name
-    if !port_name
+    task = Vizkit::TaskProxy.new task_name
+    if !port_name || !task.ping
         task_inspector ||= Vizkit.default_loader.task_inspector
         task_inspector.config(task)
     else
-        port = task.port(port_name)
-        Vizkit.display port
+        widget = Vizkit.default_loader.widget_for task.port(port_name)
+        if widget
+            Vizkit.connect_port_to task_name,port_name,widget
+            widget.show
+        else
+            puts "Cannot find a display widget for #{port_name}"
+        end
     end
 end
 
