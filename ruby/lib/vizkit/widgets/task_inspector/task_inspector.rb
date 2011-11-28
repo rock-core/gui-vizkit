@@ -41,11 +41,15 @@ class TaskInspector
 
             @timer = Qt::Timer.new(self)
             @timer.connect(SIGNAL('timeout()')) do 
-                buttonFrame.show if !@tree_view.dirty_items.empty?
                 @tasks.each_value do |task|
                     @tree_view.update(task)
                 end
-                treeView.resizeColumnToContents(0)
+
+                if !@tree_view.dirty_items.empty?
+                    buttonFrame.show 
+                else
+                    treeView.resizeColumnToContents(0)
+                end
             end
         end
 

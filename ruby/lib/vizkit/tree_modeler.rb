@@ -360,13 +360,16 @@ module Vizkit
                 item, item2 = child_items(parent_item,row)
                 item.setText(object.name)
                 update_object(object.read,item,read_from_model)
+
                 if item.has_children 
                     set_all_children_editable(item,true)
                 else
                     item2.set_editable(true)
                 end
-                encode_data(item,Orocos::Property)
-                encode_data(item2,Orocos::Property)
+                if @dirty_items.empty?
+                    encode_data(item,Orocos::Property)
+                    encode_data(item2,Orocos::Property)
+                end
             elsif object.kind_of?(Orocos::OutputPort)
                 item, item2 = child_items(parent_item,row)
                 item.setText(object.name)
