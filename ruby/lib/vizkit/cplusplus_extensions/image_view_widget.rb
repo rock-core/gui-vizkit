@@ -66,7 +66,7 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "ImageView" do
       end
   end
 
-  #diplay is called each time new data are available on the orocos output port
+  #display is called each time new data are available on the orocos output port
   #this functions translates the orocos data struct to the widget specific format
   def display(frame,port_name)
       init
