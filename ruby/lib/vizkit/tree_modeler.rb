@@ -41,6 +41,9 @@ module Vizkit
             @root = @model.invisibleRootItem
             @tooltip = "Right-click for a list of available display widgets for this data type."
             @dirty_items = Array.new
+
+            #we cannot use object_id from ruby because 
+            @object_storage = Array.new
         end
 
         #call this to setup your Qt::TreeView object
@@ -242,11 +245,14 @@ module Vizkit
 
         private
         def encode_data(item,object)
-            item.setData(Qt::Variant.new object.object_id)
+            #we cannot use object_id because on a 64 Bits system
+            #the object_id cannot be stored insight a Qt::Variant 
+            item.setData(Qt::Variant.new @object_storage.size)
+            @object_storage << object 
         end
 
         def item_to_object(item)
-            ObjectSpace._id2ref item.data.to_i if item && item.data.isValid 
+            @object_storage[item.data.to_i] if item && item.data.isValid 
         end
 
         def dirty?(item)
