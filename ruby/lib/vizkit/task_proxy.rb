@@ -16,6 +16,10 @@ module Vizkit
             @__connection_code_block = block
         end
 
+        def name
+            @__task_name
+        end
+
         def __reconnect()
             @task = nil
             ping
