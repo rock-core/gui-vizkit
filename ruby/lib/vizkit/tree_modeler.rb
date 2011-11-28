@@ -100,11 +100,21 @@ module Vizkit
         def context_menu(tree_view,pos,auto=false)
             item = @model.item_from_index(tree_view.index_at(pos))
             object = item_to_object(item)
-            if(object == Orocos::Log::OutputPort || object == Orocos::OutputPort)
+            if(object == Orocos::Log::OutputPort || object == Orocos::OutputPort || 
+               object.is_a?(Orocos::Log::OutputPort))
+
+                #get task of the port
                 _,task = find_parent(item,Vizkit::TaskProxy)
-                _,task = find_parent(item,Orocos::Log::TaskContext) if !task
+                if !task
+                    _,task = find_parent(item,Orocos::Log::TaskContext) 
+                else
+                    #check if task is reachable 
+                    #log tasks are always reachable we do not have to check it 
+                    #TODO combine TaskProxy should be used for log task as well
+                    return if !task.ping
+                end
+
                 raise "cannot find task for port #{item.text}" if !task
-                return if !task.ping
                 port = task.port(item.text)
                 return if !port #this happens if no samples are received
                 if auto
@@ -168,7 +178,6 @@ module Vizkit
                 if child.parent 
                     find_parent(child.parent,type)
                 else
-                    puts "#{object.class}, #{type}"
                     nil
                 end
             end
