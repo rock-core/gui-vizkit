@@ -320,11 +320,7 @@ module Vizkit
       @subfield = this_options[:subfield]
       @update_frequency = this_options[:update_frequency] 
       @auto_reconnect = this_options[:auto_reconnect]
-      @type_name = if this_options[:type_name]
-                     this_options[:type_name]
-                    else
-                      port.type_name
-                    end
+      @type_name = this_options[:type_name]
       @update_frequency ||= OQConnection::update_frequency
       @auto_reconnect ||= OQConnection::auto_reconnect
       @block = block
@@ -358,6 +354,7 @@ module Vizkit
       if @widget && @port 
         #try to find callback_fct for port this is not working if no port is given
         if !@callback_fct && @widget.respond_to?(:loader)
+          @type_name = @port.type_name if !@type_name
           @callback_fct = @widget.loader.callback_fct @widget.class_name,@type_name
         end
 
