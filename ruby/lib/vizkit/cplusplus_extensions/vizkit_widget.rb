@@ -34,13 +34,13 @@ module VizkitPluginExtension
                 end
 		
 		define_method('updateData') do |value|
-		    if(method_name = @type_to_method[value.class])
+		    if(method_name = @type_to_method[value.class.name])
 			self.send(method_name, value)
 		    else
 			message = "Expected type(s) "
 			
 			type_to_method.each do |i,j |
-			    message = message + i.name + " "
+			    message = message + i + " "
 			end
 			message = message + "but got #{value.class.name}"
 			raise ArgumentError, message
@@ -51,7 +51,7 @@ module VizkitPluginExtension
 		self.type_to_method = Hash.new()
 	    end
 	    if(plugin.getRubyMethod.match("update"))
-		self.type_to_method[expected_ruby_type] = plugin.getRubyMethod
+		self.type_to_method[expected_ruby_type.name] = plugin.getRubyMethod
 	    end
 
             plugin.instance_variable_set(:@expected_ruby_type,expected_ruby_type)
