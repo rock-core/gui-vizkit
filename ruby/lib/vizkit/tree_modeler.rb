@@ -317,7 +317,7 @@ module Vizkit
                     item2.setText(object.state.to_s) 
 
                     item3, item4 = child_items(item,0)
-                    item3.setText("Attributes")
+                    item3.setText("Properties")
                     row = 0
                     object.each_property do |attribute|
                         update_object(attribute,item3,read_from_model,row)
@@ -356,6 +356,14 @@ module Vizkit
                     update_object(port,item,read_from_model,row)
                     row += 1
                 end
+
+                item3, item4 = child_items(item,row)
+                row = 0
+                item3.setText("Properties")
+                object.each_property do |property|
+                    update_object(property,item3,read_from_model,row)
+                    row += 1
+                end
             elsif object.kind_of?(Orocos::Property)
                 item, item2 = child_items(parent_item,row)
                 item.setText(object.name)
@@ -370,6 +378,10 @@ module Vizkit
                     encode_data(item,Orocos::Property)
                     encode_data(item2,Orocos::Property)
                 end
+            elsif object.kind_of?(Orocos::Log::Property)
+                item, item2 = child_items(parent_item,row)
+                item.setText(object.name)
+                update_object(object.read,item,read_from_model)
             elsif object.kind_of?(Orocos::OutputPort)
                 item, item2 = child_items(parent_item,row)
                 item.setText(object.name)
