@@ -282,7 +282,7 @@ module Vizkit
 
         def encode_data(item,object)
             #we cannot use object_id because on a 64 Bits system
-            #the object_id cannot be stored insight a Qt::Variant 
+            #the object_id cannot be stored inside a Qt::Variant 
             item.setData(Qt::Variant.new @object_storage.size)
             @object_storage << object 
         end
