@@ -361,10 +361,9 @@ module Vizkit
                     row += 1
                 end
 
-                item3, item4 = child_items(item,row)
-                row = 0
-
                 if !object.properties.empty?
+                    item3, item4 = child_items(item,row)
+                    row = 0
                     item3.setText("Properties")
                     object.each_property do |property|
                         update_object(property,item3,read_from_model,row)
