@@ -270,7 +270,11 @@ module Vizkit
             
             return nil if !port || !task
             if task.respond_to? :ping
-                task.port(port_item.text) if task.ping
+                if task.ping
+                    task.port(port_item.text) 
+                else 
+                    nil
+                end
             else
                 task.port(port_item.text)
             end
@@ -445,7 +449,7 @@ module Vizkit
                         item2.set_text(value.class.name)
                     end
                     if read_from_model
-                        object.set_field(name,update_object(value,item,read_from_model,row,name))
+                        object.set_field(name,update_object(value,item,read_from_model,row))
                     else
                         update_object(value,item,read_from_model,row)
                     end
