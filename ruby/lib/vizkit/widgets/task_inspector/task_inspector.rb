@@ -60,6 +60,7 @@ class TaskInspector
                 @tasks[task.name] = task
             end
             options = default_options.merge(options)
+            @tree_view.update(@tasks[task.name])
             @timer.start(options[:interval])
         end
     end
