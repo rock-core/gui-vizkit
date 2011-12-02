@@ -140,7 +140,11 @@ module Vizkit
             end
             #auto can be modified in the other if block
             if !auto 
-                type_name = item2.text
+                type_name = if subfield 
+                                item2.text
+                            else
+                                port.type_name
+                            end
                 widget_name = Vizkit::ContextMenu.widget_for(type_name,tree_view,pos)
                 if widget_name
                     widget = Vizkit.display port, :widget => widget_name,:subfield => subfield,:type_name=> type_name
