@@ -58,6 +58,9 @@ module Vizkit
       def register_widget_for(widget_name,value,callback_fct=:update)
         @current_loader_instance.register_widget_for(widget_name,value,callback_fct)
       end
+      def register_default_widget_for(widget_name,value,callback_fct=:update)
+        @current_loader_instance.register_default_widget_for(widget_name,value,callback_fct)
+      end
       def register_ruby_widget(widget_name,widget_class)
         @current_loader_instance.register_ruby_widget(widget_name,widget_class)
       end
@@ -81,6 +84,11 @@ module Vizkit
         @current_loader_instance.register_callback_fct('vizkit::Vizkit3DWidget',type_name,:update)
         VizkitPluginLoaderExtension.type_to_widget_name[type_name] = [widget_name,display_method,filter]
         register_widget_for(widget_name,type_name,"not_used")
+      end
+      def register_default_3d_plugin_for(widget_name,type_name,display_method = nil,&filter)
+        @current_loader_instance.register_callback_fct('vizkit::Vizkit3DWidget',type_name,:update)
+        VizkitPluginLoaderExtension.type_to_widget_name[type_name] = [widget_name,display_method,filter]
+        register_default_widget_for(widget_name,type_name,"not_used")
       end
 
       def define_widget_for_methods(name,*klasses,&map)
@@ -319,7 +327,7 @@ module Vizkit
 
     def widget_names_for_value(value)
       array = @widget_for_hash[value]
-      array || Array.new
+      array ||= Array.new
     end
 
     def widget_for(value,parent=nil)

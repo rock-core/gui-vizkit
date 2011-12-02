@@ -41,7 +41,6 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "RangeView" do
 	counter = counter +1	
 	angle = angle + range_scan.angular_resolution	
     end
-    pp "Startig Angle: #{range_scan.start_angle} End: #{angle} for #{counter} records" 
     setRangeScan3(points)
   end
 end

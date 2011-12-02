@@ -1,93 +1,55 @@
 #!/usr/bin/env ruby
+require 'vizkit'
+require File.join(File.dirname(__FILE__), '../..', 'tree_modeler.rb')
+require File.join(File.dirname(__FILE__),'struct_viewer_window.ui.rb')
 
-class StructViewer < Qt::Widget
-  MAX_ARRAY_FIELDS = 30
-
-  def self.child_items(parent_item,row)
-      item = parent_item.child(row)
-      item2 = parent_item.child(row,1)
-      unless item
-        item = Qt::StandardItem.new(name.to_s)
-        parent_item.appendRow(item)
-        item2 = Qt::StandardItem.new
-        parent_item.setChild(item.row,1,item2)
-      end
-      [item,item2]
-  end
-
-  def initialize(parent=nil)
-    super
-    load File.join(File.dirname(__FILE__),'struct_viewer_window.ui.rb')
-    @window = Ui_Form.new
-    @window.setupUi(self)
-    @tree_model = Qt::StandardItemModel.new
-    @tree_model.setHorizontalHeaderLabels(["Property","Value"])
-    @root_item = @tree_model.invisibleRootItem
-    @window.treeView.setModel(@tree_model)
-    @window.treeView.setAlternatingRowColors(true)
-    @window.treeView.setSortingEnabled(true)
-    @brush = Qt::Brush.new(Qt::Color.new(200,200,200))
-    @hash = Hash.new
-    @act_data = nil
-  end
-
-  def update(data, port_name)
-     @act_data_type = data.class.name
-     @act_data = data
-     name = port_name
-     if @hash.has_key?(name)
-      item = @hash[name]
-      add_object(data,item)
-     else
-      item = Qt::StandardItem.new(name)
-      item.setBackground(@brush)
-      item2 = Qt::StandardItem.new
-      item2.setBackground(@brush)
-      item2.setText(data.class.to_s.match('/(.*)>$')[1])
-      @hash[name]=item
-      @root_item.appendRow(item)
-      @root_item.setChild(item.row,1,item2)
-      add_object(data,item)
-      @window.treeView.resizeColumnToContents(0)
-     end
-  end
-
-  def add_object(object, parent_item)
-    if object.kind_of?(Typelib::CompoundType)
-      row = 0;
-      object.each_field do |name,value|
-        item, item2 = StructViewer.child_items(parent_item,row)
-        item.setText name
-        item2.setText value.class.name
-        add_object(value,item)
-        # item.setBackground(@brush)
-        # item2.setBackground(@brush)
-        row += 1
-      end
-      #delete all other rows
-      parent_item.removeRows(row,parent_item.rowCount-row) if row < parent_item.rowCount
-
-    elsif object.is_a?(Array) || (object.kind_of?(Typelib::Type) && object.respond_to?(:each))
-      if object.size > MAX_ARRAY_FIELDS
-        item2 = parent_item.parent.child(parent_item.row,parent_item.column+1)
-        item2.setText "#{object.size} fields ..."
-      else
-        row = 0
-        object.each_with_index do |val,row|
-          item,item2 = StructViewer.child_items(parent_item,row)
-          item2.setText val.class.name
-          item.setText "[#{row}]"
-          add_object val,item
+class StructViewer
+    module Functions
+        def init(parent=nil)
+            @brush = Qt::Brush.new(Qt::Color.new(200,200,200))
+            @tree_view = Vizkit::TreeModeler.new
+            @tree_view.setup_tree_view(treeView)
+            @item_hash = Hash.new
         end
-        #delete all other rows
-        row += 1
-        parent_item.removeRows(row,parent_item.rowCount-row) if row < parent_item.rowCount
-      end
-    else
-      item2 = parent_item.parent.child(parent_item.row,parent_item.column+1)
-      item2.setText(object.to_s)
-      end
-  end
+
+        def update(data, port_name)
+            if !@item_hash[port_name]
+                @item_hash[port_name],item2 = @tree_view.update(nil,port_name,@tree_view.root,false,@item_hash.size)
+                item2.setText(data.class.name)
+            end
+            @tree_view.update(data,nil,@item_hash[port_name])
+            @tree_view.set_all_children_editable(@tree_view.model.invisible_root_item, false)
+            treeView.resizeColumnToContents(0)
+        end
+
+        #add a default value 
+        def config(port,options=Hash.new)
+            return if options[:subfield]
+            #encode some values 
+            #otherwise tree_view is not able to open a new widget for an embedded type 
+            task = Vizkit::TaskProxy.new port.task
+            #add place holder
+            item,item2 = @tree_view.update(nil,port.task.name,@tree_view.root,false,@item_hash.size)
+            @tree_view.encode_data(item,task)
+            @tree_view.encode_data(item2,task)
+
+            item3 = item.child(item.rowCount-1,0)
+            item4 = item.child(item.rowCount-1,1)
+            item3.setText(port.name)
+            item4.setText(port.type_name)
+            @tree_view.encode_data(item3,port.class)
+            @tree_view.encode_data(item4,port.class)
+            @item_hash["#{port.task.name}.#{port.name}"] = item3
+        end
+    end
+
+    def self.create_widget(parent=nil)
+        widget = Vizkit.load(File.join(File.dirname(__FILE__),'struct_viewer_window.ui'),parent)
+        widget.extend Functions
+        widget.init parent
+        widget
+    end
 end
 
-Vizkit::UiLoader.register_ruby_widget("StructViewer",StructViewer.method(:new))
+Vizkit::UiLoader.register_ruby_widget("StructViewer",StructViewer.method(:create_widget))
+#Vizkit::UiLoader.register_widget_for("StructViewer","/base/samples/frame/Frame", :update)

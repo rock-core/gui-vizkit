@@ -8,7 +8,7 @@
     <x>0</x>
     <y>0</y>
     <width>508</width>
-    <height>425</height>
+    <height>298</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -539,10 +539,11 @@
     </widget>
    </item>
    <item>
-    <widget class="QTreeView" name="treeView"/>
-   </item>
-   <item>
-    <widget class="QTreeView" name="marker_view"/>
+    <widget class="QTreeView" name="treeView">
+     <property name="contextMenuPolicy">
+      <enum>Qt::CustomContextMenu</enum>
+     </property>
+    </widget>
    </item>
   </layout>
  </widget>

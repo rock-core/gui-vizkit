@@ -1,22 +1,26 @@
 =begin
 ** Form generated from reading ui file 'task_inspector_window.ui'
 **
-** Created: Fri Sep 3 17:18:15 2010
-**      by: Qt User Interface Compiler version 4.5.2
+** Created: Mo. Okt 24 16:31:51 2011
+**      by: Qt User Interface Compiler version 4.6.3
 **
 ** WARNING! All changes made in this file will be lost when recompiling ui file!
 =end
 
 class Ui_Form
     attr_reader :formLayout
-    attr_reader :verticalLayout
     attr_reader :treeView
+    attr_reader :buttonFrame
+    attr_reader :layoutWidget
+    attr_reader :horizontalLayout_3
+    attr_reader :setPropButton
+    attr_reader :cancelPropButton
 
     def setupUi(form)
     if form.objectName.nil?
         form.objectName = "form"
     end
-    form.resize(400, 473)
+    form.resize(406, 498)
     @sizePolicy = Qt::SizePolicy.new(Qt::SizePolicy::Expanding, Qt::SizePolicy::Expanding)
     @sizePolicy.setHorizontalStretch(1)
     @sizePolicy.setVerticalStretch(1)
@@ -33,12 +37,6 @@ class Ui_Form
     @formLayout.formAlignment = Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop
     @formLayout.horizontalSpacing = 0
     @formLayout.verticalSpacing = 5
-    @verticalLayout = Qt::VBoxLayout.new()
-    @verticalLayout.objectName = "verticalLayout"
-    @verticalLayout.sizeConstraint = Qt::Layout::SetDefaultConstraint
-
-    @formLayout.setLayout(0, Qt::FormLayout::LabelRole, @verticalLayout)
-
     @treeView = Qt::TreeView.new(form)
     @treeView.objectName = "treeView"
     @sizePolicy.heightForWidth = @treeView.sizePolicy.hasHeightForWidth
@@ -62,7 +60,35 @@ class Ui_Form
     @treeView.setProperty("showDropIndicator", Qt::Variant.new(false))
     @treeView.alternatingRowColors = true
 
-    @formLayout.setWidget(1, Qt::FormLayout::FieldRole, @treeView)
+    @formLayout.setWidget(2, Qt::FormLayout::FieldRole, @treeView)
+
+    @buttonFrame = Qt::Frame.new(form)
+    @buttonFrame.objectName = "buttonFrame"
+    @buttonFrame.enabled = true
+    @buttonFrame.minimumSize = Qt::Size.new(406, 27)
+    @buttonFrame.maximumSize = Qt::Size.new(0, 16777215)
+    @buttonFrame.frameShape = Qt::Frame::NoFrame
+    @buttonFrame.frameShadow = Qt::Frame::Raised
+    @buttonFrame.lineWidth = 0
+    @layoutWidget = Qt::Widget.new(@buttonFrame)
+    @layoutWidget.objectName = "layoutWidget"
+    @layoutWidget.geometry = Qt::Rect.new(0, 0, 202, 29)
+    @horizontalLayout_3 = Qt::HBoxLayout.new(@layoutWidget)
+    @horizontalLayout_3.objectName = "horizontalLayout_3"
+    @horizontalLayout_3.setContentsMargins(0, 0, 0, 0)
+    @setPropButton = Qt::PushButton.new(@layoutWidget)
+    @setPropButton.objectName = "setPropButton"
+    @setPropButton.checkable = false
+
+    @horizontalLayout_3.addWidget(@setPropButton)
+
+    @cancelPropButton = Qt::PushButton.new(@layoutWidget)
+    @cancelPropButton.objectName = "cancelPropButton"
+
+    @horizontalLayout_3.addWidget(@cancelPropButton)
+
+
+    @formLayout.setWidget(1, Qt::FormLayout::FieldRole, @buttonFrame)
 
 
     retranslateUi(form)
@@ -76,6 +102,8 @@ class Ui_Form
 
     def retranslateUi(form)
     form.windowTitle = Qt::Application.translate("Form", "Task Inspector", nil, Qt::Application::UnicodeUTF8)
+    @setPropButton.text = Qt::Application.translate("Form", "Set properties", nil, Qt::Application::UnicodeUTF8)
+    @cancelPropButton.text = Qt::Application.translate("Form", "Cancel", nil, Qt::Application::UnicodeUTF8)
     end # retranslateUi
 
     def retranslate_ui(form)

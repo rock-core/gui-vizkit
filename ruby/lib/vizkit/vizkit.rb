@@ -18,6 +18,7 @@ module Vizkit
 end
 
 module Vizkit
+
   Qt::Application.new(ARGV)
   @@auto_reconnect = 2000       #timer interval after which
                                 #ports are reconnected if they are no longer alive
@@ -27,6 +28,13 @@ module Vizkit
 
   def self.default_loader
     @default_loader
+  end
+
+  #TODO 
+  #this should be handled by uiloader
+  def self.struct_viewer
+    @struct_viewer ||= default_loader.StructViewer
+    @struct_viewer
   end
 
   def self.control value, options=Hash.new,&block
@@ -58,22 +66,18 @@ module Vizkit
       return result
     else 
       #if value is not a array 
+      local_options,options = Kernel::filter_options(options,{:widget => nil})
       case value
       when Orocos::OutputPort, Orocos::Log::OutputPort
-        widget = @default_loader.widget_for(value)
-        unless widget 
-          @struct_viewer ||= @default_loader.StructViewer
-          Vizkit.connect(@struct_viewer) unless @struct_viewer.visible
-          widget = @struct_viewer
-        end
-        #widget.setAttribute(Qt::WA_QuitOnClose, false)
+        widget = widget_for(value,local_options)
+        widget.config(value,options) if widget.respond_to? :config
         value.connect_to widget,options ,&block
         widget.show
         return widget
       when Orocos::TaskContext
-        widget = @default_loader.widget_for(value)
+        widget = widget_for(value,local_options)
         raise "Cannot handle #{value.class}" unless widget
-        widget.config(value)
+        widget.config(value,options)
         widget.show
         return widget
       else
@@ -81,6 +85,26 @@ module Vizkit
       end
     end
     nil
+  end
+
+  #TODO this should be handled by 
+  #the ui loader 
+  def self.widget_for(value,options)
+    widget = options[:widget] ? options[:widget] : @default_loader.widget_for(value)
+    widget = if widget.is_a? String
+               if widget == "StructViewer"
+                 struct_viewer
+               else
+                 @default_loader.create_widget(widget)
+               end
+             else
+               widget
+             end
+    unless widget 
+      Vizkit.connect(struct_viewer) unless struct_viewer.visible
+      widget = struct_viewer
+    end
+    widget
   end
 
   def self.connections
@@ -282,7 +306,8 @@ module Vizkit
         super(nil,&nil)
       end
 
-      this_options, @policy = Kernel.filter_options(options,[:update_frequency,:auto_reconnect])
+      #TODO implement an OutputPort proxy which can handle subfields 
+      this_options, @policy = Kernel.filter_options(options,[:update_frequency,:auto_reconnect,:subfield,:type_name])
       if port.respond_to?(:to_ary)
         @task_name, @port_name = *port
         @port = nil
@@ -292,8 +317,10 @@ module Vizkit
         @port = port
       end
       @widget = widget
+      @subfield = this_options[:subfield]
       @update_frequency = this_options[:update_frequency] 
       @auto_reconnect = this_options[:auto_reconnect]
+      @type_name = this_options[:type_name]
       @update_frequency ||= OQConnection::update_frequency
       @auto_reconnect ||= OQConnection::auto_reconnect
       @block = block
@@ -309,7 +336,18 @@ module Vizkit
     attr_reader :task_name
     attr_reader :port_name
     def port_full_name
-      "#{@task_name}.#{@port_name}"
+      if @subfield && !@subfield.empty?
+        "#{@task_name}.#{@port_name}.#{@subfield.join(".")}"
+      else
+        "#{@task_name}.#{@port_name}"
+
+      end
+    end
+
+    #returns ture if the connection was established at some point 
+    #otherwise false
+    def broken?
+        reader ? true : false 
     end
 
     #returns ture if the connection was established at some point 
@@ -322,7 +360,8 @@ module Vizkit
       if @widget && @port 
         #try to find callback_fct for port this is not working if no port is given
         if !@callback_fct && @widget.respond_to?(:loader)
-          @callback_fct = @widget.loader.callback_fct @widget.class_name,@port.type_name
+          @type_name = @port.type_name if !@type_name
+          @callback_fct = @widget.loader.callback_fct @widget.class_name,@type_name
         end
 
         #use default callback_fct
@@ -344,6 +383,15 @@ module Vizkit
       end
     end
 
+    #TODO implement an OutputPort proxy which can handle subfields 
+    def subfield(sample,field=Array.new)
+        return sample if !field
+        field.each do |f| 
+            sample = sample[f]
+        end
+        sample
+    end
+
     def timerEvent(event)
       #call disconnect if widget is no longer visible
       #this could lead to some problems if the widget wants to
@@ -355,6 +403,7 @@ module Vizkit
       end
 
       while(@reader.read_new(@last_sample))
+        @last_sample = subfield(@last_sample,@subfield)
         if @block
           @last_sample = @block.call(@last_sample,port_full_name)
           unless @last_sample.is_a? @sample_class
@@ -436,8 +485,15 @@ module Vizkit
     def timerEvent(event)
       disconnect if @widget && @widget.is_a?(Qt::Widget) && !@widget.visible
       while(sample = reader.read_new)
+        sample = subfield(sample,@subfield)
         sample = @block.call(sample,port_full_name) if @block
-        @callback_fct.call sample,port_full_name if @callback_fct && sample
+        begin
+          @callback_fct.call sample,port_full_name if @callback_fct && sample
+        rescue Exception => e
+          puts "Cannot call callback_fct:"
+          pp @callback_fct
+          puts e
+        end
         @last_sample = sample
       end
     end

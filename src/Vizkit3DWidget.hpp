@@ -2,9 +2,12 @@
 #define __VIZKIT_QVIZKITWIDGET__
 
 #include <vizkit/QOSGWidget.hpp>
-#include <vizkit/VizPlugin.hpp>
+#include <vizkit/Vizkit3DPlugin.hpp>
+#include <vizkit/GridNode.hpp>
+#include <vizkit/CoordinateFrame.hpp>
 #include <vizkit/CompositeViewerQOSG.hpp>
 #include <vizkit/PickHandler.hpp>
+#include <vizkit/QPropertyBrowserWidget.hpp>
 #include <QtDesigner/QDesignerExportWidget>
 
 namespace vizkit 
@@ -13,6 +16,8 @@ namespace vizkit
 class QDESIGNER_WIDGET_EXPORT Vizkit3DWidget : public CompositeViewerQOSG 
 {
     Q_OBJECT
+    Q_PROPERTY(bool show_grid READ isGridEnabled WRITE setGridEnabled)
+    Q_PROPERTY(bool show_axes READ areAxesEnabled WRITE setAxesEnabled)
 
 public:
     Vizkit3DWidget( QWidget* parent = 0, Qt::WindowFlags f = 0 );
@@ -36,38 +41,45 @@ public:
     QSize sizeHint() const;
     
 public slots:
-    /**
-     * Creates an instance of a visualization plugin using its
-     * Vizkit Qt Plugin.
-     * @param plugin Qt Plugin of the visualization plugin
-     * @return Instance of the adapter collection of this plugin
-     */
-    QObject* createExternalPlugin(QObject* plugin, QString const& name);
-    /**
-     * Returns the list of visualization plugins a library provides
-     *
-     * @param plugin Qt Plugin used to discover the visualization plugins
-     * @return the list of plugin names
-     */
-    QStringList* getListOfExternalPlugins(QObject* qt_plugin);
+    void addPlugin(QObject* plugin);
+    void removePlugin(QObject* plugin);
+    
     QStringList* getListOfAvailablePlugins();
     QObject* createPluginByName(QString pluginName);
+    
+    QWidget* getPropertyWidget();
 
-public slots:
     void setCameraLookAt(double x, double y, double z);
     void setCameraEye(double x, double y, double z);
     void setCameraUp(double x, double y, double z);
+        
+signals:
+    void addPlugins(QObject* plugin);
+    void removePlugins(QObject* plugin);
+    void propertyChanged(QString propertyName);
+    
+private slots:
+    void addPluginIntern(QObject* plugin);
+    void removePluginIntern(QObject* plugin);
+    void pluginActivityChanged(bool enabled);
 
 protected:
     void changeCameraView(const osg::Vec3* lookAtPos,
             const osg::Vec3* eyePos,
             const osg::Vec3* upVector);
+    bool isGridEnabled();
+    void setGridEnabled(bool enabled);
+    bool areAxesEnabled();
+    void setAxesEnabled(bool enabled);
 
     osg::ref_ptr<osg::Group> root;
     void createSceneGraph();
     osg::ref_ptr<PickHandler> pickHandler;
     osg::ref_ptr<ViewQOSG> view;
+    osg::ref_ptr<GridNode> groundGrid;
+    osg::ref_ptr<CoordinateFrame> coordinateFrame;
     QStringList* pluginNames;
+    QProperyBrowserWidget* propertyBrowserWidget;
 };
 
 }

@@ -8,8 +8,9 @@ module VizkitPluginExtension
 	end
         @bridges = Hash.new
         @plugins = Hash.new
-        getListOfAvailableAdapter.each do |name|
-            plugin = getAdapter(name)
+        @adapter_collection = getRubyAdapterCollection
+        @adapter_collection.getListOfAvailableAdapter.each do |name|
+            plugin = @adapter_collection.getAdapter(name)
             bridge = TypelibToQVariant.create_bridge
             Qt::Object.connect(bridge, SIGNAL('changeVariant(QVariant&, bool)'), plugin, SLOT('update(QVariant&, bool)'))
             @bridges[plugin.getRubyMethod] = bridge
@@ -33,13 +34,13 @@ module VizkitPluginExtension
                 end
 		
 		define_method('updateData') do |value|
-		    if(method_name = @type_to_method[value.class])
+		    if(method_name = @type_to_method[value.class.name])
 			self.send(method_name, value)
 		    else
 			message = "Expected type(s) "
 			
 			type_to_method.each do |i,j |
-			    message = message + i.name + " "
+			    message = message + i + " "
 			end
 			message = message + "but got #{value.class.name}"
 			raise ArgumentError, message
@@ -50,7 +51,7 @@ module VizkitPluginExtension
 		self.type_to_method = Hash.new()
 	    end
 	    if(plugin.getRubyMethod.match("update"))
-		self.type_to_method[expected_ruby_type] = plugin.getRubyMethod
+		self.type_to_method[expected_ruby_type.name] = plugin.getRubyMethod
 	    end
 
             plugin.instance_variable_set(:@expected_ruby_type,expected_ruby_type)
@@ -190,6 +191,7 @@ module VizkitPluginLoaderExtension
         builtin = getListOfAvailablePlugins
         if builtin.include?(lib_name)
             plugin = createPluginByName(lib_name)
+            addPlugin(plugin)
             plugin_name = lib_name
             lib_name = "builtin"
         else
@@ -198,14 +200,23 @@ module VizkitPluginLoaderExtension
                 Kernel.raise "#{lib_name} is not a builtin plugin, nor lib#{lib_name}-viz.so in VIZKIT_PLUGIN_RUBY_PATH. Available builtin plugins are: #{builtin.join(", ")}."
             end
             plugin = load_plugin(path)
-            plugin = createExternalPlugin(plugin, plugin_name || "")
-            if !plugin
-                if plugin_name
-                    Kernel.raise "library #{lib_name} does not have any vizkit plugin called #{plugin_name}"
+            if !plugin_name
+                if plugin.getAvailablePlugins.size > 1
+                    Kernel.raise "#{lib_name} either defines multiple plugins (and you must select one explicitely)"
                 else
-                    Kernel.raise "#{lib_name} either defines no vizkit plugin, or multiple ones (and you must select one explicitely)"
+                    plugin_name = plugin.getAvailablePlugins.first
                 end
             end
+
+            if !plugin.getAvailablePlugins.include?(plugin_name)
+                if plugin.getAvailablePlugins.include?("#{plugin_name}Visualization")
+                    plugin_name = "#{plugin_name}Visualization"
+                else
+                    Kernel.raise "library #{lib_name} does not have any vizkit plugin called #{plugin_name}, available plugins are: #{plugin.getAvailablePlugins.join(", ")}"
+                end
+            end
+            plugin = plugin.createPlugin(plugin_name)
+            addPlugin(plugin)
             plugin_name = lib_name unless plugin_name
             lib_name = "lib#{lib_name}-viz.so"
         end
@@ -254,3 +265,6 @@ end
 Vizkit::UiLoader.extend_cplusplus_widget_class "vizkit::QVizkitMainWindow" do
     include VizkitPluginLoaderExtension
 end
+
+Vizkit::UiLoader.register_3d_plugin('RigidBodyStateVisualization', 'RigidBodyStateVisualization', nil)
+Vizkit::UiLoader.register_3d_plugin_for('RigidBodyStateVisualization', "/base/samples/RigidBodyState_m", :updateRigidBodyState)
