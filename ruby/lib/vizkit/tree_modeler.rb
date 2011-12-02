@@ -24,6 +24,36 @@ module Vizkit
             action = menu.exec(parent.viewport.map_to_global(pos))
             action.text if action
         end
+
+        def self.task_state(task,parent,pos)
+            menu = Qt::Menu.new(parent)
+
+            if task.state == :PRE_OPERATIONAL
+                menu.add_action(Qt::Action.new("Configure Task", parent))
+            elsif task.running?
+                menu.add_action(Qt::Action.new("Stop Task", parent))
+            elsif task.error?
+                menu.add_action(Qt::Action.new("Stop Task", parent))
+            elsif task.ready?
+                menu.add_action(Qt::Action.new("Start Task", parent))
+            end
+
+            # Display context menu at cursor position.
+            action = menu.exec(parent.viewport.map_to_global(pos))
+            if action
+                begin
+                    if action.text == "Start Task"
+                        task.start
+                    elsif action.text == "Configure Task"
+                        task.configure
+                    elsif action.text == "Stop Task"
+                        task.stop
+                    end
+                rescue RuntimeError => e 
+                    puts e
+                end
+            end
+        end
     end
 
     # The TreeModeler class' purpose is to provide useful functionality for
@@ -114,8 +144,16 @@ module Vizkit
 
             object = item_to_object(item)
             return if !object 
-            subfield = nil
 
+            if object.is_a? Vizkit::TaskProxy
+                ContextMenu.task_state(object,tree_view,pos)
+                return 
+            end
+
+            ###################################################
+            #the user has clicked on a port, attribute or field
+            ###################################################
+            subfield = nil
             #if not port is given try to find one by searching for a parent of type Port
             if !port
                 if(object == Orocos::Log::OutputPort || object == Orocos::OutputPort) 
