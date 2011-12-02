@@ -8,7 +8,7 @@
     <x>0</x>
     <y>0</y>
     <width>508</width>
-    <height>260</height>
+    <height>425</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -109,25 +109,6 @@
         <width>40</width>
         <height>40</height>
        </size>
-      </property>
-     </widget>
-     <widget class="QSlider" name="slider">
-      <property name="geometry">
-       <rect>
-        <x>0</x>
-        <y>70</y>
-        <width>481</width>
-        <height>29</height>
-       </rect>
-      </property>
-      <property name="minimumSize">
-       <size>
-        <width>0</width>
-        <height>20</height>
-       </size>
-      </property>
-      <property name="orientation">
-       <enum>Qt::Horizontal</enum>
       </property>
      </widget>
      <widget class="QPushButton" name="bstop">
@@ -524,13 +505,54 @@
        <string/>
       </property>
      </widget>
+     <widget class="RockSlider" name="slider">
+      <property name="geometry">
+       <rect>
+        <x>0</x>
+        <y>70</y>
+        <width>481</width>
+        <height>29</height>
+       </rect>
+      </property>
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+        <horstretch>0</horstretch>
+        <verstretch>0</verstretch>
+       </sizepolicy>
+      </property>
+      <property name="minimumSize">
+       <size>
+        <width>0</width>
+        <height>20</height>
+       </size>
+      </property>
+      <property name="toolTip">
+       <string>RockSlider</string>
+      </property>
+      <property name="whatsThis">
+       <string/>
+      </property>
+      <property name="orientation">
+       <enum>Qt::Horizontal</enum>
+      </property>
+     </widget>
     </widget>
    </item>
    <item>
     <widget class="QTreeView" name="treeView"/>
    </item>
+   <item>
+    <widget class="QTreeView" name="marker_view"/>
+   </item>
   </layout>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>RockSlider</class>
+   <extends>QSlider</extends>
+   <header>rock_widget_collection/RockSlider.h</header>
+  </customwidget>
+ </customwidgets>
  <resources/>
  <connections/>
  <designerdata>
