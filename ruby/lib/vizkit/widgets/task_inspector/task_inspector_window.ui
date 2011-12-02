@@ -140,6 +140,9 @@
      <property name="frameShape">
       <enum>QFrame::StyledPanel</enum>
      </property>
+     <property name="autoScroll">
+      <bool>false</bool>
+     </property>
      <property name="editTriggers">
       <set>QAbstractItemView::AnyKeyPressed|QAbstractItemView::DoubleClicked|QAbstractItemView::EditKeyPressed</set>
      </property>
@@ -149,6 +152,12 @@
      <property name="alternatingRowColors">
       <bool>true</bool>
      </property>
+     <property name="selectionBehavior">
+      <enum>QAbstractItemView::SelectRows</enum>
+     </property>
+     <property name="verticalScrollMode">
+      <enum>QAbstractItemView::ScrollPerPixel</enum>
+     </property>
      <attribute name="headerCascadingSectionResizes">
       <bool>false</bool>
      </attribute>
@@ -158,14 +167,8 @@
      <attribute name="headerMinimumSectionSize">
       <number>0</number>
      </attribute>
-     <attribute name="headerCascadingSectionResizes">
+     <attribute name="headerShowSortIndicator" stdset="0">
       <bool>false</bool>
-     </attribute>
-     <attribute name="headerDefaultSectionSize">
-      <number>400</number>
-     </attribute>
-     <attribute name="headerMinimumSectionSize">
-      <number>0</number>
      </attribute>
     </widget>
    </item>
@@ -200,7 +203,7 @@
        <rect>
         <x>0</x>
         <y>0</y>
-        <width>203</width>
+        <width>208</width>
         <height>29</height>
        </rect>
       </property>

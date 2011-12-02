@@ -50,7 +50,7 @@ module Vizkit
         def setup_tree_view(tree_view)
             tree_view.setModel(@model)
             tree_view.setAlternatingRowColors(true)
-            tree_view.setSortingEnabled(true)
+            tree_view.setSortingEnabled(false)
             tree_view.connect(SIGNAL('customContextMenuRequested(const QPoint&)')) do |pos|
               context_menu(tree_view,pos)
             end
@@ -445,7 +445,6 @@ module Vizkit
                 object.each_field do |name,value|
                     item, item2 = child_items(parent_item,row)
                     item.set_text name
-                    
                     #this is a workaround 
                     #if each field is created by its self we cannot write 
                     #the data back to the sample and we do not know its name 
@@ -505,7 +504,7 @@ module Vizkit
                     item.set_text parent_item.text
                 end
 
-                if object
+                if object != nil
                     if read_from_model
                         Vizkit.debug("Mode: Reading user input")
                         raise "name differs" if(object.respond_to?(:name) && item.text != object.name)
@@ -523,10 +522,10 @@ module Vizkit
                         data = item2.text.gsub(',', '.').to_f if type.is_a? Float # use international decimal point
                         data = item2.text.to_i if type.is_a? Fixnum
                         data = item2.text.to_i if type.is_a? File
-                        data = item2.text.to_i == 0 if type.is_a? FalseClass
-                        data = item2.text.to_i == 1 if type.is_a? TrueClass
+                        data = item2.text.to_i == 1 || item2.text == "true" if type.is_a? FalseClass
+                        data = item2.text.to_i == 1 || item2.text == "true" if type.is_a? TrueClass
                         data = item2.text.to_sym if type.is_a? Symbol
-                        data = Time.new(item2.text) if type.is_a? Time
+                        data = Time.local(item2.text) if type.is_a? Time
                         Vizkit.debug("Converted object data: '#{data}'")
 
                         if object.is_a? Typelib::Type
