@@ -7,8 +7,7 @@ class StructViewer
     module Functions
         def init(parent=nil)
             @brush = Qt::Brush.new(Qt::Color.new(200,200,200))
-            @tree_view = Vizkit::TreeModeler.new
-            @tree_view.setup_tree_view(treeView)
+            @tree_view = Vizkit::TreeModeler.new(treeView)
             @item_hash = Hash.new
         end
 

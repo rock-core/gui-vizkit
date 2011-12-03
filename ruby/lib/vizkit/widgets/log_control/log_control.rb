@@ -30,8 +30,7 @@ class LogControl
       slider.maximum = @log_replay.size-1
 
       #add replayed streams to tree view 
-      @tree_view = Vizkit::TreeModeler.new
-      @tree_view.setup_tree_view(treeView)
+      @tree_view = Vizkit::TreeModeler.new(treeView)
       @tree_view.model.setHorizontalHeaderLabels(["Replayed Tasks","Information"])
       @tree_view.update(@log_replay, nil)
       treeView.resizeColumnToContents(0)

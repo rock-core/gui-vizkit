@@ -23,8 +23,7 @@ class TaskInspector
         def init
             buttonFrame.hide
             @brush = Qt::Brush.new(Qt::Color.new(200,200,200))
-            @tree_view = Vizkit::TreeModeler.new
-            @tree_view.setup_tree_view(treeView)
+            @tree_view = Vizkit::TreeModeler.new(treeView)
 
             @tasks = Hash.new
             @read_obj = false
@@ -68,5 +67,5 @@ end
 
 Vizkit::UiLoader.register_ruby_widget("task_inspector",TaskInspector.method(:create_widget))
 Vizkit::UiLoader.register_widget_for("task_inspector",Orocos::TaskContext)
+Vizkit::UiLoader.register_widget_for("task_inspector",Orocos::Log::TaskContext)
 #not supported so far
-#Vizkit::UiLoader.register_widget_for("task_inspector",Orocos::Log::TaskContext)

@@ -64,7 +64,7 @@ module Vizkit
     class TreeModeler
         attr_accessor :model,:root
 
-        def initialize
+        def initialize(tree_view)
             @max_array_fields = 30 
             @model = Qt::StandardItemModel.new
             @model.set_horizontal_header_labels(["Property","Value"])
@@ -74,10 +74,12 @@ module Vizkit
 
             #we cannot use object_id from ruby because 
             @object_storage = Array.new
+            setup_tree_view(tree_view)
         end
 
         #call this to setup your Qt::TreeView object
         def setup_tree_view(tree_view)
+            @tree_view = tree_view
             tree_view.setModel(@model)
             tree_view.setAlternatingRowColors(true)
             tree_view.setSortingEnabled(false)
