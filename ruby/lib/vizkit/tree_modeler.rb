@@ -16,7 +16,6 @@ module Vizkit
             # Always offer struct viewer as widget if not yet present.
             widgets << "StructViewer" unless widgets.include? "StructViewer"
 
-            widget_action_hash = Hash.new
             widgets.each do |w|
                 menu.add_action(Qt::Action.new(w, parent))
             end
@@ -74,7 +73,7 @@ module Vizkit
     # with possibly multiple layers of data. 
     # Multilayer recognition only works with Typelib::CompoundType.
     class TreeModeler
-        attr_accessor :model,:root
+        attr_accessor :model,:root,:force_update
 
         def initialize(tree_view)
             @max_array_fields = 30 
@@ -353,6 +352,17 @@ module Vizkit
             @dirty_items.include?(item)
         end
 
+        #return true if the item shall be updated returns false if 
+        #the parent is not expanded 
+        def update_item?(item)
+            if force_update || !@tree_view || !item.parent || 
+               @tree_view.is_expanded(@model.index_from_item(item.parent))
+                true
+            else
+                false
+            end
+        end
+
         # Adds object to parent_item as a child. Object's children will be 
         # added as well. The original tree structure will be preserved.
         def update_object(object, parent_item, read_from_model=false, row=0)
@@ -429,7 +439,10 @@ module Vizkit
             elsif object.kind_of?(Orocos::Property)
                 item, item2 = child_items(parent_item,row)
                 item.setText(object.name)
-                update_object(object.read,item,read_from_model)
+
+                if update_item?(item) || read_from_model
+                    update_object(object.read,item,read_from_model)
+                end
 
                 if item.has_children 
                     set_all_children_editable(item,true)
@@ -443,7 +456,10 @@ module Vizkit
             elsif object.kind_of?(Orocos::Log::Property)
                 item, item2 = child_items(parent_item,row)
                 item.setText(object.name)
-                update_object(object.read,item,read_from_model)
+
+                if update_item?(item)
+                    update_object(object.read,item,read_from_model)
+                end
             elsif object.kind_of?(Orocos::OutputPort)
                 item, item2 = child_items(parent_item,row)
                 item.setText(object.name)
@@ -458,10 +474,12 @@ module Vizkit
                 encode_data(item,object.class)
                 encode_data(item2,object.class)
 
-                _,task = find_parent(parent_item,Vizkit::TaskProxy)
-                raise "cannot find task for port #{object.name}" if !task
-                reader = task.__reader_for_port(object.name)
-                update_object(reader.read,item) if reader
+                if update_item?(item)
+                    _,task = find_parent(parent_item,Vizkit::TaskProxy)
+                    raise "cannot find task for port #{object.name}" if !task
+                    reader = task.__reader_for_port(object.name)
+                    update_object(reader.read,item) if reader
+                end
             elsif object.kind_of?(Orocos::InputPort)
                 item, item2 = child_items(parent_item,row)
                 item.setText(object.name)
