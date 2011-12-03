@@ -40,8 +40,8 @@ class TaskInspector
 
             @timer = Qt::Timer.new(self)
             @timer.connect(SIGNAL('timeout()')) do 
-                @tasks.each_value do |task|
-                    @tree_view.update(task)
+                @tasks.each_with_index do |pair,index|
+                    @tree_view.update(pair[1],nil,@tree_view.root,false,index)
                 end
 
                 if !@tree_view.dirty_items.empty?
@@ -50,6 +50,10 @@ class TaskInspector
                     treeView.resizeColumnToContents(0)
                 end
             end
+        end
+
+        def force_update=(value)
+            @tree_view.force_update=value
         end
 
         def config(task,options=Hash.new)

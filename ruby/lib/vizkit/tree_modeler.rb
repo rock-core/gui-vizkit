@@ -82,6 +82,7 @@ module Vizkit
             @root = @model.invisibleRootItem
             @tooltip = "Right-click for a list of available display widgets for this data type."
             @dirty_items = Array.new
+            @force_update = false
 
             #we cannot use object_id from ruby because 
             @object_storage = Array.new

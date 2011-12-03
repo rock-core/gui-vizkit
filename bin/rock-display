@@ -16,34 +16,40 @@ parser = OptionParser.new do |opt|
 end
 
 remaining = parser.parse(ARGV)
-
-if remaining.empty?
-    puts parser
-    exit 1
-end
-
+task_inspector = nil
 Orocos.initialize
 
-task_inspector = nil
-remaining.each do |spec|
-    task_name, port_name = spec.split(':')
-    task = Vizkit::TaskProxy.new task_name
-    if !port_name || !task.ping
+if remaining.empty?
+    Orocos.task_names.each do |name|
+        task = Vizkit::TaskProxy.new name
         task_inspector ||= Vizkit.default_loader.task_inspector
         task_inspector.config(task)
-    else
-        widget = Vizkit.default_loader.widget_for task.port(port_name)
-        if widget
-            Vizkit.connect_port_to task_name,port_name,widget
-            widget.show
+    end
+else
+    remaining.each do |spec|
+        task_name, port_name = spec.split(':')
+        task = Vizkit::TaskProxy.new task_name
+        if !port_name || !task.ping
+            task_inspector ||= Vizkit.default_loader.task_inspector
+            task_inspector.force_update = true
+            task_inspector.config(task)
         else
-            puts "Cannot find a display widget for #{port_name}"
+            widget = Vizkit.default_loader.widget_for task.port(port_name)
+            if widget
+                Vizkit.connect_port_to task_name,port_name,widget
+                widget.show
+            else
+                puts "Cannot find a display widget for #{port_name}"
+            end
         end
     end
 end
 
 if task_inspector
     task_inspector.show
+else
+    puts parser
+    exit 1
 end
 Vizkit.exec
 
