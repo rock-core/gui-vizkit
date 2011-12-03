@@ -4,6 +4,8 @@
 #the task was started or if the task was restarted
 module Vizkit
     class TaskProxy
+        attr_accessor :__task
+
         def initialize(task_name,&block)
             if task_name.is_a?(Orocos::TaskContext) || task_name.is_a?(Orocos::Log::TaskContext)
                 @__task = task_name if task_name.is_a? Orocos::Log::TaskContext

@@ -38,6 +38,16 @@ module Vizkit
                 menu.add_action(Qt::Action.new("Start Task", parent))
             end
 
+            #check if there are widgets for the task 
+            if task.__task
+                menu.addSeparator
+                widgets = Vizkit.default_loader.widget_names_for_value(task.__task)
+                widgets += Vizkit.default_loader.widget_names_for_value(task.__task.class)
+                widgets.each do |w|
+                    menu.add_action(Qt::Action.new(w, parent))
+                end
+            end
+
             # Display context menu at cursor position.
             action = menu.exec(parent.viewport.map_to_global(pos))
             if action
@@ -48,6 +58,8 @@ module Vizkit
                         task.configure
                     elsif action.text == "Stop Task"
                         task.stop
+                    elsif
+                        Vizkit.display task.__task,:widget => action.text
                     end
                 rescue RuntimeError => e 
                     puts e
