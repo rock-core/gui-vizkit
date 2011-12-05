@@ -32,8 +32,9 @@ module Vizkit
             elsif task.running?
                 menu.add_action(Qt::Action.new("Stop Task", parent))
             elsif task.error?
-                menu.add_action(Qt::Action.new("Stop Task", parent))
+                menu.add_action(Qt::Action.new("Cleanup Task", parent))
             elsif task.ready?
+                menu.add_action(Qt::Action.new("Cleanup Task", parent))
                 menu.add_action(Qt::Action.new("Start Task", parent))
             end
 
@@ -57,6 +58,8 @@ module Vizkit
                         task.configure
                     elsif action.text == "Stop Task"
                         task.stop
+                    elsif action.text == "Cleanup Task"
+                        task.cleanup
                     elsif
                         Vizkit.display task.__task,:widget => action.text
                     end
