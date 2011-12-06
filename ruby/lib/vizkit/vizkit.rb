@@ -403,14 +403,11 @@ module Vizkit
       end
 
       while(@reader.read_new(@last_sample))
-        @last_sample = subfield(@last_sample,@subfield)
+        sample = subfield(@last_sample,@subfield)
         if @block
-          @last_sample = @block.call(@last_sample,port_full_name)
-          unless @last_sample.is_a? @sample_class
-            raise "#{port_full_name}.connect_to: Code block returned #{@last_sample.class} but #{@sample_class}} was expected!!!"
-          end
+          @block.call(sample,port_full_name)
         end
-        @callback_fct.call @last_sample,port_full_name if @callback_fct
+        @callback_fct.call sample,port_full_name if @callback_fct
       end
     rescue Exception => e
       puts "could not read on #{reader}: #{e.message}"
@@ -485,8 +482,9 @@ module Vizkit
     def timerEvent(event)
       disconnect if @widget && @widget.is_a?(Qt::Widget) && !@widget.visible
       while(sample = reader.read_new)
+        @last_sample = sample
         sample = subfield(sample,@subfield)
-        sample = @block.call(sample,port_full_name) if @block
+        @block.call(sample,port_full_name) if @block
         begin
           @callback_fct.call sample,port_full_name if @callback_fct && sample
         rescue Exception => e
@@ -494,7 +492,6 @@ module Vizkit
           pp @callback_fct
           puts e
         end
-        @last_sample = sample
       end
     end
 
