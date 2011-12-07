@@ -58,7 +58,7 @@ module Vizkit
 
             begin
                 @__task.send(m, *args, &block)
-            rescue Orocos::NotFound
+            rescue Orocos::NotFound,Orocos::CORBAError
                 @__task = nil
             end
         end

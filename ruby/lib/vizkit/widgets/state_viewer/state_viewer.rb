@@ -36,7 +36,7 @@ class StateViewer < Qt::Widget
                         pair.task =  Vizkit.use_task?(pair.name)
                         pair.task = Orocos::TaskContext.get pair.name unless pair.task
                     end
-                rescue Orocos::NotFound 
+                rescue Orocos::NotFound,Orocos::CORBAError
                     pair.task = nil
                 end
                 if pair.task
