@@ -609,8 +609,12 @@ module Vizkit
                         end
                     else
                         Vizkit.debug("Mode: Displaying data")
-                        if object.is_a? Float
+                        case object
+                        when Float
                             item2.set_text(object.to_s.gsub(',', '.')) if !dirty?(item2)
+                        when Time
+                            format = "#{object.strftime('%d/%m/%Y %H:%M:%S')}.#{'%.03i' % [object.tv_usec / 1000]}.#{'%.03i' % [object.tv_usec % 1000]}"
+                            item2.set_text(format) if !dirty?(item2)
                         else
                             item2.set_text(object.to_s) if !dirty?(item2)
                         end
