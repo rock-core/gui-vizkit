@@ -52,6 +52,8 @@ module Vizkit
     class << self
       attr_accessor :widget_name_for_fct_hash
       attr_accessor :widget_names_for_fct_hash
+      attr_accessor :control_name_for_fct_hash
+      attr_accessor :control_names_for_fct_hash
       attr_accessor :current_loader_instance
 
       #interface for ruby extensions
@@ -60,6 +62,12 @@ module Vizkit
       end
       def register_default_widget_for(widget_name,value,callback_fct=:update)
         @current_loader_instance.register_default_widget_for(widget_name,value,callback_fct)
+      end
+      def register_control_for(widget_name,value,callback_fct=:control)
+        @current_loader_instance.register_control_for(widget_name,value,callback_fct)
+      end
+      def register_default_control_for(widget_name,value,callback_fct=:control)
+        @current_loader_instance.register_default_control_for(widget_name,value,callback_fct)
       end
       def register_ruby_widget(widget_name,widget_class)
         @current_loader_instance.register_ruby_widget(widget_name,widget_class)
@@ -91,6 +99,26 @@ module Vizkit
         register_default_widget_for(widget_name,type_name,"not_used")
       end
 
+      def define_control_for_methods(name,*klasses,&map)
+        if klasses.last != :no_auto     #control widget can not be reached via control_for value if no_auto is set
+          klasses.each do |klass|
+            @control_name_for_fct_hash[klass] = "control_name_for_#{name}".to_sym
+            @control_names_for_fct_hash[klass] = "control_names_for_#{name}".to_sym
+          end
+        end
+        self.send(:define_method,"control_for_#{name}") do|value,*parent|
+          control_for_value map.call(value)
+        end
+        self.send(:define_method,"control_name_for_#{name}")do|value|
+          raise "Wrong type!" if !klasses.include? value.class
+          name = control_name_for_value map.call(value)
+        end
+         self.send(:define_method,"control_names_for_#{name}") do|value|
+          raise "Wrong type!" if !klasses.include? value.class
+          name = control_names_for_value map.call(value)
+        end
+      end
+
       def define_widget_for_methods(name,*klasses,&map)
         if klasses.last != :no_auto     #widget can not be reached via widget_for value if no_auto is set
           klasses.each do |klass|
@@ -116,6 +144,9 @@ module Vizkit
     UiLoader.widget_name_for_fct_hash = Hash.new
     UiLoader.widget_names_for_fct_hash = Hash.new
 
+    UiLoader.control_name_for_fct_hash = Hash.new
+    UiLoader.control_names_for_fct_hash = Hash.new
+
     attr_reader :widget_for_hash
     attr_reader :cplusplus_extension_hash
     attr_reader :ruby_widget_hash
@@ -124,10 +155,12 @@ module Vizkit
       super(Qt::UiLoader.new(parent))
       @widget_for_hash = Hash.new
       @default_widget_for_hash = Hash.new
+      @control_for_hash = Hash.new
+      @default_control_for_hash = Hash.new
       @ruby_widget_hash = Hash.new
       @cplusplus_extension_hash = Hash.new
       @callback_fct_hash = Hash.new
-
+      @control_callback_fct_hash = Hash.new
 
       load_extensions(File.join(File.dirname(__FILE__),"cplusplus_extensions"))
       load_extensions(File.join(File.dirname(__FILE__),"widgets"))
@@ -340,6 +373,49 @@ module Vizkit
       create_widget(name, parent) if name
     end
 
+    def control_name_for(value)
+      fct = UiLoader.control_name_for_fct_hash[value.class]
+      if fct
+        method(fct).call(value)
+      else
+        control_name_for_value(value)
+      end
+    end
+
+    def control_names_for(value)
+      fct = UiLoader.control_names_for_fct_hash[value.class]
+      if fct
+        method(fct).call(value)
+      else
+        control_names_for_value(value)
+      end
+    end  
+    
+    def control_name_for_value(value)
+      return @default_control_for_hash[value] if @default_widget_for_hash.has_key?(value)
+      names = control_names_for_value(value)
+      if names.size > 1
+        raise "There are more than one control available for #{value.to_s}. "+ 
+              "Call register_default_control_for to define a default widget." 
+      end
+      names.first if names.size == 1
+    end
+
+    def control_names_for_value(value)
+      array = @control_for_hash[value]
+      array ||= Array.new
+    end
+
+    def control_for(value,parent=nil)
+      name = control_name_for value
+      create_widget(name, parent) if name
+    end
+
+    def control_for_value(value,parent=nil)
+      name = control_name_for_value value
+      create_widget(name, parent) if name
+    end
+
     def add_plugin_path(path)
       super
       load_extensions(path)
@@ -381,6 +457,27 @@ module Vizkit
     def callback_fct(class_name,value)
       @callback_fct_hash[class_name][value ]if @callback_fct_hash.has_key?(class_name)
     end
+    def control_callback_fct(class_name,value)
+      @control_callback_fct_hash[class_name][value ]if @control_callback_fct_hash.has_key?(class_name)
+    end
+
+    def register_default_control_for(class_name,value,callback_fct=:control)
+      register_control_for(class_name,value,callback_fct)
+      @default_control_for_hash[value] = class_name
+      self
+    end
+
+    def register_control_for(class_name,value,callback_fct=:control)
+      #check if widget is available
+      if !widget? class_name
+        return nil
+      end
+
+      register_control_callback_fct(class_name,value,callback_fct)
+      @control_for_hash[value] ||= Array.new
+      @control_for_hash[value] << class_name if !@control_for_hash[value].include?(class_name)
+      self
+    end
 
     def register_default_widget_for(class_name,value,callback_fct=:update)
       register_widget_for(class_name,value,callback_fct)
@@ -391,6 +488,11 @@ module Vizkit
     def register_callback_fct(class_name,value,callback_fct=:update)
       @callback_fct_hash[class_name] ||= Hash.new
       @callback_fct_hash[class_name][value] = callback_fct
+    end
+
+    def register_control_callback_fct(class_name,value,callback_fct=:update)
+      @control_callback_fct_hash[class_name] ||= Hash.new
+      @control_callback_fct_hash[class_name][value] = callback_fct
     end
 
     def register_widget_for(class_name,value,callback_fct=:update)
