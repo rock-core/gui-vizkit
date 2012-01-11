@@ -8,11 +8,12 @@ module Vizkit
     define_widget_for_methods("port_type",Orocos::OutputPort,Orocos::Log::OutputPort) do |port|
       port.type_name
     end
-    define_widget_for_methods("task_control",Orocos::TaskContext) do |task|
-      task.model.name
-    end
     define_widget_for_methods("task",Orocos::TaskContext,Orocos::Log::TaskContext) do |task|
       task.class
+    end
+
+    define_control_for_methods("task",Orocos::TaskContext) do |task|
+      task.model.name
     end
   end
 end
@@ -20,8 +21,7 @@ end
 module Vizkit
 
   Qt::Application.new(ARGV)
-  @@auto_reconnect = 2000       #timer interval after which
-                                #ports are reconnected if they are no longer alive
+  @@auto_reconnect = 2000       #timer interval after ports are reconnected if they are no longer alive
   def self.app
     $qApp
   end
@@ -38,20 +38,45 @@ module Vizkit
   end
 
   def self.control value, options=Hash.new,&block
+    local_options,options = Kernel::filter_options(options,{:widget => nil,:type_name => nil})
+    callback_fct = nil
     widget = nil
+
     case value
+    when Orocos::Property
+      widget = control_for(value,local_options)
+      if widget.respond_to?(:loader)
+        callback_fct = widget.loader.control_callback_fct widget.class_name,value.type.class.name
+      end
+    when Typelib::Type
+      widget = control_for(value.class.name,local_options)
+      if widget.respond_to?(:loader)
+        callback_fct = widget.loader.control_callback_fct widget.class_name,value.class.name
+      end
     when Orocos::Log::Replay
       widget = @default_loader.log_control
     when Orocos::TaskContext
-      widget = @default_loader.widget_for_task_control value
+      widget = @default_loader.control_for value
+      if widget.respond_to?(:loader)
+        callback_fct = widget.loader.control_callback_fct idget.class_name,value.name
+      end
       unless widget
         @task_inspector ||= @default_loader.task_inspector
         widget = @task_inspector
       end
     else
-        raise "Cannot handle #{value.class}"
+      widget = control_for(value,local_options)
+      if widget.respond_to?(:loader)
+        callback_fct = widget.loader.control_callback_fct widget.class_name,local_options[:type_name]
+      end
+      raise "Cannot handle #{value.class}" if !widget
     end
-    widget.control value, options
+    if !widget
+      puts "no control widget found for #{value}"
+      return 
+    end
+    widget.config(value,options) if widget.respond_to? :config
+    widget.method(callback_fct).call(value, options, &block) if callback_fct
     widget.show
     widget
   end
@@ -105,6 +130,14 @@ module Vizkit
       widget = struct_viewer
     end
     widget
+  end
+  def self.control_for(value,options)
+    widget = options[:widget] ? options[:widget] : @default_loader.control_for(value)
+    widget = if widget.is_a? String
+                 @default_loader.create_widget(widget)
+             else
+               widget
+             end
   end
 
   def self.connections

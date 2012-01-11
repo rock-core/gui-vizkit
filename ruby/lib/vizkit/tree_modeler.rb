@@ -68,6 +68,20 @@ module Vizkit
                 end
             end
         end
+
+        def self.control_widget_for(type_name,parent,pos)
+            menu = Qt::Menu.new(parent)
+
+            # Determine applicable widgets for the output port
+            widgets = Vizkit.default_loader.control_names_for_value(type_name)
+            return nil if widgets.empty?
+            widgets.each do |w|
+                menu.add_action(Qt::Action.new(w, parent))
+            end
+            # Display context menu at cursor position.
+            action = menu.exec(parent.viewport.map_to_global(pos))
+            action.text if action
+        end
     end
 
     # The TreeModeler class' purpose is to provide useful functionality for
@@ -150,6 +164,15 @@ module Vizkit
         #if there is only one 
         def context_menu(tree_view,pos,auto=false,port=nil)
             item = @model.item_from_index(tree_view.index_at(pos))
+
+            #try to find a parent which is a Typelib::CompoundType
+            object = item_to_object(item)
+            if !object 
+                item,type = find_parent(item,Typelib::CompoundType.class)
+                object = item_to_object(item)
+                return if !object
+            end
+
             item2 = item
             if item.parent
                 if item.column == 0
@@ -159,51 +182,65 @@ module Vizkit
                 end
             end
 
-            object = item_to_object(item)
-            return if !object 
-
-            if object.is_a? Vizkit::TaskProxy
-                ContextMenu.task_state(object,tree_view,pos)
-                return 
-            end
-
-            ###################################################
-            #the user has clicked on a port, attribute or field
-            ###################################################
-            subfield = nil
-            #if not port is given try to find one by searching for a parent of type Port
+            #if no port is given try to find one by searching for a parent of type Port
+            #this is needed to determine if someone clicked on a subfield
             if !port
                 if(object == Orocos::Log::OutputPort || object == Orocos::OutputPort) 
                     port = port_from_item(item)
-                elsif(object.is_a? Typelib::CompoundType)
+                elsif(object == Typelib::CompoundType.class)
                     port = port_from_item(item)
-                    subfield = subfield_from_item(item)
                 end
             end
 
-            #TODO
-            #create a proxy class for subfields which behave like ports
-            return if !port #this happens if no samples are received or a wrong item was selected
-            if auto && !subfield
-                #check if there is a default widget 
-                begin 
-                    widget = Vizkit.display port,:subfield => subfield
-                    widget.setAttribute(Qt::WA_QuitOnClose, false) if widget
-                rescue RuntimeError 
-                    auto = false
+            #check if someone clicked on a property 
+            subfield = subfield_from_item(item)
+            property = property_from_item(item)
+
+            #if object is a task 
+            if object.is_a? Vizkit::TaskProxy
+                ContextMenu.task_state(object,tree_view,pos)
+            #if object is a port or part of a port
+            elsif(port) 
+                #TODO
+                #create a proxy class for subfields which behave like ports
+                if auto && !subfield
+                    #check if there is a default widget 
+                    begin 
+                        widget = Vizkit.display port,:subfield => subfield
+                        widget.setAttribute(Qt::WA_QuitOnClose, false) if widget
+                    rescue RuntimeError 
+                        auto = false
+                    end
                 end
-            end
-            #auto can be modified in the other if block
-            if !auto 
-                type_name = if subfield 
-                                item2.text
-                            else
-                                port.type_name
-                            end
-                widget_name = Vizkit::ContextMenu.widget_for(type_name,tree_view,pos)
-                if widget_name
-                    widget = Vizkit.display port, :widget => widget_name,:subfield => subfield,:type_name=> type_name
-                    widget.setAttribute(Qt::WA_QuitOnClose, false) if widget
+                #auto can be modified in the other if block
+                if !auto 
+                    type_name = if subfield 
+                                    item2.text
+                                else
+                                    port.type_name
+                                end
+                    widget_name = Vizkit::ContextMenu.widget_for(type_name,tree_view,pos)
+                    if widget_name
+                        widget = Vizkit.display port, :widget => widget_name,:subfield => subfield,:type_name=> type_name
+                        widget.setAttribute(Qt::WA_QuitOnClose, false) if widget
+                    end
+                end
+            #if object is a property or part of the property
+            elsif(property)
+                if(object == Typelib::CompoundType.class)
+                    type_name = if subfield 
+                                    item2.text
+                                else
+                                    property.type.class.name
+                                end
+                    widget_name = Vizkit::ContextMenu.control_widget_for(type_name,tree_view,pos)
+                    if widget_name
+                        widget = Vizkit.control nil, :widget => widget_name ,:type_name => type_name do |sample| 
+                            update_object(sample,item)
+                            @dirty_items << item unless @dirty_items.include? item
+                            widget.close
+                        end
+                    end
                 end
             end
         end
@@ -336,6 +373,25 @@ module Vizkit
                 end
             else
                 task.port(port_item.text)
+            end
+        end
+
+        def property_from_item(item)
+            property_item,property = find_parent(item,Orocos::Property)
+            return nil if !property
+
+            _,task = find_parent(item,Vizkit::TaskProxy)
+            _,task = find_parent(item,Orocos::Log::TaskContext) if !task 
+            
+            return nil if !task
+            if task.respond_to? :ping
+                if task.ping
+                    task.property(property_item.text) 
+                else 
+                    nil
+                end
+            else
+                task.property(property_item.text) 
             end
         end
 
@@ -523,13 +579,13 @@ module Vizkit
                     #if each field is created by its self we cannot write 
                     #the data back to the sample and we do not know its name 
                     if(value.kind_of?(Typelib::CompoundType))
-                        encode_data(item,Typelib::CompoundType)
-                        encode_data(item2,Typelib::CompoundType)
+                        encode_data(item,Typelib::CompoundType.class)
+                        encode_data(item2,Typelib::CompoundType.class)
                         item2.set_text(value.class.name)
                     end
                     if read_from_model
                         object.set_field(name,update_object(value,item,read_from_model,row))
-                    else
+                    elsif !dirty?(item)
                         update_object(value,item,read_from_model,row)
                     end
                     row += 1

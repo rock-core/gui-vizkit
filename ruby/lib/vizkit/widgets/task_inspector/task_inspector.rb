@@ -72,4 +72,4 @@ end
 Vizkit::UiLoader.register_ruby_widget("task_inspector",TaskInspector.method(:create_widget))
 Vizkit::UiLoader.register_widget_for("task_inspector",Orocos::TaskContext)
 Vizkit::UiLoader.register_widget_for("task_inspector",Orocos::Log::TaskContext)
-#not supported so far
+Vizkit::UiLoader.register_control_for("task_inspector",Orocos::TaskContext,nil)
