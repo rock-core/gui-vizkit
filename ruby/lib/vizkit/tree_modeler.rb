@@ -649,8 +649,12 @@ module Vizkit
                         Vizkit.debug("object of class type #{object.class}, object.to_ruby (if applicable) is of class type #{type.class}")
 
                         data = item2.text if type.is_a? String
-                        data = item2.text.gsub(',', '.').to_f if type.is_a? Float # use international decimal point
-                        data = item2.text.to_i if type.is_a? Fixnum
+                        begin
+                            data = Math.class_eval(item2.text.gsub(',', '.')).to_f if type.is_a? Float # use international decimal point
+                            data = Math.class_eval(item2.text).to_i if type.is_a? Fixnum
+                        rescue
+                            data = object
+                        end
                         data = item2.text.to_i if type.is_a? File
                         data = item2.text.to_i == 1 || item2.text == "true" if type.is_a? FalseClass
                         data = item2.text.to_i == 1 || item2.text == "true" if type.is_a? TrueClass
