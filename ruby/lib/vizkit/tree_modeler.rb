@@ -27,6 +27,14 @@ module Vizkit
         def self.task_state(task,parent,pos)
             menu = Qt::Menu.new(parent)
 
+            #add some helpers
+            menu.add_action(Qt::Action.new("Load Configuration", parent))
+            if Orocos.conf.find_task_configuration_object(task)
+                menu.add_action(Qt::Action.new("Reapply Configuration", parent)) 
+            end
+            menu.add_action(Qt::Action.new("Save Configuration", parent))
+            menu.addSeparator
+
             if task.state == :PRE_OPERATIONAL
                 menu.add_action(Qt::Action.new("Configure Task", parent))
             elsif task.running?
@@ -48,6 +56,7 @@ module Vizkit
                 end
             end
 
+
             # Display context menu at cursor position.
             action = menu.exec(parent.viewport.map_to_global(pos))
             if action
@@ -60,6 +69,17 @@ module Vizkit
                         task.stop
                     elsif action.text == "Cleanup Task"
                         task.cleanup
+                    elsif action.text == "Load Configuration"
+                        file_name = Qt::FileDialog::getOpenFileName(nil,"Load Config",File.expand_path("."),"Config Files (*.yml)")
+                        task.load_conf(file_name) if file_name
+                    elsif action.text == "Apply Configuration"
+                        task.apply_conf
+                    elsif action.text == "Save Configuration"
+                        file_name = Qt::FileDialog::getSaveFileName(nil,"Save Config",File.expand_path("."),"Config Files (*.yml)")
+                        #delete the file if it already exists (the dialog is asking the use)
+                        #TODO add code to merge the configuration with an existing file 
+                        File.delete file_name if File.exist? file_name
+                        task.save_conf(file_name) if file_name
                     elsif
                         Vizkit.display task.__task,:widget => action.text
                     end
