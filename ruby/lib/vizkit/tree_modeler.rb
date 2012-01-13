@@ -457,6 +457,11 @@ module Vizkit
                 item, item2 = child_items(parent_item,row)
                 item.setText(object.name)
 
+                if object.doc?
+                  item.set_tool_tip(object.doc)
+                  item2.set_tool_tip(object.doc)
+                end
+
                 encode_data(item,object)
                 encode_data(item2,object)
 
@@ -520,6 +525,11 @@ module Vizkit
                 item, item2 = child_items(parent_item,row)
                 item.setText(object.name)
 
+                if object.doc?
+                  item.set_tool_tip(object.doc)
+                  item2.set_tool_tip(object.doc)
+                end
+
                 if update_item?(item) || read_from_model
                     update_object(object.read,item,read_from_model)
                 end
@@ -545,9 +555,14 @@ module Vizkit
                 item.setText(object.name)
                 item2.setText(object.type_name.to_s)
 
-                # Set tooltip informing about context menu
-                item.set_tool_tip(@tooltip)
-                item2.set_tool_tip(@tooltip)
+                if object.doc?
+                  item.set_tool_tip(object.doc)
+                  item2.set_tool_tip(object.doc)
+                else
+                  # Set tooltip informing about context menu
+                  item.set_tool_tip(@tooltip)
+                  item2.set_tool_tip(@tooltip)
+                end
 
                 #do not encode the object because 
                 #the port is only a temporary object!
@@ -562,6 +577,10 @@ module Vizkit
                 end
             elsif object.kind_of?(Orocos::InputPort)
                 item, item2 = child_items(parent_item,row)
+                if object.doc?
+                  item.set_tool_tip(object.doc)
+                  item2.set_tool_tip(object.doc)
+                end
                 item.setText(object.name)
                 item2.setText(object.type_name.to_s)
             elsif object.kind_of?(Orocos::Log::OutputPort)
