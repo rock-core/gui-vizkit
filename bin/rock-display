@@ -20,11 +20,17 @@ task_inspector = nil
 Orocos.initialize
 
 if remaining.empty?
+  @timer = Qt::Timer.new
+  task_inspector ||= Vizkit.default_loader.task_inspector
+
+  #check for new tasks every 5 seconds 
+  @timer.connect SIGNAL('timeout()') do 
     Orocos.task_names.each do |name|
         task = Vizkit::TaskProxy.new name
-        task_inspector ||= Vizkit.default_loader.task_inspector
         task_inspector.config(task)
     end
+  end
+  @timer.start(5000)
 else
     remaining.each do |spec|
         task_name, port_name = spec.split(':')

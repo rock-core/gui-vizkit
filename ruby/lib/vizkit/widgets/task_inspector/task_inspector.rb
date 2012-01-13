@@ -57,6 +57,11 @@ class TaskInspector
         end
 
         def config(task,options=Hash.new)
+            #do not add the task if it is already there
+            if @tasks.has_key? task.name
+              return
+            end
+
             if task.is_a? Orocos::TaskContext
                 @tasks[task.name] = Vizkit::TaskProxy.new(task.name)
             elsif task.is_a? Vizkit::TaskProxy
