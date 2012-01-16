@@ -3,7 +3,7 @@ require File.join(File.dirname(__FILE__), '../..', 'tree_modeler.rb')
 class LogControl
   module Functions
 
-    def control(replay,options=Hash.new)
+    def config(replay,options=Hash.new)
       raise "Cannot control #{replay.class}" if !replay.instance_of?(Orocos::Log::Replay)
       
       @log_replay = replay
