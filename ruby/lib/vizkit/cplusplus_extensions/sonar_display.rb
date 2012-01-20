@@ -14,7 +14,12 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "SonarDisplay" do
       resolution = sonar_beam.sampling_interval*sonar_beam.speed_of_sound*0.5
 
       if(@resolution != resolution || @number_of_bins < data.size)
-          setUpSonar(72,data.size, 5.0/180*Math::PI,resolution,sonar_beam.beamwidth_vertical)
+          beamwidth_vertical = if sonar_beam.beamwidth_vertical == 0
+                                   30.0/180*Math::PI
+                               else
+                                   sonar_beam.beamwidth_vertical
+                               end
+          setUpSonar(72,data.size, 5.0/180*Math::PI,resolution,beamwidth_vertical)
           @number_of_bins = data.size
           @resolution = resolution
       end
