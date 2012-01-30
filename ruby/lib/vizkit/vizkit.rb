@@ -56,9 +56,9 @@ module Vizkit
     when Orocos::Log::Replay
       widget = @default_loader.log_control
     when Orocos::TaskContext
-      widget = @default_loader.control_for value
+      widget = control_for(value,local_options)
       if widget.respond_to?(:loader)
-        callback_fct = widget.loader.control_callback_fct idget.class_name,value.name
+        callback_fct = widget.loader.control_callback_fct widget.class_name,value.name
       end
       unless widget
         @task_inspector ||= @default_loader.task_inspector
@@ -102,7 +102,7 @@ module Vizkit
       when Orocos::TaskContext
         widget = widget_for(value,local_options)
         raise "Cannot handle #{value.class}" unless widget
-        widget.config(value,options)
+        widget.config(value,options) if widget.respond_to? :config
         widget.show
         return widget
       else

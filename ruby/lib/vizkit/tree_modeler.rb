@@ -29,8 +29,12 @@ module Vizkit
 
             #add some helpers
             menu.add_action(Qt::Action.new("Load Configuration", parent))
-            if Orocos.conf.find_task_configuration_object(task)
-                menu.add_action(Qt::Action.new("Reapply Configuration", parent)) 
+            #there will be no task model if the Task is not reachable 
+            begin
+                if Orocos.conf.find_task_configuration_object(task)
+                    menu.add_action(Qt::Action.new("Reapply Configuration", parent)) 
+                end
+            rescue ArgumentError
             end
             menu.add_action(Qt::Action.new("Save Configuration", parent))
             menu.addSeparator
@@ -47,12 +51,19 @@ module Vizkit
             end
 
             #check if there are widgets for the task 
-            if task.__task
+            if task.model && task.__task
                 menu.addSeparator
-                widgets = Vizkit.default_loader.widget_names_for_value(task.__task)
-                widgets += Vizkit.default_loader.widget_names_for_value(task.__task.class)
-                widgets.each do |w|
+                Vizkit.default_loader.control_names_for_value(task.__task.class).each do |w|
                     menu.add_action(Qt::Action.new(w, parent))
+                end
+                #show widgets for model and all super models
+                model = task.model
+                while model
+                    widgets = Vizkit.default_loader.control_names_for_value(model.name)
+                    widgets.each do |w|
+                        menu.add_action(Qt::Action.new(w, parent))
+                    end
+                    model = model.superclass
                 end
             end
 
@@ -83,7 +94,7 @@ module Vizkit
                         File.delete file_name if File.exist? file_name
                         task.save_conf(file_name) if file_name
                     elsif
-                        Vizkit.display task.__task,:widget => action.text
+                        Vizkit.control task.__task,:widget => action.text
                     end
                 rescue RuntimeError => e 
                     puts e
