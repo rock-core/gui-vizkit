@@ -63,8 +63,15 @@ end
 
 remaining = parser.parse(ARGV)
 if remaining.empty? 
-    puts parser
-    exit(1)
+    remaining  = Qt::FileDialog::getOpenFileNames(nil,"Replay Log Files",File.expand_path("."),"Log Files (*.log)")
+    if remaining.empty?
+        puts parser
+        exit(1)
+    end
+    #close window before doing anything else
+    while $qApp.hasPendingEvents
+        $qApp.processEvents
+    end
 end
 
 log = Orocos::Log::Replay.open(remaining)
@@ -106,7 +113,7 @@ elsif replay_into
             task.start
         end
         Vizkit.display(task)
-        
+
         replay(log)
     end
 else
