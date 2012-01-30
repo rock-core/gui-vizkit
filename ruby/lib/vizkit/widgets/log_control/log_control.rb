@@ -34,6 +34,11 @@ class LogControl
       @tree_view.model.setHorizontalHeaderLabels(["Replayed Tasks","Information"])
       @tree_view.update(@log_replay, nil)
       treeView.resizeColumnToContents(0)
+
+      treeView.connect(SIGNAL('expanded(const QModelIndex)')) do 
+        @tree_view.update(@log_replay, nil)
+      end
+
       
       @brush = Qt::Brush.new(Qt::Color.new(200,200,200))
       @widget_hash = Hash.new
@@ -54,6 +59,7 @@ class LogControl
       else
         timestamp.text = "0"
       end
+      @tree_view.update(@log_replay, nil)
     end
 
     def speed=(double)

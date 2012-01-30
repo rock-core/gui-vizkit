@@ -560,6 +560,9 @@ module Vizkit
                 item, item2 = child_items(parent_item,row)
                 item.setText(object.name)
 
+                #do not show meta data for now because they are quite
+                #uninteresting for properties 
+
                 if update_item?(item)
                     update_object(object.read,item,read_from_model)
                 end
@@ -609,6 +612,11 @@ module Vizkit
                 encode_data(item,Orocos::Log::OutputPort)
                 encode_data(item2,Orocos::Log::OutputPort)
 
+                #add meta data
+                item2, item3 = child_items(item,2)
+                item2.setText("Meta Data")
+                update_object(object.metadata,item2)
+
                 item2, item3 = child_items(item,0)
                 item2.setText("Samples")
                 item3.setText(object.number_of_samples.to_s)
@@ -620,7 +628,15 @@ module Vizkit
                 else
                     item3.setText("no")
                 end
-            elsif object.kind_of?(Typelib::CompoundType)
+                
+        elsif object.kind_of?(Hash)
+                object.each_pair do |key,value|
+                    item, item2 = child_items(parent_item,row)
+                    item.setText(key.to_s)
+                    item2.setText(value.to_s)
+                    row+=1
+                end
+        elsif object.kind_of?(Typelib::CompoundType)
                 Vizkit.debug("update_object->CompoundType")
 
                 row = 0;
