@@ -87,6 +87,7 @@ module Vizkit
           widget
         end
         register_ruby_widget(widget_name,creation_method)
+        @current_loader_instance.vizkit3d_widgets << widget_name
       end
       def register_3d_plugin_for(widget_name,type_name,display_method = nil,&filter)
         @current_loader_instance.register_callback_fct('vizkit::Vizkit3DWidget',type_name,:update)
@@ -150,6 +151,9 @@ module Vizkit
     attr_reader :widget_for_hash
     attr_reader :cplusplus_extension_hash
     attr_reader :ruby_widget_hash
+    # The set of widgets that are actually registered Vizkit3D plugins, as a set
+    # of names
+    attr_reader :vizkit3d_widgets
     # The file in which each widget has been registered, as a map from the
     # widget name to the file path
     attr_reader :registration_files
@@ -164,6 +168,7 @@ module Vizkit
       @cplusplus_extension_hash = Hash.new
       @callback_fct_hash = Hash.new
       @control_callback_fct_hash = Hash.new
+      @vizkit3d_widgets = Set.new
       @registration_files = Hash.new
 
       Orocos.load
