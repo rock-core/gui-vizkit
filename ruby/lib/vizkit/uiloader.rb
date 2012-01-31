@@ -150,6 +150,9 @@ module Vizkit
     attr_reader :widget_for_hash
     attr_reader :cplusplus_extension_hash
     attr_reader :ruby_widget_hash
+    # The file in which each widget has been registered, as a map from the
+    # widget name to the file path
+    attr_reader :registration_files
 
     def initialize(parent = nil)
       super(Qt::UiLoader.new(parent))
@@ -161,6 +164,7 @@ module Vizkit
       @cplusplus_extension_hash = Hash.new
       @callback_fct_hash = Hash.new
       @control_callback_fct_hash = Hash.new
+      @registration_files = Hash.new
 
       Orocos.load
 
@@ -469,12 +473,23 @@ module Vizkit
       self
     end
 
+    def find_registration_file
+        backtrace = caller
+        line = backtrace.find do |line|
+            line !~ /register/
+        end
+        if line
+            line.gsub(/:\d+.*/, '')
+        end
+    end
+
     def register_control_for(class_name,value,callback_fct=:control)
       #check if widget is available
       if !widget? class_name
         return nil
       end
 
+      @registration_files[class_name] = find_registration_file
       register_control_callback_fct(class_name,value,callback_fct)
       @control_for_hash[value] ||= Array.new
       @control_for_hash[value] << class_name if !@control_for_hash[value].include?(class_name)
@@ -519,6 +534,7 @@ module Vizkit
       end
 
       register_callback_fct(class_name,value,callback_fct)
+      @registration_files[class_name] = find_registration_file
       @widget_for_hash[value] ||= Array.new
       @widget_for_hash[value] << class_name if !@widget_for_hash[value].include?(class_name)
       self
