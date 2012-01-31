@@ -18,8 +18,8 @@ Vizkit::UiLoader.extend_cplusplus_widget_class "OrientationView" do
   end
 end
 
-Vizkit::UiLoader.register_default_widget_for("OrientationView",'/base/samples/RigidBodyState_m',:update)
-Vizkit::UiLoader.register_widget_for("OrientationView",'/wrappers/Orientation',:update)
-Vizkit::UiLoader.register_widget_for("OrientationView",'/wrappers/RigidBodyState',:update)
-Vizkit::UiLoader.register_widget_for("OrientationView",'/wrappers/samples/RigidBodyState',:update)
-Vizkit::UiLoader.register_widget_for("OrientationView",'/wrappers/Pose',:update)
+Vizkit::UiLoader.register_default_widget_for("OrientationView",'/base/samples/RigidBodyState',:update)
+Vizkit::UiLoader.register_widget_for("OrientationView",'/base/Orientation',:update)
+Vizkit::UiLoader.register_widget_for("OrientationView",'/base/RigidBodyState',:update)
+Vizkit::UiLoader.register_widget_for("OrientationView",'/base/samples/RigidBodyState',:update)
+Vizkit::UiLoader.register_widget_for("OrientationView",'/base/Pose',:update)

@@ -162,6 +162,8 @@ module Vizkit
       @callback_fct_hash = Hash.new
       @control_callback_fct_hash = Hash.new
 
+      Orocos.load
+
       load_extensions(File.join(File.dirname(__FILE__),"cplusplus_extensions"))
       load_extensions(File.join(File.dirname(__FILE__),"widgets"))
 
@@ -501,8 +503,22 @@ module Vizkit
  #       puts "Widget #{class_name} is unknown to the loader. Cannot extend it!" 
         return nil
       end
-      register_callback_fct(class_name,value,callback_fct)
 
+      if value.respond_to?(:to_str)
+          begin
+              typekit = Orocos.load_typekit_for(value, false)
+              type = Orocos.registry.get(value)
+              intermediate = typekit.intermediate_type_for(value)
+              if value != intermediate.name
+                  register_widget_for(class_name, intermediate.name, callback_fct)
+              end
+
+          rescue ArgumentError
+              # It's not a typelib type after all
+          end
+      end
+
+      register_callback_fct(class_name,value,callback_fct)
       @widget_for_hash[value] ||= Array.new
       @widget_for_hash[value] << class_name if !@widget_for_hash[value].include?(class_name)
       self
