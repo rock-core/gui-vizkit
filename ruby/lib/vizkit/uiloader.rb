@@ -7,6 +7,15 @@ require 'delegate'
 require 'rexml/document'
 require 'rexml/xpath'
 
+
+#TODO
+#Clean up the hole class
+#       * create a widget info object for each widget
+#       * attach the info object to all created widgets
+#       * all informations like callback_fct, value class name, file etc
+#       * are stored in the info object
+#####
+
 class Module
   # Shortcut to define the necessary methods so that a module can be used to
   # "subclass" a Qt widget
@@ -55,6 +64,8 @@ module Vizkit
       attr_accessor :control_name_for_fct_hash
       attr_accessor :control_names_for_fct_hash
       attr_accessor :current_loader_instance
+      attr_accessor :widget_value_map
+      attr_accessor :control_value_map
 
       #interface for ruby extensions
       def register_widget_for(widget_name,value,callback_fct=:update)
@@ -104,6 +115,7 @@ module Vizkit
           klasses.each do |klass|
             @control_name_for_fct_hash[klass] = "control_name_for_#{name}".to_sym
             @control_names_for_fct_hash[klass] = "control_names_for_#{name}".to_sym
+            @control_value_map[klass] = map
           end
         end
         self.send(:define_method,"control_for_#{name}") do|value,*parent|
@@ -124,6 +136,7 @@ module Vizkit
           klasses.each do |klass|
             @widget_name_for_fct_hash[klass] = "widget_name_for_#{name}".to_sym
             @widget_names_for_fct_hash[klass] = "widget_names_for_#{name}".to_sym
+            @widget_value_map[klass] = map
           end
         end
         self.send(:define_method,"widget_for_#{name}") do|value,*parent|
@@ -143,9 +156,11 @@ module Vizkit
 
     UiLoader.widget_name_for_fct_hash = Hash.new
     UiLoader.widget_names_for_fct_hash = Hash.new
+    UiLoader.widget_value_map = Hash.new
 
     UiLoader.control_name_for_fct_hash = Hash.new
     UiLoader.control_names_for_fct_hash = Hash.new
+    UiLoader.control_value_map = Hash.new
 
     attr_reader :widget_for_hash
     attr_reader :cplusplus_extension_hash
@@ -161,6 +176,7 @@ module Vizkit
       @cplusplus_extension_hash = Hash.new
       @callback_fct_hash = Hash.new
       @control_callback_fct_hash = Hash.new
+      @created_widgets = Array.new
 
       load_extensions(File.join(File.dirname(__FILE__),"cplusplus_extensions"))
       load_extensions(File.join(File.dirname(__FILE__),"widgets"))
@@ -177,13 +193,31 @@ module Vizkit
       list.each do |widget_name|
         if !respond_to?(widget_name.to_sym)
           (class << self;self;end).send(:define_method,widget_name)do|*parent|
-            create_widget(widget_name,parent.first)
+            reuse = if parent.size >= 2
+                      parent[1]
+                    else
+                      false
+                    end
+            create_widget(widget_name,parent.first,reuse)
           end
         end
       end
     end
 
-    def create_widget(class_name,parent=nil)
+    def create_widget(class_name,parent=nil,reuse=false)
+      #check if there is already a widget of the same type
+      #which can handle multiple values 
+      if reuse
+        widget = @created_widgets.find do |widget| 
+          if(widget.respond_to?(:ruby_widget?) && widget.ruby_widget?)
+            widget.ruby_class_name == class_name
+          else
+            widget.class_name == class_name
+          end
+        end
+        return widget if(widget.respond_to?(:multi_value?) && widget.multi_value?)
+      end
+
       klass = @ruby_widget_hash[class_name]
       #if ruby widget
       if klass
@@ -192,15 +226,27 @@ module Vizkit
           raise "Cannot extend ruby widget #{class_name} because method :loader is alread defined"
         end
         widget.instance_variable_set(:@__loader__,self)
+        widget.instance_variable_set(:@__ruby_class_name__,class_name)
         def widget.loader
           @__loader__
         end
+        def widget.ruby_widget?
+          true
+        end
+        #store ruby class name because all qt ruby objects or of
+        #the same class 
+        #we cannot overwirte the class name because 
+        #qtruby does not like this 
+        def widget.ruby_class_name
+          @__ruby_class_name__
+        end
       else 
         #look for c++ widget
-        widget = super
+        widget = super(class_name,parent)
         redefine_widget_class_name(widget,class_name)
         extend_widget widget if widget
       end
+      @created_widgets << widget
       widget
     end
 
@@ -330,6 +376,32 @@ module Vizkit
       widget
     end
 
+    def created_widgets_for(value)
+        names = widget_names_for value
+        widgets = Array.new
+        @created_widgets.each do |widget|
+          if widget.respond_to? :ruby_class_name
+            widgets << widget if names.include? widget.ruby_class_name
+          else
+            widgets << widget if names.include? widget.class_name
+          end
+        end
+        widgets
+    end
+
+    def created_controls_for(value)
+        names = widget_names_for value
+        controls = Array.new
+        
+        #TODO 
+        #clean this up
+        #at the moment controls and widgets are stored in the same array
+        @create_widgets.each do |control|
+            controls << control if names.include? control.class_name
+        end
+        controls
+    end
+
     def widget_name_for(value)
       fct = UiLoader.widget_name_for_fct_hash[value.class]
       if fct
@@ -363,14 +435,29 @@ module Vizkit
       array ||= Array.new
     end
 
-    def widget_for(value,parent=nil)
-      name = widget_name_for value
-      create_widget(name, parent) if name
+    def widget_for_options(value,options = Hash.new)
+      if options[:widget].is_a? String
+        options[:widget] = create_widget(options[:widget],options[:parent],options[:reuse]) 
+      end
+      widget = if options[:widget]
+                 options[:widget]
+               else
+                 if options[:widget_type] == :control
+                   control_for(value,options[:parent],options[:reuse])
+                 else
+                   widget_for(value,options[:parent],options[:reuse])
+                 end
+               end
     end
 
-    def widget_for_value(value,parent=nil)
+    def widget_for(value,parent=nil,reuse=false)
+      name = widget_name_for value
+      create_widget(name, parent,reuse) if name
+    end
+
+    def widget_for_value(value,parent=nil,reuse=false)
       name = widget_name_for_value value
-      create_widget(name, parent) if name
+      create_widget(name, parent,reuse) if name
     end
 
     def control_name_for(value)
@@ -406,14 +493,14 @@ module Vizkit
       array ||= Array.new
     end
 
-    def control_for(value,parent=nil)
+    def control_for(value,parent=nil,reuse=false)
       name = control_name_for value
-      create_widget(name, parent) if name
+      create_widget(name, parent,reuse) if name
     end
 
-    def control_for_value(value,parent=nil)
+    def control_for_value(value,parent=nil,reuse=false)
       name = control_name_for_value value
-      create_widget(name, parent) if name
+      create_widget(name, parent,reuse) if name
     end
 
     def add_plugin_path(path)
@@ -455,10 +542,39 @@ module Vizkit
     end
 
     def callback_fct(class_name,value)
-      @callback_fct_hash[class_name][value ]if @callback_fct_hash.has_key?(class_name)
+        class_name = if class_name.is_a? Qt::Widget
+                         class_name.class_name
+                     else
+                         class_name
+                     end
+        if @callback_fct_hash.has_key?(class_name)
+            if @callback_fct_hash[class_name].has_key? value
+                @callback_fct_hash[class_name][value]
+            else
+                if @widget_value_map.has_key? value.class
+                    result = @widget_value_map[value.class].call value
+                    @callback_fct_hash[class_name][result]
+                end
+            end
+        end
     end
+
     def control_callback_fct(class_name,value)
-      @control_callback_fct_hash[class_name][value ]if @control_callback_fct_hash.has_key?(class_name)
+        class_name = if class_name.is_a? Qt::Widget
+                         class_name.class_name
+                     else
+                         class_name
+                     end
+        if @control_callback_fct_hash.has_key?(class_name)
+            if @control_callback_fct_hash[class_name].has_key? value
+                @control_callback_fct_hash[class_name][value]
+            else
+                if UiLoader.control_value_map.has_key? value.class
+                    result = UiLoader.control_value_map[value.class].call value
+                    @control_callback_fct_hash[class_name][result]
+                end
+            end
+        end
     end
 
     def register_default_control_for(class_name,value,callback_fct=:control)
