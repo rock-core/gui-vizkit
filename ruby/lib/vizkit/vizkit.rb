@@ -38,19 +38,26 @@ module Vizkit
 
   def self.setup_widget(widget,value=nil,options = Hash.new,type = :display,&block)
     return nil if !widget
-    callback_fct = if widget.respond_to?(:loader)
-                     if type == :control
-                       widget.loader.control_callback_fct widget,value
-                     else #:display is the other one
-                       widget.loader.callback_fct widget,value
-                     end
-                   end
-
-    if value.is_a? Orocos::OutputPort or value.is_a? Orocos::Log::OutputPort
-      value.connect_to widget,options ,&block
-    end
     widget.config(value,options) if widget.respond_to? :config
-    widget.method(callback_fct).call(value, options, &block) if callback_fct
+
+    if type == :control
+      callback_fct = if widget.respond_to?(:loader)
+                       widget.loader.control_callback_fct widget,value
+                     end
+      widget.method(callback_fct).call(value, options, &block) if(callback_fct && callback_fct != :config)
+    else
+      if value.is_a? Orocos::OutputPort or value.is_a? Orocos::Log::OutputPort
+        value.connect_to widget,options ,&block
+        callback_fct = if widget.respond_to?(:loader)
+                         widget.loader.callback_fct widget,value
+                       end
+
+        if(callback_fct && callback_fct != :config)
+          sample = value.read
+          widget.method(callback_fct).call(sample, value.name) if sample
+        end
+      end
+    end
     widget.show
     widget
   end
