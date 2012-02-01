@@ -1,6 +1,7 @@
 #include "WaypointVisualization.hpp"
 #include <osg/Geometry>
 #include <osg/Geode>
+#include <iostream>
 
 namespace vizkit 
 {
@@ -8,6 +9,12 @@ namespace vizkit
 WaypointVisualization::WaypointVisualization()
 {    
     VizPluginRubyAdapter(WaypointVisualization, base::Waypoint, Waypoint)
+}
+
+void WaypointVisualization::updateWp(const base::Waypoint& wp)
+{
+    std::cout << "called " << wp.position.transpose() << std::endl;
+    updateData(wp);
 }
 
 osg::ref_ptr< osg::Node > WaypointVisualization::createMainNode()
