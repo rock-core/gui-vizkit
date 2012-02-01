@@ -112,13 +112,6 @@ module VizkitPluginLoaderExtension
         nil
     end
 
-    # Returns the list of plugins that are built-in the Vizkit3DWidget
-    #
-    # The returned value is a list of plugin names
-    def builtin_plugins
-        getListOfAvailablePlugins
-    end
-
     # Returns the list of plugins that are available through external libraries
     #
     # The returned value is an array of pairs [lib_name, plugin_name]
@@ -188,38 +181,39 @@ module VizkitPluginLoaderExtension
     #   createPlugin("vfh_star")
     #
     def createPlugin(lib_name, plugin_name = nil)
-        builtin = getListOfAvailablePlugins
-        if builtin.include?(lib_name)
-            plugin = createPluginByName(lib_name)
-            addPlugin(plugin)
-            plugin_name = lib_name
-            lib_name = "builtin"
-        else
-            path = findPluginPath(lib_name)
-            if !path
-                Kernel.raise "#{lib_name} is not a builtin plugin, nor lib#{lib_name}-viz.so in VIZKIT_PLUGIN_RUBY_PATH. Available builtin plugins are: #{builtin.join(", ")}."
-            end
-            plugin = load_plugin(path)
-            if !plugin_name
-                if plugin.getAvailablePlugins.size > 1
-                    Kernel.raise "#{lib_name} either defines multiple plugins (and you must select one explicitely)"
-                else
-                    plugin_name = plugin.getAvailablePlugins.first
-                end
-            end
+	path = findPluginPath(lib_name)
+	
+	#try to load build in plugins
+	if(!path && !plugin_name)
+	    plugin_name = lib_name
+	    lib_name = 'vizkit-base'
+	    
+	    path = findPluginPath(lib_name)
+	end
+	
+	if !path
+	    Kernel.raise "#{plugin_name} is not a builtin plugin, nor lib#{lib_name}-viz.so in VIZKIT_PLUGIN_RUBY_PATH."
+	end
+	plugin = load_plugin(path)
+	if !plugin_name
+	    if plugin.getAvailablePlugins.size > 1
+		Kernel.raise "#{lib_name} either defines multiple plugins (and you must select one explicitely)"
+	    else
+		plugin_name = plugin.getAvailablePlugins.first
+	    end
+	end
 
-            if !plugin.getAvailablePlugins.include?(plugin_name)
-                if plugin.getAvailablePlugins.include?("#{plugin_name}Visualization")
-                    plugin_name = "#{plugin_name}Visualization"
-                else
-                    Kernel.raise "library #{lib_name} does not have any vizkit plugin called #{plugin_name}, available plugins are: #{plugin.getAvailablePlugins.join(", ")}"
-                end
-            end
-            plugin = plugin.createPlugin(plugin_name)
-            addPlugin(plugin)
-            plugin_name = lib_name unless plugin_name
-            lib_name = "lib#{lib_name}-viz.so"
-        end
+	if !plugin.getAvailablePlugins.include?(plugin_name)
+	    if plugin.getAvailablePlugins.include?("#{plugin_name}Visualization")
+		plugin_name = "#{plugin_name}Visualization"
+	    else
+		Kernel.raise "library #{lib_name} does not have any vizkit plugin called #{plugin_name}, available plugins are: #{plugin.getAvailablePlugins.join(", ")}"
+	    end
+	end
+	plugin = plugin.createPlugin(plugin_name)
+	addPlugin(plugin)
+	plugin_name = lib_name unless plugin_name
+	lib_name = "lib#{lib_name}-viz.so"
 
         plugin.extend VizkitPluginExtension
         plugin.instance_variable_set(:@__name__,plugin_name)

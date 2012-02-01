@@ -24,14 +24,10 @@ set(SOURCES
     PickHandler.cpp
     QOSGWidget.cpp
     Vizkit3DWidget.cpp
-    WaypointVisualization.cpp
-    MotionCommandVisualization.cpp
-    TrajectoryVisualization.cpp
     MouseManipulationManipulator.cpp
     QtThreadedWidget.cpp
     QVizkitMainWindow.cpp
     Uncertainty.cpp
-    RigidBodyStateVisualization.cpp
     QPropertyBrowserWidget.cpp
     )
 
@@ -52,20 +48,16 @@ set(QT_HEADERS
     PickHandler.hpp
     QVizkitMainWindow.hpp
     QPropertyBrowserWidget.hpp
-    RigidBodyStateVisualization.hpp
     )
 
 set(HEADERS 
     ${QT_HEADERS}
     VizPlugin.hpp
+    Vizkit3DHelper.hpp
     CoordinateFrame.hpp
     GridNode.hpp
-    MotionCommandVisualization.hpp
-    TrajectoryVisualization.hpp
-    WaypointVisualization.hpp
     QtThreadedWidget.hpp
     Uncertainty.hpp
-    RigidBodyStateVisualization.hpp
     QVisualizationTestWidget.hpp
     )
 
@@ -133,8 +125,21 @@ if (TYPELIB_FOUND AND TYPELIBRUBY_FOUND AND GEM_FOUND)
 		                          ${TYPELIBRUBY_LIBRARIES}) 
 
 	install(TARGETS ${TYPELIB_TO_QVARIANT}
-		  LIBRARY DESTINATION ${RUBY_EXTENSIONS_INSTALL_DIR}
-	)
+		  LIBRARY DESTINATION ${RUBY_EXTENSIONS_INSTALL_DIR})
+
+	ROCK_RUBY_EXTENSION(TypelibQtAdapter SHARED
+			TypelibQtAdapter.cpp)
+	target_link_libraries(TypelibQtAdapter 
+				${QT_LIBRARIES}
+				${QT_QTCORE_LIBRARY} 
+				${QT_QTGUI_LIBRARY} 
+				${GEM_LIBRARIES}
+				${TYPELIB_LIBRARIES}
+				${TYPELIBRUBY_LIBRARIES}) 
+
+	install(TARGETS TypelibQtAdapter
+		  LIBRARY DESTINATION ${RUBY_EXTENSIONS_INSTALL_DIR})
+
 else()
     if (NOT TYPELIB_FOUND)
         message(STATUS "cannot find typelib, the vizkit-ruby bridge is disabled")

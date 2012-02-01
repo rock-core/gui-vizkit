@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>CameraControl</class>
+ <widget class="QWidget" name="CameraControl">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>299</width>
+    <height>315</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>LogMarkers</string>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout">
+   <item>
+    <widget class="QLabel" name="label">
+     <property name="text">
+      <string>History:</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QListWidget" name="list_history">
+     <property name="autoScroll">
+      <bool>true</bool>
+     </property>
+     <property name="editTriggers">
+      <set>QAbstractItemView::NoEditTriggers</set>
+     </property>
+     <property name="alternatingRowColors">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QCheckBox" name="auto">
+     <property name="text">
+      <string>Auto Start - Stop Sequence</string>
+     </property>
+     <property name="checked">
+      <bool>true</bool>
+     </property>
+     <property name="tristate">
+      <bool>false</bool>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QComboBox" name="combobox">
+     <item>
+      <property name="text">
+       <string>Start Marker</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>Abort Marker</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>Stop Marker</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>Event Marker</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>Stop All Marker</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>Abort All Marker</string>
+      </property>
+     </item>
+    </widget>
+   </item>
+   <item>
+    <widget class="QLabel" name="label_2">
+     <property name="text">
+      <string>Comment Message:</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QLineEdit" name="text_comment"/>
+   </item>
+   <item>
+    <widget class="QPushButton" name="button_send">
+     <property name="text">
+      <string>Send</string>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections>
+  <connection>
+   <sender>text_comment</sender>
+   <signal>returnPressed()</signal>
+   <receiver>button_send</receiver>
+   <slot>click()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>149</x>
+     <y>203</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>149</x>
+     <y>292</y>
+    </hint>
+   </hints>
+  </connection>
+ </connections>
+</ui>

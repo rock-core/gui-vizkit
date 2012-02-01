@@ -24,12 +24,16 @@ if remaining.empty?
   task_inspector ||= Vizkit.default_loader.task_inspector
 
   #check for new tasks every 5 seconds 
-  @timer.connect SIGNAL('timeout()') do 
+  refresh = Proc.new do 
     Orocos.task_names.each do |name|
         task = Vizkit::TaskProxy.new name
         task_inspector.config(task)
     end
   end
+  @timer.connect SIGNAL('timeout()') do 
+        refresh.call
+  end
+  refresh.call
   @timer.start(5000)
 else
     remaining.each do |spec|

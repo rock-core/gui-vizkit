@@ -6,14 +6,18 @@
 #include <osg/PositionAttitudeTransform>
 #include <osg/Geometry>
 
+#include <Qt/qobject.h>
+
 namespace vizkit 
 {
     
 class WaypointVisualization: public Vizkit3DPlugin<base::Waypoint>
 {
+    Q_OBJECT
+    
     public:
 	WaypointVisualization();
-
+	Q_INVOKABLE void updateWp(const base::Waypoint &wp);
     protected:
         virtual osg::ref_ptr<osg::Node> createMainNode();
 	virtual void updateMainNode( osg::Node* node );

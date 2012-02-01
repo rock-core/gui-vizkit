@@ -71,6 +71,10 @@ class TaskInspector
             @tree_view.update(@tasks[task.name])
             @timer.start(options[:interval])
         end
+
+        def multi_value?
+            true
+        end
     end
 end
 
