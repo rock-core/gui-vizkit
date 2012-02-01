@@ -46,7 +46,9 @@ module Vizkit
 
         def __reader_for_port(port_name,options=Hash.new)
             if ping && !@__readers[port_name]
-                @__readers[port_name] = port(port_name).reader options
+                default_policy, policy = Kernel.filter_options options, :init => true
+                policy.merge(default_policy)
+                @__readers[port_name] = port(port_name).reader(default_policy)
             end
             @__readers[port_name]
         end

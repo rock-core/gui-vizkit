@@ -282,6 +282,8 @@ module Vizkit
 
       #TODO implement an OutputPort proxy which can handle subfields 
       this_options, @policy = Kernel.filter_options(options,[:update_frequency,:auto_reconnect,:subfield,:type_name])
+      default_init, @policy = Kernel.filter_options(@policy, :init => true)
+      @policy.merge!(default_init)
       if port.respond_to?(:to_ary)
         @task_name, @port_name = *port
         @port = nil
