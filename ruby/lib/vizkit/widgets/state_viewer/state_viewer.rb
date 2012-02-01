@@ -107,6 +107,10 @@ class StateViewer < Qt::Widget
         label.setText(port_name.to_s + " : " + data.to_s)
         label.setPalette color if label.palette != color
     end
+
+    def multi_value?
+        true
+    end
 end
 
 Vizkit::UiLoader.register_ruby_widget("StateViewer",StateViewer.method(:new))

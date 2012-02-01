@@ -40,6 +40,10 @@ class StructViewer
             @tree_view.encode_data(item4,port.class)
             @item_hash["#{port.task.name}.#{port.name}"] = item3
         end
+
+        def multi_value?
+            true
+        end
     end
 
     def self.create_widget(parent=nil)
