@@ -401,14 +401,18 @@ module Vizkit
     end
 
     def created_controls_for(value)
-        names = widget_names_for value
+        names = control_names_for value
         controls = Array.new
-        
+
         #TODO 
         #clean this up
         #at the moment controls and widgets are stored in the same array
-        @create_widgets.each do |control|
+        @created_widgets.each do |control|
+          if control.respond_to? :ruby_class_name
+            controls << control if names.include? control.ruby_class_name
+          else
             controls << control if names.include? control.class_name
+          end
         end
         controls
     end
@@ -444,6 +448,11 @@ module Vizkit
     def widget_names_for_value(value)
       array = @widget_for_hash[value]
       array ||= Array.new
+
+      if value.respond_to? :superclass
+        array.concat(widget_names_for_value(value.superclass))
+      end
+      array
     end
 
     def widget_for_options(value,options = Hash.new)
@@ -502,6 +511,11 @@ module Vizkit
     def control_names_for_value(value)
       array = @control_for_hash[value]
       array ||= Array.new
+
+      if value.respond_to? :superclass
+        array.concat control_names_for_value(value.superclass)
+      end
+      array
     end
 
     def control_for(value,parent=nil,reuse=false)
@@ -562,8 +576,8 @@ module Vizkit
             if @callback_fct_hash[class_name].has_key? value
                 @callback_fct_hash[class_name][value]
             else
-                if @widget_value_map.has_key? value.class
-                    result = @widget_value_map[value.class].call value
+                if UiLoader.widget_value_map.has_key? value.class
+                    result = UiLoader.widget_value_map[value.class].call value
                     @callback_fct_hash[class_name][result]
                 end
             end
