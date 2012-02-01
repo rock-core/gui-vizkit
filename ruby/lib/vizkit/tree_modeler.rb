@@ -197,6 +197,7 @@ module Vizkit
         #if there is only one 
         def context_menu(tree_view,pos,auto=false,port=nil)
             item = @model.item_from_index(tree_view.index_at(pos))
+            raise 'no item for this mouse position!' if !item
 
             #try to find a parent which is a Typelib::CompoundType
             object = item_to_object(item)
@@ -461,11 +462,43 @@ module Vizkit
         def update_object(object, parent_item, read_from_model=false, row=0)
             if object.kind_of?(Orocos::Log::Replay)
                 row = 0
+                if !object.annotations.empty?
+                    item, item2 = child_items(parent_item,0)
+                    item.setText("- Global Meta Data - ")
+                    sub_row = 0
+                    object.annotations.each do |annotation|
+                        update_object(annotation,item,read_from_model,sub_row)
+                        sub_row +=1
+                    end
+                    row =+ 1
+                end
                 object.tasks.each do |task|
                     next if !task.used?
                     update_object(task,parent_item,read_from_model,row)
                     row += 1
                 end
+            elsif object.kind_of?(Orocos::Log::Annotations)
+                item, item2 = child_items(parent_item,row)
+                item.setText(object.stream.name)
+                item2.setText(object.stream.type_name)
+                
+                item2, item3 = child_items(item,0)
+                item2.setText("samples")
+                item3.setText(object.samples.size.to_s)
+
+            elsif object.kind_of?(Orocos::Log::LogMarker)
+                item, item2 = child_items(parent_item,row)
+                item.setText(object.type.to_s)
+                item2.setText(object.comment)
+                
+                item2, item3 = child_items(item,0)
+                item2.setText("time")
+                item3.setText(object.time.to_s)
+
+                item2, item3 = child_items(item,0)
+                item2.setText("index")
+                item3.setText(object.index.to_s)
+
             elsif object.kind_of?(Vizkit::TaskProxy)
                 item, item2 = child_items(parent_item,row)
                 item.setText(object.name)
@@ -534,6 +567,7 @@ module Vizkit
                         row += 1
                     end
                 end
+
             elsif object.kind_of?(Orocos::Property)
                 item, item2 = child_items(parent_item,row)
                 item.setText(object.name)
