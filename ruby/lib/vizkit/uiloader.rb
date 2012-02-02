@@ -87,28 +87,13 @@ module Vizkit
         @current_loader_instance.extend_cplusplus_widget_class(class_name,&block)
       end
       def register_3d_plugin(widget_name,lib_name,plugin_name)
-        # This is used to share the plugin instance between the creation method
-        # and the display method
-        creation_method = lambda do |parent|
-          if !Orocos.initialized?
-            Orocos.initialize
-          end
-          widget = Vizkit.vizkit3d_widget
-          widget.plugins[widget_name] = widget.createPlugin(lib_name, plugin_name)
-          widget
-        end
-        register_ruby_widget(widget_name,creation_method)
-        @current_loader_instance.vizkit3d_widgets << widget_name
+        @current_loader_instance.register_3d_plugin(widget_name,lib_name,plugin_name)
       end
       def register_3d_plugin_for(widget_name,type_name,display_method = nil,&filter)
-        @current_loader_instance.register_callback_fct('vizkit::Vizkit3DWidget',type_name,:update)
-        VizkitPluginLoaderExtension.type_to_widget_name[type_name] = [widget_name,display_method,filter]
-        register_widget_for(widget_name,type_name,"not_used")
+        @current_loader_instance.register_3d_plugin_for(widget_name,type_name,display_method,&filter)
       end
       def register_default_3d_plugin_for(widget_name,type_name,display_method = nil,&filter)
-        @current_loader_instance.register_callback_fct('vizkit::Vizkit3DWidget',type_name,:update)
-        VizkitPluginLoaderExtension.type_to_widget_name[type_name] = [widget_name,display_method,filter]
-        register_default_widget_for(widget_name,type_name,"not_used")
+        @current_loader_instance.register_default_3d_plugin_for(widget_name,type_name,display_method,&filter)
       end
 
       def define_control_for_methods(name,*klasses,&map)
@@ -647,6 +632,23 @@ module Vizkit
       @control_callback_fct_hash[class_name][value] = callback_fct
     end
 
+    # If +typename+ is an opaque, returns the type that should be used to
+    # manipulate it in typelib. In all other cases, returns nil.
+    def find_typelib_type_for_opaque(typename)
+      begin
+          typekit = Orocos.load_typekit_for(typename, false)
+          type = Orocos.registry.get(typename)
+          intermediate = typekit.intermediate_type_for(typename)
+          if typename != intermediate.name
+              return intermediate
+          end
+
+      rescue ArgumentError
+          # It's not a typelib type after all
+      end
+      nil
+    end
+
     def register_widget_for(class_name,value,callback_fct=:update)
       #check if widget is available
       if !widget? class_name
@@ -655,16 +657,8 @@ module Vizkit
       end
 
       if value.respond_to?(:to_str)
-          begin
-              typekit = Orocos.load_typekit_for(value, false)
-              type = Orocos.registry.get(value)
-              intermediate = typekit.intermediate_type_for(value)
-              if value != intermediate.name
-                  register_widget_for(class_name, intermediate.name, callback_fct)
-              end
-
-          rescue ArgumentError
-              # It's not a typelib type after all
+          if typelib_type = find_typelib_type_for_opaque(value)
+              register_widget_for(class_name, typelib_type.name, callback_fct)
           end
       end
 
@@ -679,6 +673,37 @@ module Vizkit
       @ruby_widget_hash[class_name] = widget_class
       add_widget_accessor
       self
+    end
+
+    def register_3d_plugin(widget_name,lib_name,plugin_name)
+      # This is used to share the plugin instance between the creation method
+      # and the display method
+      creation_method = lambda do |parent|
+        if !Orocos.initialized?
+          Orocos.initialize
+        end
+        widget = Vizkit.vizkit3d_widget
+        widget.plugins[widget_name] = widget.createPlugin(lib_name, plugin_name)
+        widget
+      end
+      register_ruby_widget(widget_name,creation_method)
+      vizkit3d_widgets << widget_name
+    end
+
+    def register_3d_plugin_for(widget_name, type_name, display_method, &filter)
+      if typelib_type = find_typelib_type_for_opaque(type_name)
+        return register_3d_plugin_for(widget_name, typelib_type.name, display_method, &filter)
+      end
+
+      register_callback_fct('vizkit::Vizkit3DWidget',type_name,:update)
+      VizkitPluginLoaderExtension.type_to_widget_name[type_name] = [widget_name,display_method,filter]
+      register_widget_for(widget_name,type_name,"not_used")
+    end
+
+    def register_default_3d_plugin_for(widget_name,type_name,display_method = nil,&filter)
+      register_callback_fct('vizkit::Vizkit3DWidget',type_name,:update)
+      VizkitPluginLoaderExtension.type_to_widget_name[type_name] = [widget_name,display_method,filter]
+      register_default_widget_for(widget_name,type_name,"not_used")
     end
 
     def extend_cplusplus_widget_class(class_name,&block)
