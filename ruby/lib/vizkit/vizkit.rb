@@ -1,6 +1,8 @@
-#!/usr/bin/env ruby
+require 'utilrb/logger'
 
 module Vizkit
+  extend Logger::Root('Vizkit', Logger::WARN)
+
   class UiLoader
     define_widget_for_methods("type",String) do |type|
       type
@@ -185,7 +187,7 @@ module Vizkit
   def self.auto_reconnect()
     @connections.each do |connection|
       if connection.auto_reconnect && (!connection.widget.is_a?(Qt::Widget) || connection.widget.visible) && !connection.alive?
-        puts "Warning lost connection to #{connection.port_full_name}. Trying to reconnect." if connection.broken?
+        Vizkit.warn "lost connection to #{connection.port_full_name}. Trying to reconnect." if connection.broken?
         connection.reconnect    
       end
     end
@@ -401,9 +403,20 @@ module Vizkit
         @callback_fct.call sample,port_full_name if @callback_fct
       end
     rescue Exception => e
-      puts "could not read on #{reader}: #{e.message}"
+      Vizkit.warn "could not read on #{reader}"
+      log_exception(e)
       disconnect
     end
+
+    def log_exception(e)
+      Vizkit.warn "#{e.message} (#{e.class})"
+      Vizkit.log_nest(2) do
+          e.backtrace.each do |line|
+              Vizkit.warn line
+          end
+      end
+    end
+
 
     def disconnect()
       if @timer_id
@@ -429,7 +442,8 @@ module Vizkit
       end
       false
     rescue Exception => e
-      STDERR.puts "failed to reconnect: #{e.message}"
+      Vizkit.warn "failed to reconnect"
+      log_exception(e)
       false
     end
 
@@ -479,9 +493,8 @@ module Vizkit
         begin
           @callback_fct.call sample,port_full_name if @callback_fct && sample
         rescue Exception => e
-          puts "Cannot call callback_fct:"
-          pp @callback_fct
-          puts e
+          Vizkit.warn "failed to call callback function #{@callback_fct}"
+          log_exception(e)
         end
       end
     end
