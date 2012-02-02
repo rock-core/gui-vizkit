@@ -6,16 +6,15 @@ require 'orocos/log'
 module Vizkit
     extend Logger::Root('tree_modeler.rb', Logger::INFO)
     class ContextMenu
-        def self.widget_for(type_name,parent,pos)
+        def self.widget_for(type_name,parent,pos,typelib_type=false)
             menu = Qt::Menu.new(parent)
 
             # Determine applicable widgets for the output port
             widgets = Vizkit.default_loader.widget_names_for_value(type_name)
-
-            #TODO this should be handled by the uiloader at some point
-            # Always offer struct viewer as widget if not yet present.
-            widgets << "StructViewer" unless widgets.include? "StructViewer"
-
+            if typelib_type
+                widgets.concat Vizkit.default_loader.widget_names_for_value(Typelib::Type)
+            end
+            widgets.uniq!
             widgets.each do |w|
                 menu.add_action(Qt::Action.new(w, parent))
             end
@@ -195,6 +194,8 @@ module Vizkit
         #item
         #if auto == true the widget is selected automatically 
         #if there is only one 
+        #TODO restructure this method 
+        #
         def context_menu(tree_view,pos,auto=false,port=nil)
             item = @model.item_from_index(tree_view.index_at(pos))
             raise 'no item for this mouse position!' if !item
@@ -230,9 +231,16 @@ module Vizkit
             subfield = subfield_from_item(item)
             property = property_from_item(item)
 
+
             #if object is a task 
             if object.is_a? Vizkit::TaskProxy
                 ContextMenu.task_state(object,tree_view,pos)
+            elsif object.is_a? Orocos::Log::Annotations
+                    widget_name = Vizkit::ContextMenu.widget_for(Orocos::Log::Annotations,tree_view,pos)
+                    if widget_name
+                        widget = Vizkit.display object, :widget => widget_name
+                        widget.setAttribute(Qt::WA_QuitOnClose, false) if widget
+                    end
             #if object is a port or part of a port
             elsif(port) 
                 #TODO
@@ -253,7 +261,7 @@ module Vizkit
                                 else
                                     port.type_name
                                 end
-                    widget_name = Vizkit::ContextMenu.widget_for(type_name,tree_view,pos)
+                    widget_name = Vizkit::ContextMenu.widget_for(type_name,tree_view,pos,true)
                     if widget_name
                         widget = Vizkit.display port, :widget => widget_name,:subfield => subfield,:type_name=> type_name
                         widget.setAttribute(Qt::WA_QuitOnClose, false) if widget
@@ -481,6 +489,9 @@ module Vizkit
                 item, item2 = child_items(parent_item,row)
                 item.setText(object.stream.name)
                 item2.setText(object.stream.type_name)
+
+                encode_data(item,object)
+                encode_data(item2,object)
                 
                 item2, item3 = child_items(item,0)
                 item2.setText("samples")
@@ -647,15 +658,15 @@ module Vizkit
                 encode_data(item2,Orocos::Log::OutputPort)
 
                 #add meta data
-                item2, item3 = child_items(item,2)
+                item2, item3 = child_items(item,0)
                 item2.setText("Meta Data")
                 update_object(object.metadata,item2)
 
-                item2, item3 = child_items(item,0)
+                item2, item3 = child_items(item,1)
                 item2.setText("Samples")
                 item3.setText(object.number_of_samples.to_s)
 
-                item2, item3 = child_items(item,1)
+                item2, item3 = child_items(item,2)
                 item2.setText("Filter")
                 if object.filter
                     item3.setText("yes")

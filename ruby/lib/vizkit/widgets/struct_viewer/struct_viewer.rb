@@ -23,7 +23,7 @@ class StructViewer
 
         #add a default value 
         def config(port,options=Hash.new)
-            return if options[:subfield]
+            return if options[:subfield] || !port
             #encode some values 
             #otherwise tree_view is not able to open a new widget for an embedded type 
             task = Vizkit::TaskProxy.new port.task
@@ -55,4 +55,5 @@ class StructViewer
 end
 
 Vizkit::UiLoader.register_ruby_widget("StructViewer",StructViewer.method(:create_widget))
+Vizkit::UiLoader.register_widget_for("StructViewer",Typelib::Type,:update)
 #Vizkit::UiLoader.register_widget_for("StructViewer","/base/samples/frame/Frame", :update)

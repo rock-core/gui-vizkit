@@ -5,11 +5,15 @@ module Vizkit
     define_widget_for_methods("type",String) do |type|
       type
     end
+
     define_widget_for_methods("port_type",Orocos::OutputPort,Orocos::Log::OutputPort) do |port|
       port.type_name
     end
     define_widget_for_methods("task",Orocos::TaskContext,Orocos::Log::TaskContext) do |task|
       task.class
+    end
+    define_widget_for_methods("annotations",Orocos::Log::Annotations) do |klass|
+      klass.class
     end
 
     define_control_for_methods("task",Orocos::TaskContext) do |task|
@@ -32,17 +36,28 @@ module Vizkit
     @default_loader
   end
 
-  def self.setup_widget(widget,value=nil,options = Hash.new,&block)
+  def self.setup_widget(widget,value=nil,options = Hash.new,type = :display,&block)
     return nil if !widget
-    callback_fct = if widget.respond_to?(:loader)
-                       callback_fct = widget.loader.control_callback_fct widget,value
-                   end
-
-    if value.is_a? Orocos::OutputPort or value.is_a? Orocos::Log::OutputPort
-      value.connect_to widget,options ,&block
-    end
     widget.config(value,options) if widget.respond_to? :config
-    widget.method(callback_fct).call(value, options, &block) if callback_fct
+
+    if type == :control
+      callback_fct = if widget.respond_to?(:loader)
+                       widget.loader.control_callback_fct widget,value
+                     end
+      widget.method(callback_fct).call(value, options, &block) if(callback_fct && callback_fct != :config)
+    else
+      if value.is_a? Orocos::OutputPort or value.is_a? Orocos::Log::OutputPort
+        value.connect_to widget,options ,&block
+        callback_fct = if widget.respond_to?(:loader)
+                         widget.loader.callback_fct widget,value
+                       end
+
+        if(callback_fct && callback_fct != :config)
+          sample = value.read
+          widget.method(callback_fct).call(sample, value.name) if sample
+        end
+      end
+    end
     widget.show
     widget
   end
@@ -58,7 +73,7 @@ module Vizkit
     end
     local_options,options = Kernel::filter_options(options,@vizkit_local_options)
     widget = @default_loader.widget_for_options(value,local_options)
-    setup_widget(widget,value,options,&block)
+    setup_widget(widget,value,options,local_options[:type],&block)
   end
 
   def self.control value, options=Hash.new,&block
