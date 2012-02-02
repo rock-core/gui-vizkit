@@ -25,7 +25,7 @@ class TaskInspector
             @brush = Qt::Brush.new(Qt::Color.new(200,200,200))
             @tree_view = Vizkit::TreeModeler.new(treeView)
 
-            @tasks = Hash.new
+            @tasks = Array.new
             @read_obj = false
 
             setPropButton.connect(SIGNAL('clicked()')) do
@@ -40,8 +40,8 @@ class TaskInspector
 
             @timer = Qt::Timer.new(self)
             @timer.connect(SIGNAL('timeout()')) do 
-                @tasks.each_with_index do |pair,index|
-                    @tree_view.update(pair[1],nil,@tree_view.root,false,index)
+                @tasks.each_with_index do |task,index|
+                    @tree_view.update(task,nil,@tree_view.root,false,index)
                 end
 
                 if !@tree_view.dirty_items.empty?
@@ -58,17 +58,18 @@ class TaskInspector
 
         def config(task,options=Hash.new)
             #do not add the task if it is already there
-            if @tasks.has_key? task.name
-              return
+            result = @tasks.find do |t| 
+                t.name == task.name
             end
+            return if result 
 
             if task.is_a? Orocos::TaskContext
-                @tasks[task.name] = Vizkit::TaskProxy.new(task.name)
+                @tasks << Vizkit::TaskProxy.new(task.name)
             elsif task.is_a? Vizkit::TaskProxy
-                @tasks[task.name] = task
+                @tasks << task
             end
             options = default_options.merge(options)
-            @tree_view.update(@tasks[task.name])
+            @tree_view.update(task,nil,@tree_view.root,false,@tasks.size-1)
             @timer.start(options[:interval])
         end
 
