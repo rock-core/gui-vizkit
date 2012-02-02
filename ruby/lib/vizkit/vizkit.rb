@@ -52,7 +52,7 @@ module Vizkit
                          widget.loader.callback_fct widget,value
                        end
 
-        if(callback_fct && callback_fct != :config)
+        if(callback_fct && callback_fct != :config && value.respond_to?(:read))
           sample = value.read
           widget.method(callback_fct).call(sample, value.name) if sample
         end
