@@ -240,14 +240,86 @@ module VizkitPluginLoaderExtension
     end
     @type_to_widget_name = Hash.new
 
+    # An association between (task_name, port_name) pairs to the frame in which
+    # the data produced by the port is expressed
+    attr_reader :port_frame_associations
+    
+    # The set of transformation producers connected to this widget so far
+    #
+    # This is a mapping from (task_name, port_name) pairs to a boolean. The
+    # boolean is false if the port ever sent wrong data (i.e. of an unexpected
+    # frame transform), and true otherwise
+    attr_reader :connected_transformation_producers
+
+    # Updates the connections and internal configuration of the Vizkit3D widget
+    # to use the transformer configuration information in +data+
+    #
+    # +data+ is supposed to be a transformer/ConfigurationState value
+    def pushTransformerConfiguration(data)
+        # Push the data to the underlying transformer
+        data.static_transformations.each do |trsf|
+            pushStaticTransformation(trsf)
+        end
+        self.port_frame_associations.clear
+        data.port_frame_associations.each do |data_frame|
+            port_frame_associations[[data_frame.task, data_frame.port]] = data_frame.frame
+        end
+        data.port_transformation_associations.each do |producer|
+            next if @connected_transformation_producers.has_key?([producer.task, producer.port])
+
+            Vizkit.debug "connecting producer #{producer.task}.#{producer.port} for #{producer.from_frame} => #{producer.to_frame}"
+            Vizkit.connect_port_to producer.task, producer.port do |data, port_name|
+                if data.sourceFrame != producer.from_frame || data.targetFrame != producer.to_frame
+                    if @connected_transformation_producers[[producer.task, producer.port]]
+                        Vizkit.warn "#{producer.task}.#{producer.port} produced a transformation for"
+                        Vizkit.warn "    #{data.sourceFrame} => #{data.targetFrame},"
+                        Vizkit.warn "    but I was expecting #{producer.from_frame} => #{producer.to_frame}"
+                        Vizkit.warn "  I am ignoring this transformation. You will get this message only once,"
+                        Vizkit.warn "  but get a notification if the right transformation is received later."
+                        @connected_transformation_producers[[producer.task, producer.port]] = false
+                    end
+                else
+                    if !@connected_transformation_producers[[producer.task, producer.port]]
+                        Vizkit.warn "received the expected transformation from #{producer.task}.#{producer.port}"
+                        @connected_transformation_producers[[producer.task, producer.port]] = true
+                    end
+                    pushDynamicTransformation(data)
+                end
+                data
+            end
+            @connected_transformation_producers[[producer.task, producer.port]] = true
+        end
+    end
+
     # Dispatcher method, that dispatches the data to the different plugins
     def update(data, port_name)
+        if @connected_to_broadcaster
+            if data.kind_of?(Types::Transformer::ConfigurationState)
+                pushTransformerConfiguration(data)
+                return
+            end
+        end
+
         widget_name, update_method, filter = VizkitPluginLoaderExtension.type_to_widget_name[data.class.name]
         plugin = plugins[widget_name]
         if filter
             filter.call(plugin,data,port_name)
         else
             plugin.send(update_method,data)
+        end
+    end
+
+    # Called by Vizkit when this widget will be used to display values of the
+    # same kind than +displayed_value+. +options+ is an arbitrary option hash.
+    def config(displayed_value, options)
+        if !@connected_to_broadcaster
+            @port_frame_associations ||= Hash.new
+            @connected_transformation_producers ||= Hash.new
+            task_name, port_name = Vizkit.vizkit3d_transformer_broadcaster_name
+            if task_name
+                Vizkit.connect_port_to task_name, port_name, self
+                @connected_to_broadcaster = true
+            end
         end
     end
 end

@@ -518,6 +518,18 @@ module Vizkit
   @default_loader = UiLoader.new
   @vizkit_local_options = {:widget => nil,:type_name => nil,:reuse => true,:parent =>nil,:widget_type => :display}
 
+  class << self
+    # When using Vizkit3D widgets, this is a [task_name, port_name] pair of a
+    # data source that should be used to gather transformation configuration.
+    # This configuration is supposed to be stored in a
+    # /transformer/ConfigurationState data structure.
+    #
+    # A port can also be set directly in
+    # Vizkit.vizkit3d_transformer_configuration
+    attr_accessor :vizkit3d_transformer_broadcaster_name
+  end
+  @vizkit3d_transformer_broadcaster_name = ['transformer_broadcaster', 'configuration_state']
+
   #returns the instance of the vizkit 3d widget 
   def self.vizkit3d_widget
     @vizkit3d_widget ||= default_loader.create_widget("vizkit::Vizkit3DWidget")
