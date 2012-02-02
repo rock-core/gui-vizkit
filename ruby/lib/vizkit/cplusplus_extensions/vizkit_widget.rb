@@ -225,6 +225,7 @@ module VizkitPluginLoaderExtension
             @__lib_name__
         end
         plugin.load_adapters
+	plugin.extend(QtTyplelibExtension)
         plugin
     end
 
@@ -254,6 +255,7 @@ end
 
 Vizkit::UiLoader.extend_cplusplus_widget_class "vizkit::Vizkit3DWidget" do
     include VizkitPluginLoaderExtension
+    include QtTyplelibExtension
 end
 
 Vizkit::UiLoader.extend_cplusplus_widget_class "vizkit::QVizkitMainWindow" do
