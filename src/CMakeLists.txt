@@ -132,8 +132,9 @@ if (TYPELIB_FOUND AND TYPELIBRUBY_FOUND AND GEM_FOUND)
 	install(TARGETS ${TYPELIB_TO_QVARIANT}
 		  LIBRARY DESTINATION ${RUBY_EXTENSIONS_INSTALL_DIR})
 
+	QT4_WRAP_CPP(rqta_MOC_SRCS TypelibQtAdapter.h)
 	ROCK_RUBY_EXTENSION(TypelibQtAdapter SHARED
-			TypelibQtAdapter.cpp)
+			TypelibQtAdapter.cpp  ${rqta_MOC_SRCS})
 	target_link_libraries(TypelibQtAdapter 
 				${QT_LIBRARIES}
 				${QT_QTCORE_LIBRARY} 

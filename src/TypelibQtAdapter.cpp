@@ -12,21 +12,66 @@
 
 using namespace Rice;
 
-TypelibQtAdapter::TypelibQtAdapter()
+QObjectFetcher *QObjectFetcher::instance;
+
+QObjectFetcher::QObjectFetcher()
 {
+    QCoreApplication *app = QCoreApplication::instance();
+    QObject *object = app->findChild<QObject *>(QString::fromStdString("QObjectFetcherInstanceName"));   
+    if(object)
+	throw std::runtime_error("Another instance of the QObjectFetcher allready exists");
+
+    this->setParent(app);
+    this->setObjectName("QObjectFetcherInstanceName");
+    object_pointer = NULL;
 }
 
-void TypelibQtAdapter::initialize(Rice::Object objectNameRuby)
+QObject* QObjectFetcher::getInstance()
 {
-    VALUE methodVal = objectNameRuby.value();  
-    std::string objectName = StringValuePtr(methodVal);
+    if(!instance)
+    {
+	instance = new QObjectFetcher();
+    }
+    
+    return instance;
+}
 
+
+QObjectFetcher* QObjectFetcher::getQObjectFetcher()
+{
     QCoreApplication *app = QCoreApplication::instance();
+    QObject *object = app->findChild<QObject *>(QString::fromStdString("QObjectFetcherInstanceName"));   
+    if(!object)
+	throw std::runtime_error("Could not get qt object fetcher");
     
-    if(!app)
-	throw std::runtime_error("Could not get qt core application");	
+    return dynamic_cast<QObjectFetcher *>(object);
+}
+
+
+void QObjectFetcher::setObject(QObject* obj)
+{
+    object_pointer = obj;
+}
+
+QObject* QObjectFetcher::getObject()
+{
+    if(!object_pointer)
+	throw std::runtime_error("No object set");
+	
+    return  object_pointer;
+}
+
+
+TypelibQtAdapter::TypelibQtAdapter()
+{
+    QObjectFetcher::getInstance();
+}
+
+void TypelibQtAdapter::initialize()
+{    
+    QObjectFetcher *fetcher = dynamic_cast<QObjectFetcher *>(QObjectFetcher::getInstance());    
+    object = fetcher->getObject();
     
-    object = app->findChild<QObject *>(QString::fromStdString(objectName));   
     if(!object)
 	throw std::runtime_error("Could not get qt object");
 }
@@ -90,11 +135,12 @@ bool TypelibQtAdapter::getParameterLists(const std::string& methodName, std::vec
     if(!object)
 	throw std::runtime_error("Requested method signature without passing Qt object");
 
+    const QMetaObject *metaObj = object->metaObject();
+
     std::string method = methodName + "(";
     
     bool found = false;
     
-    const QMetaObject *metaObj = object->metaObject();
     for(int i = 0; i < metaObj->methodCount(); i++)
     {
 	std::string signature = metaObj->method(i).signature();
@@ -145,6 +191,7 @@ bool TypelibQtAdapter::callQtMethodWithSignature(QObject* obj, const std::string
 	void *cxx_data = orogen_transports::getOpaqueValue(ait->opaqueName, (ait)->value);
 	*argIt = QGenericArgument(qit->data(), cxx_data);
 
+// 	std::cout << "opaque name " << ait->opaqueName << " typelib name " << ait->value.getType().getName() << std::endl;
 	//TODO delete cxx_data
 	
 	argIt++;
