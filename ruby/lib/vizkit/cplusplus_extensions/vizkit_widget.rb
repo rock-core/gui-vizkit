@@ -263,7 +263,7 @@ module VizkitPluginLoaderExtension
         end
         self.port_frame_associations.clear
         data.port_frame_associations.each do |data_frame|
-            port_frame_associations[[data_frame.task, data_frame.port]] = data_frame.frame
+            port_frame_associations["#{data_frame.task}.#{data_frame.port}"] = data_frame.frame
         end
         data.port_transformation_associations.each do |producer|
             next if @connected_transformation_producers.has_key?([producer.task, producer.port])
@@ -303,6 +303,9 @@ module VizkitPluginLoaderExtension
 
         widget_name, update_method, filter = VizkitPluginLoaderExtension.type_to_widget_name[data.class.name]
         plugin = plugins[widget_name]
+	
+	#inform widget about the frame for the plugin
+	setPluginDataFrame(port_frame_associations[port_name], plugin)
         if filter
             filter.call(plugin,data,port_name)
         else
