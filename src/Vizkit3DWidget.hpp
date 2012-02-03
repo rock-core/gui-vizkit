@@ -87,6 +87,8 @@ protected:
     void setGridEnabled(bool enabled);
     bool areAxesEnabled();
     void setAxesEnabled(bool enabled);
+    
+    void checkAddFrame(const std::string &frame);
 
     osg::ref_ptr<osg::Group> root;
     void createSceneGraph();
@@ -97,10 +99,13 @@ protected:
     QStringList* pluginNames;
     QProperyBrowserWidget* propertyBrowserWidget;
     transformer::NonAligningTransformer transformer;
+    QComboBox *frameSelector;
     
     std::string displayFrame;
     std::vector<VizPluginBase *> plugins;
  
+    std::map<std::string, bool> availableFrames;
+    
     /**
      * Book keeper class for the transfomrations
      * */
