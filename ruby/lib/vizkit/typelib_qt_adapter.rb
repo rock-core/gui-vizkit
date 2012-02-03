@@ -33,7 +33,6 @@ module Vizkit
 	    parameter_lists = adapter.getParameterLists(method_name)
 
 	    if(!parameter_lists)
-		puts("method does not exist")
 		return nil
 	    end
 	    
