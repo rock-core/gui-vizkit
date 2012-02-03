@@ -1,4 +1,4 @@
-#include <Vizkit3DHelper.hpp>
+#include <vizkit/Vizkit3DHelper.hpp>
 
 namespace vizkit {
 

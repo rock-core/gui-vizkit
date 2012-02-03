@@ -258,7 +258,8 @@ module VizkitPluginLoaderExtension
     def pushTransformerConfiguration(data)
         # Push the data to the underlying transformer
         data.static_transformations.each do |trsf|
-            pushStaticTransformation(trsf)
+            puts "PUSHING STATIC TRANSFORM"
+            # pushStaticTransformation(trsf)
         end
         self.port_frame_associations.clear
         data.port_frame_associations.each do |data_frame|
@@ -283,7 +284,9 @@ module VizkitPluginLoaderExtension
                         Vizkit.warn "received the expected transformation from #{producer.task}.#{producer.port}"
                         @connected_transformation_producers[[producer.task, producer.port]] = true
                     end
-                    pushDynamicTransformation(data)
+                    puts "PUSHING DYNAMIC TRANSFORM"
+                    pp data
+                    # pushDynamicTransformation(data)
                 end
                 data
             end
@@ -302,11 +305,12 @@ module VizkitPluginLoaderExtension
 
         widget_name, update_method, filter = VizkitPluginLoaderExtension.type_to_widget_name[data.class.name]
         plugin = plugins[widget_name]
-        if filter
-            filter.call(plugin,data,port_name)
-        else
-            plugin.send(update_method,data)
-        end
+        puts "#{plugin} #{update_method}"
+        # if filter
+        #     filter.call(plugin,data,port_name)
+        # else
+        #     plugin.send(update_method,data)
+        # end
     end
 
     # Called by Vizkit when this widget will be used to display values of the
