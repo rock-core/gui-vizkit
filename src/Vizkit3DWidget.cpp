@@ -247,7 +247,7 @@ void Vizkit3DWidget::removePluginIntern(QObject* plugin)
 }
 
 
-void Vizkit3DWidget::setPluginDataFrame(const std::string& frame, QObject* plugin)
+void Vizkit3DWidget::setPluginDataFrame(const QString& frame, QObject* plugin)
 {
     vizkit::VizPluginBase* viz_plugin = dynamic_cast<vizkit::VizPluginBase*>(plugin);
     if(!viz_plugin)
@@ -258,12 +258,15 @@ void Vizkit3DWidget::setPluginDataFrame(const std::string& frame, QObject* plugi
     
     TransformationData td = pluginToTransformData[viz_plugin]; 
     
+    if(td.dataFrame == frame.toStdString())
+	return;
+
     if(!td.dataFrame.empty())
     {
         transformer.unregisterTransformation(td.transformation);
     }
     
-    td.dataFrame = frame;
+    td.dataFrame = frame.toStdString();
     
     if(!displayFrame.empty())
         td.transformation = &transformer.registerTransformation(td.dataFrame, displayFrame);
@@ -273,9 +276,9 @@ void Vizkit3DWidget::setPluginDataFrame(const std::string& frame, QObject* plugi
     pluginToTransformData[viz_plugin] = td;
 }
 
-void Vizkit3DWidget::setVizualisationFrame(const std::string& frame)
+void Vizkit3DWidget::setVizualisationFrame(const QString& frame)
 {
-    displayFrame = frame;
+    displayFrame = frame.toStdString();
     
     for(std::map<vizkit::VizPluginBase *, TransformationData>::iterator it = pluginToTransformData.begin(); it != pluginToTransformData.end(); it++)
     {
