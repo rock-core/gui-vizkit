@@ -4,7 +4,6 @@ require 'utilrb/logger'
 require 'orocos/log'
  
 module Vizkit
-    extend Logger::Root('tree_modeler.rb', Logger::INFO)
     class ContextMenu
         def self.widget_for(type_name,parent,pos,typelib_type=false)
             menu = Qt::Menu.new(parent)

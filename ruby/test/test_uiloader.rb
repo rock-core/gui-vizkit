@@ -1,15 +1,12 @@
 #!/usr/bin/env ruby
-#
 
-require '../lib/vizkit/uiloader.rb'
+require 'vizkit'
 require 'test/unit'
     
-Qt::Application.new(ARGV)
-
 class LoaderUiTest < Test::Unit::TestCase
 
   def setup
-    @loader = Vizkit::UiLoader.new
+    @loader ||= Vizkit::UiLoader.new
     Vizkit::UiLoader.current_loader_instance = @loader
   end
 
@@ -73,19 +70,5 @@ class LoaderUiTest < Test::Unit::TestCase
     widget = @loader.create_widget("QWidget")
     assert widget.respond_to?(:test123)
     assert_equal 123,widget.test123
-  end
-
-  def test_loader_load
-    @loader.extend_cplusplus_widget_class("Qt::PushButton") do 
-      def test123
-        123
-      end
-    end
-
-    form = @loader.load("test.ui")
-    assert form
-    assert form.pushButton
-    assert_equal 123, form.pushButton.test123
-    assert form.textEdit
   end
 end

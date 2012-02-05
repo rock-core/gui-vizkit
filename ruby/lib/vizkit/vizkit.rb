@@ -26,6 +26,8 @@ module Vizkit
 end
 
 module Vizkit
+  extend Logger::Root('vizkit.rb', Logger::INFO)
+
   Qt::Application.new(ARGV)
   @@auto_reconnect = 2000       #timer interval after ports are reconnected if they are no longer alive
   def self.app
