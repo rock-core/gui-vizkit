@@ -14,6 +14,8 @@ module Vizkit
         #options = connections policy {:port_proxy => nil, :proxy_periodicity => 0.2, (see Orocos::InputPort/OutputPort)}
         def initialize(task,port,options = Hash.new)
             @local_options, @policy = Kernel.filter_options options, :port_proxy => nil,:proxy_periodicity => 0.2
+            default_init, @policy = Kernel.filter_options(@policy, :init => true)
+            @policy.merge!(default_init)
 
             @__port = port
             if(@__port.is_a?(String) || @__port.is_a?(Orocos::Port))
@@ -34,13 +36,13 @@ module Vizkit
             #validate reader
             if(@__reader_writer && 
                (!@__reader_writer.port.task.reachable? || (@__reader_writer.respond_to?(:__valid?) && !@__reader_writer.__valid?)))
-                @__reader_writer = nil
-                @__orogen_port_proxy_out = nil
-                if @__port.is_a? OutputPortProxy
+                if @__reader_writer.is_a? Orocos::OutputReader
                     Vizkit.info "Port reader for #{@__port.full_name} is no longer valid."
                 else
                     Vizkit.info "Port writer for #{@__port.full_name} is no longer valid."
                 end
+                @__reader_writer = nil
+                @__orogen_port_proxy_out = nil
             end
 
             #validate if there is a oroocs task which is used as port proxy
@@ -72,6 +74,7 @@ module Vizkit
 
                             #connect the proxy to the orocos task
                             port = @__port.__port
+
                             port_proxy_port_in = @__orogen_port_proxy.port("in_"+full_name)
                             @__orogen_port_proxy_out = @__orogen_port_proxy.port("out_"+full_name)
 
@@ -84,7 +87,7 @@ module Vizkit
                                     raise "Port #{@__orogen_port_proxy_out.name} of task #{port.task.name} is of type #{@__port_proxy_port.type_name} but type #{port.type_name} was expected!"
                                 end
 
-                                if @__port.is_a? OutputPortProxy
+                                if port.is_a? Orocos::OutputPort
                                     port.connect_to port_in ,:pull => true
                                     Vizkit.info "Connecting #{port.full_name} with #{port_proxy_port_in.full_name} "
                                     #get reader to the port 
@@ -106,7 +109,7 @@ module Vizkit
                     else
                             port = @__port.__port
                             if port
-                                if @__port.is_a? OutputPortProxy
+                                if port.is_a? Orocos::OutputPort
                                     @__reader_writer = port.reader @policy
                                     Vizkit.info "Create reader for output port: #{port.full_name}"
                                 else
@@ -131,7 +134,9 @@ module Vizkit
         def method_missing(m, *args, &block)
             begin
                 reader_writer = __reader_writer
-                reader_writer.send(m, *args, &block) if reader_writer
+                if reader_writer
+                    reader_writer.send(m, *args, &block)
+                end
             rescue Orocos::NotFound, Orocos::CORBAError
                 @__reader_writer = nil
             end
@@ -191,7 +196,14 @@ module Vizkit
     class PortProxy
         #task = name of the task or its TaskContext
         #port = name of the port or its Orocos::Port
-        def initialize(task, port)
+        #options = {:subfield => Array,:type_name => type_name of the subfield}
+        #
+        #if the PortProxy is used for a subfield reader the type_name of the subfield must be given
+        #because otherwise the type_name would only be known after the first sample was received 
+        def initialize(task, port,options = Hash.new)
+            @local_options, options = Kernel::filter_options options,{:subfield => Array.new,:type_name => nil}
+            @local_options[:subfield] = @local_options[:subfield].to_a
+
             @__task = task
             if(@__task.is_a?(String) || task.is_a?(Orocos::TaskContext))
                 @__task = TaskProxy.new(task_proxy)
@@ -206,6 +218,12 @@ module Vizkit
             else
                 raise "Cannot create PortProxy for #{port.class.name}"
             end
+
+            if !@local_options[:subfield].empty?
+                Vizkit.info "Create PortProxy for subfield #{@local_options[:subfield].join(".")} of port #{full_name}"
+            else
+                Vizkit.info "Create PortProxy for: #{full_name}"
+            end
         end
 
         #we need this beacuse it can happen that we do not have a real port object 
@@ -217,6 +235,14 @@ module Vizkit
 
         def name
             @__port_name
+        end
+
+        def type_name
+            if(type = @local_options[:type_name]) != nil
+                type
+            else
+                super
+            end
         end
 
         def task
@@ -241,53 +267,32 @@ module Vizkit
             @__port
         end
 
-        def method_missing(m, *args, &block)
-            begin 
-                @__port.send(m, *args, &block) if __port
-            rescue Orocos::NotFound, Orocos::CORBAError
-                @__port = nil
-            end
-        end
-    end
-
-    class OutputPortProxy < PortProxy
-        #options = {:subfield => Array,:type_name => type_name of the subfield}
-        #
-        #if the PortProxy is used for a subfield reader the type_name of the subfield must be given
-        #because otherwise the type_name would only be known after the first sample was received 
-        def initialize(task, port,options = Hash.new)
-            super(task,port)
-            @local_options, options = Kernel::filter_options options,{:subfield => Array.new,:type_name => nil}
-            @local_options[:subfield] = @local_options[:subfield].to_a
-
-            if !@local_options[:subfield].empty?
-                Vizkit.info "Create OutputPortProxy for subfield #{@local_options[:subfield].join(".")} of port #{port.full_name}"
-            else
-                Vizkit.info "Create OutputPortProxy for: #{port.full_name}"
-            end
+        def writer(policy = Hash.new)
+            WriterProxy.new(@__task_proxy,self,policy)
         end
 
         def reader(policy = Hash.new)
             ReaderProxy.new(@__task_proxy,self,@local_options.merge(policy))
         end
 
-        def type_name
-            if(type = @local_options[:type_name]) != nil
-                type
-            else
-                super
+        #these methods have to be defined here because they will be aliased 
+        #by OQConnetionOutputPort
+        def connect_to(input_port, options = Hash.new)
+            @__port.connect_to(input_port, options) if __port
+        end
+        def disconnect_from(input)
+            @__port.disconnect_from(input) if __port
+        end
+        def disconnect_all
+            @__port.disconnect_all if __port
+        end
+
+        def method_missing(m, *args, &block)
+            begin 
+                @__port.send(m, *args, &block) if __port
+            rescue Orocos::NotFound, Orocos::CORBAError
+                @__port = nil
             end
-        end
-    end
-
-    class InputPortProxy < PortProxy
-        def initialize(task, port)
-            super
-            Vizkit.info "Create InputPortProxy for: #{port.full_name}"
-        end
-
-        def writer(policy = Hash.new)
-            WriterProxy.new(@__task_proxy,self,policy)
         end
     end
 
@@ -353,7 +358,7 @@ module Vizkit
         end
 
         def port(name,options = Hash.new)
-            method_missing(name.to_sym)
+            PortProxy.new(self,name,options)
         end
 
         def method_missing(m, *args, &block)
@@ -362,12 +367,7 @@ module Vizkit
             end
             begin
                 if @__task.has_port?(m.to_s)
-                    port = @__task.send(m, &block)
-                    if port.is_a? Orocos::OutputPort
-                        OutputPortProxy.new(self,port,*args)
-                    else
-                        InputPortProxy.new(self,port)
-                    end
+                    port(m.to_s,*args)
                 else
                     @__task.send(m, *args, &block)
                 end
