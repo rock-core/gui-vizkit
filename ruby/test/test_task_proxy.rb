@@ -72,4 +72,51 @@ class LoaderUiTest < Test::Unit::TestCase
             assert(proxy_reader.read)
         end
     end
+
+    def test_proxy_subfield_reading
+        Orocos.run "rock_port_proxy" do 
+            task = Vizkit::TaskProxy.new("port_proxy")
+            task.start
+
+            assert(task.createProxyConnection("test","/base/samples/frame/FramePair",0.01))
+            assert(task.has_port? "in_test")
+            assert(task.has_port? "out_test")
+
+            writer = task.in_test.writer
+            reader = task.out_test.reader
+            assert(writer)
+            assert(reader)
+
+            sample = Types::Base::Samples::Frame::FramePair.new
+            time_first = Time.now-1000
+            sample.time = Time.now
+            sample.first.time = time_first
+            sample.first.received_time = Time.now
+            sample.first.frame_mode = :MODE_UNDEFINED
+            sample.first.frame_status = :STATUS_EMPTY
+            sample.second.time = Time.now
+            sample.second.received_time = Time.now
+            sample.second.frame_mode = :MODE_UNDEFINED
+            sample.second.frame_status = :STATUS_EMPTY
+            writer.write sample 
+            sleep(0.2)
+            assert(reader.read)
+
+            #create a subfield reader
+            subfield_port = task.out_test(:subfield => "first",:type_name =>"/base/samples/frame/Frame")
+            assert(subfield_port)
+            assert(subfield_port.type_name == "/base/samples/frame/Frame")
+            reader = subfield_port.reader
+            
+            subfield_port2 = task.out_test(:subfield => ["first","size"],:type_name =>"/base/samples/frame/frame_size_t")
+            assert(subfield_port2)
+            assert(subfield_port2.type_name == "/base/samples/frame/frame_size_t")
+            reader2 = subfield_port2.reader
+
+            writer.write sample 
+            sleep(0.2)
+            assert(reader.read.time == time_first) 
+            assert(reader2.read) 
+        end
+    end
 end
