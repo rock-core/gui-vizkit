@@ -47,15 +47,17 @@ module Vizkit
                        widget.loader.control_callback_fct widget,value
                      end
       widget.method(callback_fct).call(value, options, &block) if(callback_fct && callback_fct != :config)
-    elsif value.is_a? Orocos::OutputPort or value.is_a? Orocos::Log::OutputPort
-      value.connect_to widget,options ,&block
-      callback_fct = if widget.respond_to?(:loader)
-                       widget.loader.callback_fct widget,value
-                     end
+    else
+      if value.is_a? Orocos::OutputPort or value.is_a? Orocos::Log::OutputPort
+        value.connect_to widget,options ,&block
+        callback_fct = if widget.respond_to?(:loader)
+                         widget.loader.callback_fct widget,value
+                       end
 
-      if(callback_fct && callback_fct != :config)
-        sample = value.reader(:init => true).read
-        widget.send(callback_fct, sample, value.name) if sample
+        if(callback_fct && callback_fct != :config && value.respond_to?(:read))
+          sample = value.read
+          widget.method(callback_fct).call(sample, value.name) if sample
+        end
       end
     end
     widget.show

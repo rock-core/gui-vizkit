@@ -37,7 +37,7 @@ module Vizkit
                     @__readers.clear
                     @__task = Orocos::TaskContext.get(@__task_name)
                     @__connection_code_block.call if @__connection_code_block
-                rescue Orocos::NotFound
+                rescue Orocos::NotFound, Orocos::CORBAError
                     @__task = nil
                 end
             end
@@ -48,7 +48,10 @@ module Vizkit
             if ping && !@__readers[port_name]
                 default_policy, policy = Kernel.filter_options options, :init => true
                 policy.merge(default_policy)
-                @__readers[port_name] = port(port_name).reader(default_policy)
+                begin 
+                    @__readers[port_name] = port(port_name).reader(default_policy)
+                rescue Orocos::NotFound,Orocos::CORBAError
+                end
             end
             @__readers[port_name]
         end
