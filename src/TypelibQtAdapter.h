@@ -6,9 +6,27 @@
 #include <QObject>
 #include <rice/Object.hpp>
 
+class QObjectFetcher: public QObject
+{
+    Q_OBJECT
+private:
+    QObject * object_pointer;
+    QObjectFetcher();
+    
+    static QObjectFetcher *instance;
+    
+public:    
+    static QObjectFetcher *getQObjectFetcher();
+    
+    QObject *getObject();
+    
+    public slots:
+	static QObject *getInstance();
+	void setObject(QObject *obj);
+};
+
 class TypelibQtAdapter
 {
-
 public:
     class Argument
     {
@@ -19,9 +37,9 @@ public:
     
     TypelibQtAdapter();
     
-    QObject *getQObject();
-
-    void initialize(Rice::Object objectNameRuby);
+    void init();
+    
+    void initialize();
     
     bool callQtMethod(QObject* obj ,const std::string& methodName, const std::vector< Typelib::Value >& arguments, Typelib::Value returnValue);
     bool callQtMethodWithSignature(QObject* obj ,const std::string& signature, const std::vector<Argument>& arguments, Typelib::Value returnValue);

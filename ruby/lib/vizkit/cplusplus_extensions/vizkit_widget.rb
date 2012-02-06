@@ -225,6 +225,7 @@ module VizkitPluginLoaderExtension
             @__lib_name__
         end
         plugin.load_adapters
+	plugin.extend(QtTyplelibExtension)
         plugin
     end
 
@@ -258,12 +259,11 @@ module VizkitPluginLoaderExtension
     def pushTransformerConfiguration(data)
         # Push the data to the underlying transformer
         data.static_transformations.each do |trsf|
-            puts "PUSHING STATIC TRANSFORM"
-            # pushStaticTransformation(trsf)
+            pushStaticTransformation(trsf)
         end
         self.port_frame_associations.clear
         data.port_frame_associations.each do |data_frame|
-            port_frame_associations[[data_frame.task, data_frame.port]] = data_frame.frame
+            port_frame_associations["#{data_frame.task}.#{data_frame.port}"] = data_frame.frame
         end
         data.port_transformation_associations.each do |producer|
             next if @connected_transformation_producers.has_key?([producer.task, producer.port])
@@ -284,9 +284,7 @@ module VizkitPluginLoaderExtension
                         Vizkit.warn "received the expected transformation from #{producer.task}.#{producer.port}"
                         @connected_transformation_producers[[producer.task, producer.port]] = true
                     end
-                    puts "PUSHING DYNAMIC TRANSFORM"
-                    pp data
-                    # pushDynamicTransformation(data)
+                    pushDynamicTransformation(data)
                 end
                 data
             end
@@ -305,12 +303,16 @@ module VizkitPluginLoaderExtension
 
         widget_name, update_method, filter = VizkitPluginLoaderExtension.type_to_widget_name[data.class.name]
         plugin = plugins[widget_name]
-        puts "#{plugin} #{update_method}"
-        # if filter
-        #     filter.call(plugin,data,port_name)
-        # else
-        #     plugin.send(update_method,data)
-        # end
+
+	#inform widget about the frame for the plugin
+        if frame_name = port_frame_associations[port_name]
+            setPluginDataFrame(frame_name, plugin)
+        end
+        if filter
+            filter.call(plugin,data,port_name)
+        else
+            plugin.send(update_method,data)
+        end
     end
 
     # Called by Vizkit when this widget will be used to display values of the
@@ -330,6 +332,7 @@ end
 
 Vizkit::UiLoader.extend_cplusplus_widget_class "vizkit::Vizkit3DWidget" do
     include VizkitPluginLoaderExtension
+    include QtTyplelibExtension
 end
 
 Vizkit::UiLoader.extend_cplusplus_widget_class "vizkit::QVizkitMainWindow" do
@@ -338,3 +341,5 @@ end
 
 Vizkit::UiLoader.register_3d_plugin('RigidBodyStateVisualization', 'RigidBodyStateVisualization', nil)
 Vizkit::UiLoader.register_3d_plugin_for('RigidBodyStateVisualization', "/base/samples/RigidBodyState", :updateRigidBodyState)
+Vizkit::UiLoader.register_3d_plugin('LaserScanVisualization', 'LaserScanVisualization', nil)
+Vizkit::UiLoader.register_3d_plugin_for('LaserScanVisualization', "/base/samples/LaserScan", :updateLaserScan)
