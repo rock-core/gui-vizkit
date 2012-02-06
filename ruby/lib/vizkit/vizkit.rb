@@ -291,6 +291,7 @@ module Vizkit
               else
                 port
               end
+      raise "Cannot create OQConnection because no port is given" if !@port
       @reader = @port.reader @policy
 
       #we do not need a timer for replayed connections 
@@ -300,6 +301,15 @@ module Vizkit
           @callback_fct.call sample,@port.full_name if @callback_fct && sample
           @last_sample = sample
         end
+      end
+      if widget
+        Vizkit.info "Create new OQConnection for #{@port.name} and qt object #{widget.objectName}"
+      elsif @callback_fct
+        Vizkit.info "Create new OQConnection for #{@port.name} and method #{@callback_fct}"
+      elsif @block
+        Vizkit.info "Create new OQConnection for #{@port.name} and code block #{@block}"
+      else
+        raise "Cannot Create OQConnection because no widgte, method or code block is given"
       end
     end
 
@@ -324,6 +334,8 @@ module Vizkit
           @callback_fct = @widget.method(@callback_fct) 
         end
         raise "Widget #{@widget.objectName}(#{@widget.class_name}) has no callback function "if !@callback_fct
+        Vizkit.info "Found callback_fct #{@callback_fct} for OQConnection connected to port #{@port.full_name}"
+        @callback_fct
       else
         @callback_fct = nil
       end
@@ -345,14 +357,15 @@ module Vizkit
       #call disconnect if widget is no longer visible
       #this could lead to some problems if the widget wants to
       #log the data 
-      #
       if @widget && @widget.is_a?(Qt::Widget) && !@widget.visible
+        Vizkit.info "OQConnection for #{@port.name} and widget #{widget.objectName}. Widget is not visible!" 
         disconnect
         return
       end
 
       @last_sample ||= @reader.new_sample if @port.task.reachable?
       while(@reader.read_new(@last_sample))
+        Vizkit.info "OQConnection to port #{@port.full_name} received new sample"
         if @block
           @block.call(@last_sample,@port.full_name)
         end
@@ -369,10 +382,12 @@ module Vizkit
         @timer_id = nil
         # @reader.disconnect this leads to some problems with the timerEvent: reason unknown
         @widget.disconnected(@port.full_name) if @widget.respond_to?:disconnected
+        Vizkit.info "Disconnect OQConnection connected to port #{@port.full_name}"
       end
     end
 
     def reconnect()
+      Vizkit.info "Reconnect OQConnection to port #{@port.full_name}"
       @timer_id = startTimer(1000/@local_options[:update_frequency]) if !@timer_id
       if @port.task.readable?
         true

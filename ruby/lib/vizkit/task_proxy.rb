@@ -136,6 +136,8 @@ module Vizkit
                 reader_writer = __reader_writer
                 if reader_writer
                     reader_writer.send(m, *args, &block)
+                else
+                    Vizkit.info "ReaderWriterProxy for port #{@port.full_name}: ignoring method #{m} because port is not reachable."
                 end
             rescue Orocos::NotFound, Orocos::CORBAError
                 @__reader_writer = nil
@@ -289,7 +291,11 @@ module Vizkit
 
         def method_missing(m, *args, &block)
             begin 
-                @__port.send(m, *args, &block) if __port
+                if __port
+                    @__port.send(m, *args, &block)
+                else
+                    Vizkit.info "PortProxy #{full_name}: ignoring method #{m} because port is not reachable."
+                end
             rescue Orocos::NotFound, Orocos::CORBAError
                 @__port = nil
             end
@@ -363,6 +369,7 @@ module Vizkit
 
         def method_missing(m, *args, &block)
             if !ping
+                Vizkit.info "TaskProxy #{name}: ignoring method #{m} because task is not reachable."
                 return
             end
             begin
