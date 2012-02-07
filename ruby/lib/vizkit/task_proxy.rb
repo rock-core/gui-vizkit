@@ -3,7 +3,6 @@
 #this is useful if the task context is needed before 
 #the task was started or if the task was restarted
 module Vizkit
-
     #Proxy for Orocos::InputPort Writer and OutputPort Reader which automatically handles reconnects
     class ReaderWriterProxy
         #the type of the port is determining if the object is a reader or writer
@@ -137,7 +136,8 @@ module Vizkit
                 if reader_writer
                     reader_writer.send(m, *args, &block)
                 else
-                    Vizkit.info "ReaderWriterProxy for port #{@port.full_name}: ignoring method #{m} because port is not reachable."
+                    Vizkit.warn "ReaderWriterProxy for port #{port.full_name}: ignoring method #{m} because port is not reachable."
+                    @__reader_writer = nil
                 end
             rescue Orocos::NotFound, Orocos::CORBAError
                 @__reader_writer = nil
@@ -207,9 +207,10 @@ module Vizkit
             @local_options[:subfield] = @local_options[:subfield].to_a
 
             @__task = task
-            if(@__task.is_a?(String) || task.is_a?(Orocos::TaskContext))
-                @__task = TaskProxy.new(task_proxy)
+            if(@__task.is_a?(String) || @__task.is_a?(Orocos::TaskContext))
+                @__task = TaskProxy.new(task)
             end
+            raise "Cannot create PortProxy if no task is given" if !@__task
 
             if(port.is_a? String)
                 @__port_name = port
@@ -259,7 +260,7 @@ module Vizkit
                         @__port = task.port(@__port_name) if task
                         Vizkit.info "Create Port for: #{@__port.full_name}"
                     else
-                        Vizkit.warn "Task #{task.name} has no port #{@__port_name}. This can happen for tasks with dynamic ports."
+                        Vizkit.warn "Task #{task().name} has no port #{name}. This can happen for tasks with dynamic ports."
                         @__port = nil
                     end
                 end
@@ -277,26 +278,15 @@ module Vizkit
             ReaderProxy.new(@__task_proxy,self,@local_options.merge(policy))
         end
 
-        #these methods have to be defined here because they will be aliased 
-        #by OQConnetionOutputPort
-        def connect_to(input_port, options = Hash.new)
-            @__port.connect_to(input_port, options) if __port
-        end
-        def disconnect_from(input)
-            @__port.disconnect_from(input) if __port
-        end
-        def disconnect_all
-            @__port.disconnect_all if __port
-        end
-
         def method_missing(m, *args, &block)
             begin 
                 if __port
                     @__port.send(m, *args, &block)
                 else
-                    Vizkit.info "PortProxy #{full_name}: ignoring method #{m} because port is not reachable."
+                    Vizkit.warn "PortProxy #{full_name}: ignoring method #{m} because port is not reachable."
                 end
-            rescue Orocos::NotFound, Orocos::CORBAError
+            rescue Orocos::NotFound, Orocos::CORBAError => e2
+                Vizkit.warn "PortProxy #{full_name} got an Error: #{e}"
                 @__port = nil
             end
         end
@@ -369,7 +359,7 @@ module Vizkit
 
         def method_missing(m, *args, &block)
             if !ping
-                Vizkit.info "TaskProxy #{name}: ignoring method #{m} because task is not reachable."
+                Vizkit.warn "TaskProxy #{name}: ignoring method #{m} because task is not reachable."
                 return
             end
             begin

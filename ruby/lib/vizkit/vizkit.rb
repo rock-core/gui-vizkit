@@ -230,6 +230,7 @@ module Vizkit
       connection = task.port(port_name).connect_to(widget,options,&block)
     else
       connection = OQConnection.new(task_name, port_name, options, widget, &block)
+      connection.connect
       Vizkit.connections << connection 
     end
     connection 
@@ -259,8 +260,10 @@ module Vizkit
     #default values
     class << self
       attr_accessor :update_frequency
+      attr_accessor :max_reconnect_frequency
     end
     OQConnection::update_frequency = 8
+    OQConnection::max_reconnect_frequency = 1
 
     attr_reader :port
     attr_reader :reader
@@ -272,6 +275,7 @@ module Vizkit
       @timer_id = nil
       @last_sample = nil    #save last sample so we can reuse the memory
       @callback_fct = nil
+      @using_reduced_update_frequency = false
 
       if widget.is_a? Method
         @callback_fct = widget
@@ -363,17 +367,28 @@ module Vizkit
         return
       end
 
-      @last_sample ||= @reader.new_sample if @port.task.reachable?
-      while(@reader.read_new(@last_sample))
-        Vizkit.info "OQConnection to port #{@port.full_name} received new sample"
-        if @block
-          @block.call(@last_sample,@port.full_name)
+      if @port.task.reachable?
+        @last_sample ||= @reader.new_sample
+        if @using_reduced_update_frequency
+            @using_reduced_update_frequency = false
+            Vizkit.info "OQConnection for #{@port.name}: Port is reachable setting update_frequency back to #{@local_options[:update_frequency]}" 
+            update_frequency = @local_options[:update_frequency]
         end
-        callback_fct.call @last_sample,@port.full_name if callback_fct
+        while(@reader.read_new(@last_sample))
+            Vizkit.info "OQConnection to port #{@port.full_name} received new sample"
+            if @block
+                @block.call(@last_sample,@port.full_name)
+            end
+            callback_fct.call @last_sample,@port.full_name if callback_fct
+        end
+      elsif !@using_reduced_update_frequency
+        Vizkit.info "OQConnection for #{@port.name}: Port is not reachable reducing update_frequency to #{OQConnection::max_reconnect_frequency}" 
+        @using_reduced_update_frequency = true
+        update_frequency = OQConnection::max_reconnect_frequency
       end
-    rescue Exception => e
-      puts "could not read on #{reader}: #{e.message}"
-      disconnect
+ #   rescue Exception => e
+ #     puts "could not read on #{reader}: #{e.message}"
+ #     disconnect
     end
 
     def disconnect()
@@ -389,7 +404,7 @@ module Vizkit
     def reconnect()
       Vizkit.info "Reconnect OQConnection to port #{@port.full_name}"
       @timer_id = startTimer(1000/@local_options[:update_frequency]) if !@timer_id
-      if @port.task.readable?
+      if @port.task.reachable?
         true
       else
         false

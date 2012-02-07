@@ -13,10 +13,20 @@ class LoaderUiTest < Test::Unit::TestCase
 
     def test_proxy
         task = Vizkit::TaskProxy.new("port_proxy")
-        proxy_reader = nil
-        writer = nil 
-        reader = nil
+        proxy_reader =nil 
 
+        #the reader and writer should automatically connect after the task was started
+        writer = task.port("in_test").writer
+        reader = task.port("out_test").reader
+        proxy_reader = task.port("out_test").reader(:port_proxy => "port_proxy") #use task port_proxy as proxy
+
+        assert(writer)
+        assert(reader)
+        assert(proxy_reader)
+        assert(!writer.type_name)
+        assert(writer.port)
+        assert(writer.port.task)
+        assert(!writer.port.task.__task)
         assert (!task.ping)
         assert (!task.has_port?("bla"))
 
@@ -31,11 +41,6 @@ class LoaderUiTest < Test::Unit::TestCase
             assert(task.has_port? "out_test")
 
             #test without port_proxyxy
-            writer = task.in_test.writer
-            reader = task.out_test.reader
-            assert(writer)
-            assert(reader)
-
             writer.write Time.now 
             reader.read
             sleep(0.2)
@@ -43,13 +48,9 @@ class LoaderUiTest < Test::Unit::TestCase
 
             #test with port_proxy
             #we are connecting the proxy with itsself to test setting up the port_proxy
-            proxy_reader = task.port("out_test")
-            assert(proxy_reader)
-            proxy_reader = proxy_reader.reader(:port_proxy => "port_proxy") #use task port_proxy as proxy
-            assert(proxy_reader)
+            proxy_reader.read
             writer.write Time.now 
             sleep 0.2
-            assert(proxy_reader.read)
             puts "#### NOW I AM KILLING THE PROXY TO TEST RECONNECT #####"
         end
 
@@ -91,6 +92,7 @@ class LoaderUiTest < Test::Unit::TestCase
             time_first = Time.now-1000
             sample.time = Time.now
             sample.first.time = time_first
+            sample.first.data_depth = 1
             sample.first.received_time = Time.now
             sample.first.frame_mode = :MODE_UNDEFINED
             sample.first.frame_status = :STATUS_EMPTY
@@ -98,6 +100,7 @@ class LoaderUiTest < Test::Unit::TestCase
             sample.second.received_time = Time.now
             sample.second.frame_mode = :MODE_UNDEFINED
             sample.second.frame_status = :STATUS_EMPTY
+            sample.second.data_depth = 1
             writer.write sample 
             sleep(0.2)
             assert(reader.read)
