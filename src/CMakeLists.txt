@@ -57,14 +57,14 @@ pkg_check_modules(TYPELIBRUBY "typelib_ruby")
 
 if (TYPELIB_FOUND AND TYPELIBRUBY_FOUND AND GEM_FOUND)
     rock_ruby_rice_extension(vizkittypelib
-        TypelibToQVariant.cpp
+	MOC TypelibToQVariant.cpp
         DEPS_PKGCONFIG rtt-typelib typelib_ruby)
     target_link_libraries(vizkittypelib
         ${QT_LIBRARIES} ${QT_QTCORE_LIBRARY} ${QT_QTGUI_LIBRARY} 
         ${GEM_LIBRARIES}) 
 
-    rock_ruby_extension(TypelibQtAdapter SHARED
-        TypelibQtAdapter.cpp
+    rock_ruby_rice_extension(TypelibQtAdapter SHARED
+	MOC TypelibQtAdapter.cpp
         DEPS_PKGCONFIG rtt-typelib typelib_ruby)
     target_link_libraries(TypelibQtAdapter
         ${QT_LIBRARIES} ${QT_QTCORE_LIBRARY} ${QT_QTGUI_LIBRARY} 
