@@ -9,16 +9,37 @@ Vizkit.logger.level = Logger::INFO
     
 class LoaderUiTest < Test::Unit::TestCase
     def setup
+        Vizkit::ReaderWriterProxy.default_policy = {:port_proxy => Vizkit::TaskProxy.new("port_proxy"),:init => true}
+    end
+
+    def test_simple
+        puts "Start simple test !!! #####"
+        task = Vizkit::ReaderWriterProxy.default_policy[:port_proxy]
+        writer = task.port("in_test").writer(:port_proxy =>  nil)
+        assert(writer)
+        Orocos.run "rock_port_proxy" do 
+            task.start
+
+            assert(task.createProxyConnection("test","/base/Time",0.01))
+            assert(task.has_port? "in_test")
+            assert(task.has_port? "out_test")
+
+            #test without port_proxyxy
+            writer.write Time.now 
+        end
+        puts "Simple test done !!! #####"
     end
 
     def test_proxy
-        task = Vizkit::TaskProxy.new("port_proxy")
+        task = Vizkit::ReaderWriterProxy.default_policy[:port_proxy]
         proxy_reader =nil 
 
         #the reader and writer should automatically connect after the task was started
-        writer = task.port("in_test").writer
-        reader = task.port("out_test").reader
-        proxy_reader = task.port("out_test").reader(:port_proxy => "port_proxy") #use task port_proxy as proxy
+
+        proxy_reader = task.port("out_test").reader() #use task port_proxy as proxy
+        writer = task.port("in_test").writer(:port_proxy => nil)
+        port = task.port("out_test")
+        reader = port.reader(:port_proxy => nil)
 
         assert(writer)
         assert(reader)
@@ -27,8 +48,9 @@ class LoaderUiTest < Test::Unit::TestCase
         assert(writer.port)
         assert(writer.port.task)
         assert(!writer.port.task.__task)
-        assert (!task.ping)
-        assert (!task.has_port?("bla"))
+        assert(!task.ping)
+        assert(!task.has_port?("bla"))
+        assert(!port.type_name)
 
         Orocos.run "rock_port_proxy" do 
             assert (task.ping)
@@ -39,6 +61,9 @@ class LoaderUiTest < Test::Unit::TestCase
             assert(task.createProxyConnection("test","/base/Time",0.01))
             assert(task.has_port? "in_test")
             assert(task.has_port? "out_test")
+            assert(port.type_name)
+
+            sleep(0.2)
 
             #test without port_proxyxy
             writer.write Time.now 
@@ -69,14 +94,14 @@ class LoaderUiTest < Test::Unit::TestCase
 
             proxy_reader.read # this should reconnect the proxy
             writer.write Time.now 
-            sleep 0.2
+            sleep 0.4
             assert(proxy_reader.read)
         end
     end
 
     def test_proxy_subfield_reading
         Orocos.run "rock_port_proxy" do 
-            task = Vizkit::TaskProxy.new("port_proxy")
+            task = Vizkit::ReaderWriterProxy.default_policy[:port_proxy]
             task.start
 
             assert(task.createProxyConnection("test","/base/samples/frame/FramePair",0.01))

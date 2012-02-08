@@ -5,14 +5,11 @@ require 'orocos/log'
  
 module Vizkit
     class ContextMenu
-        def self.widget_for(type_name,parent,pos,typelib_type=false)
+        def self.widget_for(type_name,parent,pos)
             menu = Qt::Menu.new(parent)
 
             # Determine applicable widgets for the output port
             widgets = Vizkit.default_loader.widget_names_for_value(type_name)
-            if typelib_type
-                widgets.concat Vizkit.default_loader.widget_names_for_value(Typelib::Type)
-            end
             widgets.uniq!
             widgets.each do |w|
                 menu.add_action(Qt::Action.new(w, parent))
@@ -230,7 +227,6 @@ module Vizkit
             subfield = subfield_from_item(item)
             property = property_from_item(item)
 
-
             #if object is a task 
             if object.is_a? Vizkit::TaskProxy
                 ContextMenu.task_state(object,tree_view,pos)
@@ -260,7 +256,7 @@ module Vizkit
                                 else
                                     port.type_name
                                 end
-                    widget_name = Vizkit::ContextMenu.widget_for(type_name,tree_view,pos,true)
+                    widget_name = Vizkit::ContextMenu.widget_for(type_name,tree_view,pos)
                     if widget_name
                         widget = Vizkit.display port, :widget => widget_name,:subfield => subfield,:type_name=> type_name
                         widget.setAttribute(Qt::WA_QuitOnClose, false) if widget

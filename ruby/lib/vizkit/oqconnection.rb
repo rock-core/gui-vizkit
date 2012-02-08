@@ -42,16 +42,8 @@ module Vizkit
             raise "Cannot create OQConnection because no port is given" if !@port
             @reader = @port.reader @policy
 
-            #we do not need a timer for replayed connections 
-            if @local_options[:update_frequency] <= 0 && @port.is_a?(Orocos::Log::OutputPort)
-                @port.org_connect_to nil, @policy do |sample,_|
-                    sample = @block.call(sample,@port.full_name) if @block
-                    @callback_fct.call sample,@port.full_name if @callback_fct && sample
-                    @last_sample = sample
-                end
-            end
             if widget
-                Vizkit.info "Create new OQConnection for #{@port.name} and qt object #{widget.objectName}"
+                Vizkit.info "Create new OQConnection for #{@port.name} and qt object #{widget}"
             elsif @callback_fct
                 Vizkit.info "Create new OQConnection for #{@port.name} and method #{@callback_fct}"
             elsif @block
@@ -130,9 +122,9 @@ module Vizkit
                 @using_reduced_update_frequency = true
                 update_frequency = OQConnection::max_reconnect_frequency
             end
-            #   rescue Exception => e
-            #     puts "could not read on #{reader}: #{e.message}"
-            #     disconnect
+        rescue Exception => e
+            Vizkit.warn "could not read on #{reader}: #{e.message}"
+            disconnect
         end
 
         def disconnect()
@@ -146,7 +138,7 @@ module Vizkit
         end
 
         def reconnect()
-            Vizkit.info "Reconnect OQConnection to port #{@port.full_name}"
+            Vizkit.info "(Re)connect OQConnection to port #{@port.full_name}"
             @timer_id = startTimer(1000/@local_options[:update_frequency]) if !@timer_id
             if @port.task.reachable?
                 true
@@ -154,7 +146,7 @@ module Vizkit
                 false
             end
         rescue Exception => e
-            STDERR.puts "failed to reconnect: #{e.message}"
+            Vizkit.warn "failed to reconnect: #{e.message}"
             false
         end
 
@@ -223,6 +215,7 @@ module Orocos
     module Log
         class OutputPort
             alias :org_connect_to :connect_to
+            remove_method :connect_to
             include Vizkit::OQConnectionIntegration
         end
     end
@@ -230,6 +223,7 @@ module Orocos
         alias :org_connect_to :connect_to
         alias :org_disconnect_all :disconnect_all
         alias :org_disconnect_from :disconnect_from
+        remove_method :connect_to,:disconnect_from
         include Vizkit::OQConnectionIntegration
     end
 end

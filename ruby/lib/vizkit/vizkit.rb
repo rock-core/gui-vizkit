@@ -19,6 +19,9 @@ module Vizkit
     define_control_for_methods("task",Orocos::TaskContext) do |task|
       task.model.name
     end
+    define_control_for_methods("port",Orocos::InputPort,PortProxy) do |port|
+      port.type_name
+    end
     define_control_for_methods("replay",Orocos::Log::Replay) do |klass|
       klass.class
     end
@@ -47,7 +50,7 @@ module Vizkit
                      end
       widget.method(callback_fct).call(value, options, &block) if(callback_fct && callback_fct != :config)
     else
-      if value.respond_to? :connect_to
+      if type == :display && value.respond_to?(:connect_to)
         value.connect_to widget,options ,&block
         callback_fct = if widget.respond_to?(:loader)
                          widget.loader.callback_fct widget,value
@@ -64,24 +67,33 @@ module Vizkit
   end
 
   def self.widget_from_options(value,options=Hash.new,&block)
-    #if value is a array
     if value.is_a? Array
       result = Array.new
       value.each do |val|
-        result << widget_for_options(val, options, &block)
+        result << widget_from_options(val, options, &block)
       end
       return result
     end
     local_options,options = Kernel::filter_options(options,@vizkit_local_options)
-    widget = @default_loader.widget_from_options(value,local_options)
+    value_temp = if value.is_a? Typelib::Type
+                     value.class.name
+                 else
+                     value
+                 end
+    widget = @default_loader.widget_from_options(value_temp,local_options)
     setup_widget(widget,value,options,local_options[:type],&block)
   end
 
   def self.control value, options=Hash.new,&block
     options[:widget_type] = :control
-    widget = widget_from_options(value,options,&block)
+    value_temp = if value.is_a? Typelib::Type
+                     value.class.name
+                 else
+                     value
+                 end
+    widget = widget_from_options(value_temp,options,&block)
     if(!widget)
-      puts "No widget found for controlling #{value}!"
+      Vizkit.warn "No widget found for controlling #{value}!"
       return nil
     end
     widget
@@ -89,9 +101,14 @@ module Vizkit
 
   def self.display value,options=Hash.new,&block
     options[:widget_type] = :display
-    widget = widget_from_options(value,options,&block)
+    value_temp = if value.is_a? Typelib::Type
+                     value.class.name
+                 else
+                     value
+                 end
+    widget = widget_from_options(value_temp,options,&block)
     if(!widget)
-      puts "No widget found for displaying #{value}!"
+      Vizkit.warn "No widget found for displaying #{value}!"
       return nil
     end
     widget
@@ -110,10 +127,18 @@ module Vizkit
        GC.start
      end
      gc_timer.start(5000)
-     $qApp.exec
-     gc_timer.stop
 
+     if ReaderWriterProxy.default_policy.has_key?(:port_proxy)
+       Orocos.run "rock_port_proxy" do
+         ReaderWriterProxy.default_policy[:port_proxy].start
+         $qApp.exec
+       end
+     else
+       $qApp.exec
+     end
+     gc_timer.stop
   end
+
   def self.process_events()
     $qApp.processEvents
   end
@@ -223,16 +248,9 @@ module Vizkit
     if widget.kind_of?(Hash)
       widget, options = nil, widget
     end
-
-    task = @use_tasks.find{|task| task.name==task_name && task.has_port?(port_name)} if @use_tasks
-    connection = nil;
-    if task
-      connection = task.port(port_name).connect_to(widget,options,&block)
-    else
-      connection = OQConnection.new(task_name, port_name, options, widget, &block)
-      connection.connect
-      Vizkit.connections << connection 
-    end
+    connection = OQConnection.new(task_name, port_name, options, widget, &block)
+    connection.connect
+    Vizkit.connections << connection 
     connection 
   end
 
@@ -250,16 +268,20 @@ module Vizkit
 
   #returns the task which shall be used by vizkit  
   #this is usefull for log replay
-  def self.use_task?(task_name)
+  def self.log_task(task_name)
     task = nil
     task = @use_tasks.find{|task| task.name==task_name} if @use_tasks
     task
   end
 
+  def self.use_log_task?(task_name)
+      log_task(task_name) != nil
+  end
 
   @connections = Array.new
   @default_loader = UiLoader.new
   @vizkit_local_options = {:widget => nil,:type_name => nil,:reuse => true,:parent =>nil,:widget_type => :display}
+  ReaderWriterProxy::default_policy = {:init => true,:port_proxy => TaskProxy.new("port_proxy")}
 
   #returns the instance of the vizkit 3d widget 
   def self.vizkit3d_widget

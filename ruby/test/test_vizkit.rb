@@ -17,103 +17,130 @@ end
     
 class LoaderUiTest < Test::Unit::TestCase
     def setup
+        Vizkit.use_tasks([])
+        #generate log file 
+        @log_path = File.join(File.dirname(__FILE__),"test_log")
+        if !File.exist?(@log_path+".0.log")
+            output = Pocolog::Logfiles.create(@log_path,Orocos.registry)
+            stream_output = output.stream("test_task.time","/base/Time",true)
+
+            time = Time.now
+            0.upto 100 do |i|
+                stream_output.write(time+i,time+i,time+i)
+            end
+            output.close
+        end
     end
 
-    def test_OQConnection
-        task = Vizkit::TaskProxy.new("port_proxy")
+    #test integration between Vizkit, TaskProxy and Replay
+    def test_1_vizkit_log_replay
+        #open log file
+        log = Orocos::Log::Replay.open(@log_path+".0.log")
+        assert(log)
 
-        #the reader and writer should automatically connect after the task was started
-        writer = task.port("in_test").writer
-        reader = task.port("out_test").reader
-
-        #use directly OQConnection
-        connection = Vizkit::OQConnection.new("port_proxy","out_test") do |sample,port_name|
+        Vizkit.connect_port_to "test_task","time" do |sample,_|
             @sample = sample
         end
-        connection.connect
 
-        #Use OQConnection via PortProxy.connect_to
-        widget = TestWidget.new
-        Vizkit::TaskProxy.new("port_proxy").port("out_test").connect_to widget 
+        #create TaskProxy
+        task = Vizkit::TaskProxy.new("test_task")
+        assert(task)
+        port = task.port("time")
+        assert(port)
+        reader = port.reader
+        assert(reader)
 
-        #Use OQConnection via vizkit.connect_port_to
-        Vizkit.connect_port_to "port_proxy","out_test" do |sample,_|
-            @sample2 = sample
-        end
-
-        #testing phase where no task is present 
-        0.upto(10) do
-            while $qApp.hasPendingEvents
-                $qApp.processEvents
-            end
-            sleep(0.1)
-        end
-
-        #start task
-        Orocos.run "rock_port_proxy" do 
-            task.start
-            assert(task.createProxyConnection("test","/base/Time",0.01))
-            assert(task.has_port? "in_test")
-            assert(task.has_port? "out_test")
-
-            while $qApp.hasPendingEvents
-                $qApp.processEvents
-            end
-
-            writer.write Time.now 
-            reader.read
-            sleep(0.2)
-            assert(reader.read)
-            
-            while $qApp.hasPendingEvents
-                $qApp.processEvents
-            end
-            sleep 0.2
-            while $qApp.hasPendingEvents
-                $qApp.processEvents
-            end
-
-            assert(@sample)
-            assert(@sample2)
-            #test if sample was received
-            assert(widget.sample)
-        end
-
-        #shutdown task 
-        #and delete all samples
-        @sample = nil
-        @sample2 = nil
-        widget.sample = nil
+        assert(!reader.read)
         assert(!reader.__valid?)
+        assert(!task.reachable?)
 
-        #restart and test again
+        #Register task
+        Vizkit.use_tasks log.tasks
+
+        #test type of the underlying objects
+        assert(task.__task.is_a?(Orocos::Log::TaskContext))
+        assert(port.task.__task.is_a?(Orocos::Log::TaskContext))
+        assert(port.__port.is_a?(Orocos::Log::OutputPort))
+        #test if task is reachable now
+
+        assert(task.reachable?)
+        assert(port.task.reachable?)
+        assert(!reader.__valid?)
+        assert(reader.__reader_writer)
+        assert(reader.__valid?)
+
+        #start replay 
+        sleep(0.2)
+        while $qApp.hasPendingEvents
+            $qApp.processEvents
+        end
+        log.step
+        assert(reader.read)
+        sleep(0.2)
+        while $qApp.hasPendingEvents
+            $qApp.processEvents
+        end
+        assert(@sample)
+    end
+
+    def test_vizkit_display
+        log = Orocos::Log::Replay.open(@log_path+".0.log")
+        assert(log)
+        task = Vizkit::ReaderWriterProxy.default_policy[:port_proxy]
+
         Orocos.run "rock_port_proxy" do 
             task.start
-            while $qApp.hasPendingEvents
-                $qApp.processEvents
-            end
 
             assert(task.createProxyConnection("test","/base/Time",0.01))
             assert(task.has_port? "in_test")
-            assert(task.has_port? "out_test")
+            
+            widget = Vizkit.display task.in_test
+            assert(widget)
+            widget.close
 
-            while $qApp.hasPendingEvents
-                $qApp.processEvents
-            end
+            widget = Vizkit.display log.test_task.time
+            assert(widget)
+            widget.close
 
-            writer.write Time.now 
-            reader.read
-            sleep(0.2)
-            assert(reader.read)
-
-            while $qApp.hasPendingEvents
-                $qApp.processEvents
-            end
-
-            assert(@sample)
-            assert(@sample2)
-            #test if sample was received
-            assert(widget.sample)
+            task2 = Vizkit::TaskProxy.new("test_task")
+            widget = Vizkit.display task2.port("time")
+            assert(!widget)
+            Vizkit.use_tasks log.tasks
+            widget = Vizkit.display task2.time
+            assert(widget)
+            widget.close
         end
+    end
+
+    def test_vizkit_control
+        task = Vizkit::ReaderWriterProxy.default_policy[:port_proxy]
+
+        Orocos.run "rock_port_proxy" do 
+            task.start
+
+            assert(task.createProxyConnection("test","/base/Angle",0.01))
+            assert(task.has_port? "in_test")
+            
+            widget = Vizkit.control task.out_test
+            assert(widget)
+            widget.close
+
+            widget = Vizkit.control task.out_test.type_name
+            assert(widget)
+            widget.close
+
+            widget = Vizkit.control task.out_test.new_sample
+            assert(widget)
+            widget.close
+        end
+        #process events otherwise qt is crashing
+        sleep(0.2)
+        while $qApp.hasPendingEvents
+            $qApp.processEvents
+        end
+    end
+
+    def test_vizkit_disconnect
+
     end
 end
