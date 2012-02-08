@@ -424,10 +424,10 @@ module Vizkit
       return @default_widget_for_hash[value] if @default_widget_for_hash.has_key?(value)
       names = widget_names_for_value(value)
       if names.size > 1
-        raise "There are more than one widget available for #{value.to_s}. "+ 
+        raise "There are more than one widget available for #{value.to_s}: #{names.sort.join(", ")} "+ 
               "Call register_default_widget_for to define a default widget." 
       end
-      names.first if names.size == 1
+      names.first
     end
 
     def widget_names_for_value(value)
