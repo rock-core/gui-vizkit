@@ -17,6 +17,7 @@ end
     
 class LoaderUiTest < Test::Unit::TestCase
     def setup
+        Vizkit::OQConnection::max_reconnect_frequency = 1
     end
 
     def test_OQConnection
@@ -57,18 +58,17 @@ class LoaderUiTest < Test::Unit::TestCase
             assert(task.has_port? "out_test")
 
             reader.read
+            sleep(2)
+            while $qApp.hasPendingEvents
+                $qApp.processEvents
+            end
             writer.write Time.now 
-            sleep(1)
+            sleep 2
             assert(reader.read)
-            
+            sleep 2
             while $qApp.hasPendingEvents
                 $qApp.processEvents
             end
-            sleep 0.2
-            while $qApp.hasPendingEvents
-                $qApp.processEvents
-            end
-
             assert(@sample)
             assert(@sample2)
             #test if sample was received

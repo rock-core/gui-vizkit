@@ -10,6 +10,7 @@ Vizkit.logger.level = Logger::INFO
 class LoaderUiTest < Test::Unit::TestCase
     def setup
         Vizkit::ReaderWriterProxy.default_policy = {:port_proxy => Vizkit::TaskProxy.new("port_proxy"),:init => true}
+        Vizkit::OQConnection::max_reconnect_frequency = 1
     end
 
     def test_simple
@@ -63,12 +64,12 @@ class LoaderUiTest < Test::Unit::TestCase
             assert(task.has_port? "out_test")
             assert(port.type_name)
 
-            sleep(0.2)
 
+            reader.read
+            sleep(2)
             #test without port_proxyxy
             writer.write Time.now 
-            reader.read
-            sleep(0.2)
+            sleep(2)
             assert(reader.read)
 
             #test with port_proxy

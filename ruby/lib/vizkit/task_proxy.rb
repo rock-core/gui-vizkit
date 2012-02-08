@@ -210,10 +210,6 @@ module Vizkit
             end
         end
 
-        def type_name
-            port.type_name
-        end
-
         def __subfield(sample,field=Array.new)
             return sample if(field.empty? || !sample)
             field.each do |f| 
@@ -292,8 +288,10 @@ module Vizkit
         def type_name
             if(type = @local_options[:type_name]) != nil
                 type
-            else
-                super
+            elsif @__port || __port
+                @__port.type_name
+            elsif
+                nil
             end
         end
 
