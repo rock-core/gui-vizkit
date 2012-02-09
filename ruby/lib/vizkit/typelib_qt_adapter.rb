@@ -2,9 +2,11 @@ require 'TypelibQtAdapter'
 
 module Vizkit
     class TypelibQtAdapter
-	@adapter = nil
+        attr_reader :adapter
+        attr_reader :qt_object
 	
 	def initialize(qt_object)
+            @qt_object = qt_object
 	    @adapter = get_adapter(qt_object)
 	end	
 	
@@ -31,21 +33,15 @@ module Vizkit
 	    adapter = @adapter
 	    
 	    parameter_lists = adapter.getParameterLists(method_name)
-
 	    if(!parameter_lists)
-		puts("method does not exist")
-		return nil
+		return false
 	    end
 	    
-	    success = nil
-
 	    #go through the returned parameter lists and check if they
 	    #match the given parameters
-	    parameter_lists.each_index do |params_idx|
+	    parameter_lists.each_with_index do |params, params_idx|
 		typlib_names = []
 	    
-		params = parameter_lists[params_idx]
-		
 		if(params.size != parameters.size)
 		    next
 		end
@@ -93,12 +89,10 @@ module Vizkit
 			parameters_cxx << Typelib.from_ruby(parameters[p], ruby_typelib_names[p])
 		    end
 		    
-		    success = adapter.callQtMethodWithSignature(signature, parameters_cxx, param_list_typelib, return_value)
-		    break
+		    return adapter.callQtMethodWithSignature(signature, parameters_cxx, param_list_typelib, return_value)
 		end
 	    end
-
-	    success
+            false
 	end
 	
     end  
