@@ -17,6 +17,7 @@ end
     
 class LoaderUiTest < Test::Unit::TestCase
     def setup
+        Vizkit::ReaderWriterProxy.default_policy[:port_proxy] = Vizkit::TaskProxy.new("port_proxy")
         Vizkit.use_tasks([])
         #generate log file 
         @log_path = File.join(File.dirname(__FILE__),"test_log")

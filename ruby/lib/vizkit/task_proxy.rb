@@ -1,3 +1,7 @@
+#TODO
+# - move orogen port proxy related stuff to the its task context 
+# - add a method which is signaling if an object is connected 
+# - ping and reachable? should have the same behavior like the methods from TaskContext
 
 #Proxy task for hiding the real task 
 #this is useful if the task context is needed before 
@@ -43,6 +47,7 @@ module Vizkit
         end
 
         #returns true if the reader is still valid and the connection active
+        #it does not reconnect if it is broken 
         def __valid?
             if @__port.is_a?(Orocos::Log::OutputPort) || @__port.__port.is_a?(Orocos::Log::OutputPort)
                 return @__reader_writer != nil
@@ -128,7 +133,7 @@ module Vizkit
                     typekits = Array.new
                 end
                 typekits.each do |kit|
-                    Vizkit.info "ReaderWriterProxy: Ask the orogen port_proxy task #{@__orogen_port_proxy.name} to load the typekit #{kit}"
+                    Vizkit.info "ReaderWriterProxy: Ask orogen port_proxy task #{@__orogen_port_proxy.name} to load the typekit #{kit}"
                     if !@__orogen_port_proxy.loadTypekit(kit)
                         Vizkit.warn "PortProxy reported that the typekit #{kit} cannot be loaded! Is the port_proxy running on another machine?"
                     end
@@ -162,7 +167,6 @@ module Vizkit
                 raise "Port #{@__orogen_port_proxy_out.name} of task #{port.task.name} is of type #{@__port_proxy_port.type_name} but type #{port.type_name} was expected!"
             end
 
-            #delete proxy policy otherwise we get an infinit loop
             if port.is_a? Orocos::OutputPort
                 port.connect_to port_in ,:pull => true
                 Vizkit.info "Connecting #{port.full_name} with #{port_proxy_port_in.full_name} "
@@ -241,7 +245,7 @@ module Vizkit
                 __port = port.__port
                 return nil if !__port
                 if __port.type_name != type_name
-                    @__last_sample || __port.new_sample
+                    @__last_sample ||= __port.new_sample
                     sample =__subfield(super(@__last_sample),@local_options[:subfield])
                     return sample
                 end
@@ -254,7 +258,7 @@ module Vizkit
                 __port = port.__port
                 return nil if !__port
                 if __port.type_name != type_name
-                    @__last_sample || __port.new_sample
+                    @__last_sample ||= __port.new_sample
                     sample =__subfield(super(@__last_sample),@local_options[:subfield])
                     return sample
                 end

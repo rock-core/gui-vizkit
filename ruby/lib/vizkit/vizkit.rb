@@ -29,7 +29,7 @@ module Vizkit
 end
 
 module Vizkit
-  extend Logger::Root('vizkit.rb', Logger::WARN)
+  extend Logger::Root('vizkit.rb', Logger::INFO)
 
   Qt::Application.new(ARGV)
   def self.app
@@ -131,13 +131,10 @@ module Vizkit
      if !ReaderWriterProxy.default_policy[:port_proxy]
          $qApp.exec
      else
-         if !ReaderWriterProxy.default_policy[:port_proxy].reachable?
-             Orocos.run "rock_port_proxy" do
-                 ReaderWriterProxy.default_policy[:port_proxy].start
-                 $qApp.exec
-             end
-         else
-             Vizkit.warn "PortProxy is already started."
+         proxy =  TaskProxy.new("port_proxy_#{Process.pid}")
+         ReaderWriterProxy.default_policy[:port_proxy] = proxy
+         Orocos.run "port_proxy::Task" => proxy.name do
+             proxy.start
              $qApp.exec
          end
      end
@@ -286,7 +283,7 @@ module Vizkit
   @connections = Array.new
   @default_loader = UiLoader.new
   @vizkit_local_options = {:widget => nil,:reuse => true,:parent =>nil,:widget_type => :display}
-  ReaderWriterProxy::default_policy = {:init => true,:port_proxy => TaskProxy.new("port_proxy")}
+  ReaderWriterProxy.default_policy = {:port_proxy => true}
 
   #returns the instance of the vizkit 3d widget 
   def self.vizkit3d_widget
