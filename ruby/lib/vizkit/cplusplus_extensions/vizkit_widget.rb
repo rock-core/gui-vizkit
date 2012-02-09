@@ -259,6 +259,7 @@ module VizkitPluginLoaderExtension
     def pushTransformerConfiguration(data)
         # Push the data to the underlying transformer
         data.static_transformations.each do |trsf|
+            Vizkit.debug "pushing static transformation #{trsf.sourceFrame} => #{trsf.targetFrame}"
             pushStaticTransformation(trsf)
         end
         self.port_frame_associations.clear
@@ -284,6 +285,7 @@ module VizkitPluginLoaderExtension
                         Vizkit.warn "received the expected transformation from #{producer.task}.#{producer.port}"
                         @connected_transformation_producers[[producer.task, producer.port]] = true
                     end
+                    Vizkit.debug "pushing dynamic transformation #{data.sourceFrame} => #{data.targetFrame}"
                     pushDynamicTransformation(data)
                 end
                 data
@@ -306,7 +308,10 @@ module VizkitPluginLoaderExtension
 
 	#inform widget about the frame for the plugin
         if frame_name = port_frame_associations[port_name]
+            Vizkit.debug "#{port_name}: associated to the #{frame_name} frame for plugin #{plugin}"
             setPluginDataFrame(frame_name, plugin)
+        else
+            Vizkit.debug "no known frame for #{port_name}, displayed by widget #{widget_name} (plugin #{plugin})"
         end
         if filter
             filter.call(plugin,data,port_name)
