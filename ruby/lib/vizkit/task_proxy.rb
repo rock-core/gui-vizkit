@@ -79,6 +79,14 @@ module Vizkit
                 return @__reader_writer
             end
 
+            if  !@__port.task.reachable? 
+                Vizkit.info "Port #{@__port.full_name} is not reachable"
+                pp @__port
+            
+                @__reader_writer = nil
+                return @__reader_writer
+            end 
+
             if !@__orogen_port_proxy
                 #we do not want to use a port porxy between the reader and the orocos task 
                 #which is preventing blocking on slow network connections
@@ -102,9 +110,8 @@ module Vizkit
             ###################################################################
             #TODO this could be moved to the proxy_task TaskContext
             ####################################################################
-            if !@__orogen_port_proxy.reachable? || !@__port.task.reachable? 
+            if !@__orogen_port_proxy.reachable? 
                 Vizkit.info "Orogen PortProxy #{@__orogen_port_proxy.name} is not reachable"
-                #tasks are not reachable at the moment
                 @__reader_writer = nil
                 return @__reader_writer
             end 
@@ -284,11 +291,9 @@ module Vizkit
             if(port.is_a? String)
                 @__port_name = port
                 @__port = nil
-            elsif(port.is_a? Orocos::Port)
+            else
                 @__port_name = port.name
                 @__port = port
-            else
-                raise "Cannot create PortProxy for #{port.class.name}"
             end
 
             if !@local_options[:subfield].empty?

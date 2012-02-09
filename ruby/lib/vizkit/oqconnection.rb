@@ -33,11 +33,10 @@ module Vizkit
             @widget = widget
 
             @local_options, @policy = Kernel.filter_options(options,:update_frequency => OQConnection::update_frequency)
-            @port = if port.is_a? String
-                        task = TaskProxy.new(task) if task.is_a? String
-                        task.port(port,options)
-                    else
+            @port = if port.is_a? Vizkit::PortProxy
                         port
+                    else
+                        PortProxy.new task,port,options
                     end
             raise "Cannot create OQConnection because no port is given" if !@port
             @reader = @port.reader @policy
@@ -164,7 +163,7 @@ module Vizkit
 
     module OQConnectionIntegration
         def connect_to_widget(widget=nil,options = Hash.new,&block)
-            connection = Vizkit::OQConnection.new(self.task.name,self.name, options,widget,&block)
+            connection = Vizkit::OQConnection.new(self.task.name,self, options,widget,&block)
             Vizkit.connections << connection
             connection.connect
         end
