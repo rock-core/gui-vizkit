@@ -127,7 +127,7 @@ module Vizkit
             if !@__orogen_port_proxy.has_port?("in_"+full_name)
                 begin
                     typekit = Orocos::find_typekit_for(@__port.type_name)
-                    typekits = Orocos::find_typekit_full_path(typekit)
+                    typekits = Orocos::plugin_libs_for_name(typekit)
                 rescue Exception => e
                     Vizkit.warn "ReaderWriterProxy: #{e}"
                     typekits = Array.new

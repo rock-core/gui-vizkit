@@ -29,7 +29,7 @@ module Vizkit
 end
 
 module Vizkit
-  extend Logger::Root('vizkit.rb', Logger::INFO)
+  extend Logger::Root('vizkit.rb', Logger::WARN)
 
   Qt::Application.new(ARGV)
   def self.app
