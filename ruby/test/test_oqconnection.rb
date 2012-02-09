@@ -18,6 +18,7 @@ end
 class LoaderUiTest < Test::Unit::TestCase
     def setup
         Vizkit::OQConnection::max_reconnect_frequency = 1
+        Vizkit::ReaderWriterProxy.default_policy = {:port_proxy => Vizkit::TaskProxy.new("port_proxy"),:init => true,:proxy_allow_self_connect => true}
     end
 
     def test_OQConnection
@@ -93,6 +94,7 @@ class LoaderUiTest < Test::Unit::TestCase
             assert(task.has_port? "in_test")
             assert(task.has_port? "out_test")
 
+            sleep(2.0)
             while $qApp.hasPendingEvents
                 $qApp.processEvents
             end
@@ -101,7 +103,7 @@ class LoaderUiTest < Test::Unit::TestCase
             writer.write Time.now 
             sleep(1.0)
             assert(reader.read)
-
+            sleep(1.0)
             while $qApp.hasPendingEvents
                 $qApp.processEvents
             end

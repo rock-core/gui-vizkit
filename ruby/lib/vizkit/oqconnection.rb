@@ -35,13 +35,12 @@ module Vizkit
             @local_options, @policy = Kernel.filter_options(options,:update_frequency => OQConnection::update_frequency)
             @port = if port.is_a? String
                         task = TaskProxy.new(task) if task.is_a? String
-                        task.port(port)
+                        task.port(port,options)
                     else
                         port
                     end
             raise "Cannot create OQConnection because no port is given" if !@port
             @reader = @port.reader @policy
-
             if widget
                 Vizkit.info "Create new OQConnection for #{@port.name} and qt object #{widget}"
             elsif @callback_fct
@@ -110,12 +109,12 @@ module Vizkit
                     Vizkit.info "OQConnection for #{@port.name}: Port is reachable setting update_frequency back to #{@local_options[:update_frequency]}" 
                     self.update_frequency= @local_options[:update_frequency]
                 end
-                while(@reader.read_new(@last_sample))
+                while(sample = @reader.read_new(@last_sample))
                     Vizkit.info "OQConnection to port #{@port.full_name} received new sample"
                     if @block
-                        @block.call(@last_sample,@port.full_name)
+                        @block.call(sample,@port.full_name)
                     end
-                    callback_fct.call @last_sample,@port.full_name if callback_fct
+                    callback_fct.call sample,@port.full_name if callback_fct
                 end
             elsif !@using_reduced_update_frequency
                 Vizkit.info "OQConnection for #{@port.name}: Port is not reachable reducing update_frequency to #{OQConnection::max_reconnect_frequency}" 

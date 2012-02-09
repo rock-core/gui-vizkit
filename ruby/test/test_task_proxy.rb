@@ -9,7 +9,7 @@ Vizkit.logger.level = Logger::INFO
     
 class LoaderUiTest < Test::Unit::TestCase
     def setup
-        Vizkit::ReaderWriterProxy.default_policy = {:port_proxy => Vizkit::TaskProxy.new("port_proxy"),:init => true}
+        Vizkit::ReaderWriterProxy.default_policy = {:port_proxy => Vizkit::TaskProxy.new("port_proxy"),:init => true,:proxy_allow_self_connect => true}
         Vizkit::OQConnection::max_reconnect_frequency = 1
     end
 
