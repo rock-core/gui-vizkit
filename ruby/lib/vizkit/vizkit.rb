@@ -1,4 +1,4 @@
-require 'utilrb/logger'
+#!usr/bin/env ruby
 
 module Vizkit
   extend Logger::Root('Vizkit', Logger::WARN)
@@ -8,10 +8,10 @@ module Vizkit
       type
     end
 
-    define_widget_for_methods("port_type",Orocos::OutputPort,Orocos::Log::OutputPort) do |port|
+    define_widget_for_methods("port_type",Orocos::OutputPort,Orocos::Log::OutputPort,PortProxy) do |port|
       port.type_name
     end
-    define_widget_for_methods("task",Orocos::TaskContext,Orocos::Log::TaskContext) do |task|
+    define_widget_for_methods("task",Orocos::TaskContext,Orocos::Log::TaskContext,TaskProxy) do |task|
       task.class
     end
     define_widget_for_methods("annotations",Orocos::Log::Annotations) do |klass|
@@ -21,6 +21,9 @@ module Vizkit
     define_control_for_methods("task",Orocos::TaskContext) do |task|
       task.model.name
     end
+    define_control_for_methods("port",Orocos::InputPort,PortProxy) do |port|
+      port.type_name
+    end
     define_control_for_methods("replay",Orocos::Log::Replay) do |klass|
       klass.class
     end
@@ -28,8 +31,9 @@ module Vizkit
 end
 
 module Vizkit
+  extend Logger::Root('vizkit.rb', Logger::WARN)
+
   Qt::Application.new(ARGV)
-  @@auto_reconnect = 2000       #timer interval after ports are reconnected if they are no longer alive
   def self.app
     $qApp
   end
@@ -48,7 +52,7 @@ module Vizkit
                      end
       widget.method(callback_fct).call(value, options, &block) if(callback_fct && callback_fct != :config)
     else
-      if value.is_a? Orocos::OutputPort or value.is_a? Orocos::Log::OutputPort
+      if type == :display && value.respond_to?(:connect_to)
         value.connect_to widget,options ,&block
         callback_fct = if widget.respond_to?(:loader)
                          widget.loader.callback_fct widget,value
@@ -60,29 +64,38 @@ module Vizkit
         end
       end
     end
-    widget.show
+    widget.show if widget.respond_to? :show
     widget
   end
 
-  def self.widget_for_options(value,options=Hash.new,&block)
-    #if value is a array
+  def self.widget_from_options(value,options=Hash.new,&block)
     if value.is_a? Array
       result = Array.new
       value.each do |val|
-        result << widget_for_options(val, options, &block)
+        result << widget_from_options(val, options, &block)
       end
       return result
     end
     local_options,options = Kernel::filter_options(options,@vizkit_local_options)
-    widget = @default_loader.widget_for_options(value,local_options)
-    setup_widget(widget,value,options,local_options[:type],&block)
+    value_temp = if value.is_a? Typelib::Type
+                     value.class.name
+                 else
+                     value
+                 end
+    widget = @default_loader.widget_from_options(value_temp,local_options)
+    setup_widget(widget,value,options,local_options[:widget_type],&block)
   end
 
   def self.control value, options=Hash.new,&block
     options[:widget_type] = :control
-    widget = widget_for_options(value,options,&block)
+    value_temp = if value.is_a? Typelib::Type
+                     value.class.name
+                 else
+                     value
+                 end
+    widget = widget_from_options(value_temp,options,&block)
     if(!widget)
-      puts "No widget found for controlling #{value}!"
+      Vizkit.warn "No widget found for controlling #{value}!"
       return nil
     end
     widget
@@ -90,9 +103,14 @@ module Vizkit
 
   def self.display value,options=Hash.new,&block
     options[:widget_type] = :display
-    widget = widget_for_options(value,options,&block)
+    value_temp = if value.is_a? Typelib::Type
+                     value.class.name
+                 else
+                     value
+                 end
+    widget = widget_from_options(value_temp,options,&block)
     if(!widget)
-      puts "No widget found for displaying #{value}!"
+      Vizkit.warn "No widget found for displaying #{value}!"
       return nil
     end
     widget
@@ -109,13 +127,22 @@ module Vizkit
      gc_timer = Qt::Timer.new
      gc_timer.connect(SIGNAL(:timeout)) do 
        GC.start
-       auto_reconnect()   #auto reconnect all ports which have set the auto_reconnect flag to true 
      end
-     gc_timer.start(@@auto_reconnect)
-     $qApp.exec
-     gc_timer.stop
+     gc_timer.start(5000)
 
+     if !ReaderWriterProxy.default_policy[:port_proxy]
+         $qApp.exec
+     else
+         proxy =  TaskProxy.new("port_proxy_#{Process.pid}")
+         ReaderWriterProxy.default_policy[:port_proxy] = proxy
+         Orocos.run "port_proxy::Task" => proxy.name do
+             proxy.start
+             $qApp.exec
+         end
+     end
+     gc_timer.stop
   end
+
   def self.process_events()
     $qApp.processEvents
   end
@@ -140,7 +167,7 @@ module Vizkit
           end
         end
       end
-    when Orocos::OutputPort:
+    else
       @connections.delete_if do |connection|
         if connection.port == handle
           connection.disconnect
@@ -149,8 +176,6 @@ module Vizkit
           false
         end
       end
-    else
-      raise "Cannot handle #{handle.class}"
     end
   end
 
@@ -178,17 +203,6 @@ module Vizkit
     else
       @connections.each do |connection|
           connection.reconnect if connection.widget == widget
-      end
-    end
-  end
-
-  #reconnects all connection which have
-  #set the flag auto_reconnect to true 
-  def self.auto_reconnect()
-    @connections.each do |connection|
-      if connection.auto_reconnect && (!connection.widget.is_a?(Qt::Widget) || connection.widget.visible) && !connection.alive?
-        Vizkit.warn "lost connection to #{connection.port_full_name}. Trying to reconnect." if connection.broken?
-        connection.reconnect    
       end
     end
   end
@@ -236,17 +250,9 @@ module Vizkit
     if widget.kind_of?(Hash)
       widget, options = nil, widget
     end
-
-    task = @use_tasks.find{|task| task.name==task_name && task.has_port?(port_name)} if @use_tasks
-    connection = nil;
-    if task
-      connection = task.port(port_name).connect_to(widget,options,&block)
-    else
-      #add default option
-      options[:auto_reconnect] = true unless options.has_key? :auto_reconnect
-      connection = OQConnection.new([task_name, port_name], options, widget, &block)
-      Vizkit.connections << connection 
-    end
+    connection = OQConnection.new(task_name, port_name, options, widget, &block)
+    connection.connect
+    Vizkit.connections << connection 
     connection 
   end
 
@@ -262,261 +268,22 @@ module Vizkit
       @use_tasks = Array(tasks).flatten
   end
 
-  #returns the task which shall be used by auto_connect 
+  #returns the task which shall be used by vizkit  
   #this is usefull for log replay
-  def self.use_task?(task_name)
+  def self.log_task(task_name)
     task = nil
     task = @use_tasks.find{|task| task.name==task_name} if @use_tasks
     task
   end
 
-
-  class OQConnection < Qt::Object
-    #default values
-    class << self
-      attr_accessor :update_frequency
-      attr_accessor :auto_reconnect
-    end
-    OQConnection::update_frequency = 8
-    OQConnection::auto_reconnect = false
-
-    attr_accessor :auto_reconnect
-    attr_reader :update_frequency
-    attr_reader :port
-    attr_reader :widget
-    attr_reader :reader
-
-    def initialize(port,options = Hash.new,widget=nil,&block)
-      if widget.is_a? Method
-        @callback_fct = widget
-        widget = widget.receiver
-      end
-      if widget.is_a?(Qt::Widget)
-        super(widget,&nil)
-      else
-        super(nil,&nil)
-      end
-
-      #TODO implement an OutputPort proxy which can handle subfields 
-      this_options, @policy = Kernel.filter_options(options,[:update_frequency,:auto_reconnect,:subfield,:type_name])
-      default_init, @policy = Kernel.filter_options(@policy, :init => true)
-      @policy.merge!(default_init)
-      if port.respond_to?(:to_ary)
-        @task_name, @port_name = *port
-        @port = nil
-      else
-        @task_name = port.task.name
-        @port_name = port.name
-        @port = port
-      end
-      @widget = widget
-      @subfield = this_options[:subfield]
-      @update_frequency = this_options[:update_frequency] 
-      @auto_reconnect = this_options[:auto_reconnect]
-      @type_name = this_options[:type_name]
-      @update_frequency ||= OQConnection::update_frequency
-      @auto_reconnect ||= OQConnection::auto_reconnect
-      @block = block
-      @reader = nil
-      @timer_id = nil
-      @last_sample = nil    #save last sample so we can reuse the memory
-      @sample_class = nil
-
-      discover_callback_fct
-      self
-    end
-
-    attr_reader :task_name
-    attr_reader :port_name
-    def port_full_name
-      if @subfield && !@subfield.empty?
-        "#{@task_name}.#{@port_name}.#{@subfield.join(".")}"
-      else
-        "#{@task_name}.#{@port_name}"
-
-      end
-    end
-
-    #returns ture if the connection was established at some point 
-    #otherwise false
-    def broken?
-        reader ? true : false 
-    end
-
-    #returns ture if the connection was established at some point 
-    #otherwise false
-    def broken?
-        reader ? true : false 
-    end
-
-    def discover_callback_fct
-      if @widget && @port 
-        #try to find callback_fct for port this is not working if no port is given
-        if !@callback_fct && @widget.respond_to?(:loader)
-          @type_name = @port.type_name if !@type_name
-          @callback_fct = @widget.loader.callback_fct @widget.class_name,@type_name
-        end
-
-        #use default callback_fct
-        @callback_fct ||= :update if @widget.respond_to?(:update)
-        if @callback_fct && !@callback_fct.respond_to?(:call)
-          @callback_fct = @widget.method(@callback_fct) 
-        end
-        raise "Widget #{@widget.objectName}(#{@widget.class_name}) has no callback function "if !@callback_fct
-      else
-        @callback_fct = nil
-      end
-    end
-
-    def update_frequency=(value)
-      @update_frequency = value 
-      if @timer_id
-        killTimer @timer_id
-        @timer_id = startTimer(1000/@update_frequency)
-      end
-    end
-
-    #TODO implement an OutputPort proxy which can handle subfields 
-    def subfield(sample,field=Array.new)
-        return sample if !field
-        field.each do |f| 
-            sample = sample[f]
-        end
-        sample
-    end
-
-    def timerEvent(event)
-      #call disconnect if widget is no longer visible
-      #this could lead to some problems if the widget wants to
-      #log the data 
-      #
-      if @widget && @widget.is_a?(Qt::Widget) && !@widget.visible
-        disconnect
-        return
-      end
-
-      while(@reader.read_new(@last_sample))
-        sample = subfield(@last_sample,@subfield)
-        if @block
-          @block.call(sample,port_full_name)
-        end
-        @callback_fct.call sample,port_full_name if @callback_fct
-      end
-    rescue Exception => e
-      Vizkit.warn "could not read on #{reader}"
-      log_exception(e)
-      disconnect
-    end
-
-    def log_exception(e)
-      Vizkit.warn "#{e.message} (#{e.class})"
-      Vizkit.log_nest(2) do
-          e.backtrace.each do |line|
-              Vizkit.warn line
-          end
-      end
-    end
-
-
-    def disconnect()
-      if @timer_id
-        killTimer(@timer_id)
-        @timer_id = nil
-        # @reader.disconnect this leads to some problems with the timerEvent: reason unknown
-        @widget.disconnected(port_full_name) if @widget.respond_to?:disconnected
-      end
-    end
-
-    def reconnect()
-      if Orocos::TaskContext.reachable?(@task_name)
-        port = Orocos::TaskContext.get(@task_name).port(@port_name)
-        @port = port if port
-        discover_callback_fct
-        @reader = @port.reader @policy
-        if @reader
-          @last_sample = @reader.new_sample
-          @sample_class = @last_sample.class
-          @timer_id = startTimer(1000/@update_frequency) if !@timer_id
-          return true
-        end
-      end
-      false
-    rescue Exception => e
-      Vizkit.warn "failed to reconnect"
-      log_exception(e)
-      false
-    end
-
-    #shadows the connect methods from base object
-    #we should use an other name 
-    def connect()
-      reconnect if !connected?
-    end
-
-    def alive?
-      return @timer_id && @port.task.reachable?
-    end
-
-    alias :connected? :alive?
-  end
-
-  class OQLogConnection < OQConnection
-    def initialize(port,options = Hash.new,widget=nil,&block)
-      super 
-      # do not use a timer if frequency < 0
-      if @update_frequency < 0
-        @port.org_connect_to nil, @policy do |sample,_|
-          sample = @block.call(sample,port_full_name) if @block
-          @callback_fct.call sample,port_full_name if @callback_fct && sample
-          @last_sample = sample
-        end
-      end
-    end
-
-    def reconnect()
-      return true if @update_frequency < 0
-
-      @reader =@port.reader @policy
-      if @reader
-        @timer_id = startTimer(1000/@update_frequency) if !@timer_id
-        return true
-      end
-      false
-    end
-
-    def timerEvent(event)
-      disconnect if @widget && @widget.is_a?(Qt::Widget) && !@widget.visible
-      while(sample = reader.read_new)
-        @last_sample = sample
-        sample = subfield(sample,@subfield)
-        @block.call(sample,port_full_name) if @block
-        begin
-          @callback_fct.call sample,port_full_name if @callback_fct && sample
-        rescue Exception => e
-          Vizkit.warn "failed to call callback function #{@callback_fct}"
-          log_exception(e)
-        end
-      end
-    end
-
-    def disconnect()
-      if @timer_id
-        killTimer(@timer_id)
-        @widget.disconnected(port_full_name) if @widget.respond_to?:disconnected
-        @timer_id = nil
-      end
-    end
-
-    def alive?
-      return (nil != @timer_id || @update_frequency < 0)
-    end
-
-    alias :connected? :alive?
+  def self.use_log_task?(task_name)
+      log_task(task_name) != nil
   end
 
   @connections = Array.new
   @default_loader = UiLoader.new
-  @vizkit_local_options = {:widget => nil,:type_name => nil,:reuse => true,:parent =>nil,:widget_type => :display}
+  @vizkit_local_options = {:widget => nil,:reuse => true,:parent =>nil,:widget_type => :display}
+  ReaderWriterProxy.default_policy = {:port_proxy => true}
 
   class << self
     # When using Vizkit3D widgets, this is a [task_name, port_name] pair of a
@@ -536,5 +303,3 @@ module Vizkit
     @vizkit3d_widget
   end
 end
-
-

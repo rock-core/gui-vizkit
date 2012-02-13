@@ -1,11 +1,12 @@
 #!/usr/bin/env ruby
 
 class PropertyControl < Qt::Widget
-  PropertyConfig = Struct.new(:name, :attribute, :type, :gui_object)
   slots 'val_changed(QString)','editing_finished(QString)','refresh_values()'
 
   def initialize(parent=nil)
     super
+
+    @PropertyConfig = Struct.new(:name, :attribute, :type, :gui_object)
     @gridLayout = Qt::GridLayout.new(self)
     @gridLayout.objectName = "gridLayout"
     @hash = Hash.new
@@ -85,14 +86,14 @@ class PropertyControl < Qt::Widget
       set_attributes(spin_box,options)
 
       gui_object.value = attribute.read
-      @hash[name] = PropertyConfig.new(name,attribute,type,gui_object)
+      @hash[name] = @PropertyConfig.new(name,attribute,type,gui_object)
     elsif attribute.read.is_a?(String)
       gui_object = Qt::LineEdit.new(self)
       gui_object.text = attribute.read
       @gridLayout.addWidget(gui_object, @number_of_gui_objects,2, 1, 1)
       @signal_mapper_line_edit.setMapping(gui_object,name)
       connect(gui_object,SIGNAL('editingFinished()'),@signal_mapper_line_edit,SLOT('map()'))
-      @hash[name] = PropertyConfig.new(name,attribute,type,gui_object)
+      @hash[name] = @PropertyConfig.new(name,attribute,type,gui_object)
     end
   end
 

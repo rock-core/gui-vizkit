@@ -1,10 +1,9 @@
 #!/usr/bin/env ruby
 
 class StateViewer < Qt::Widget
-
-    TaskNamePair = Struct.new :name, :task
-
     def initialize(parent=nil)
+        @TaskNamePair = Struct.new :name, :task
+
         super
         #add layout to the widget
         @layout = Qt::GridLayout.new
@@ -65,7 +64,7 @@ class StateViewer < Qt::Widget
     end
 
     def add(task)
-        pair = TaskNamePair.new
+        pair = @TaskNamePair.new
         if task.is_a?(Orocos::TaskContext)
             pair.name = task.name
             pair.task = task

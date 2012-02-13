@@ -2,8 +2,9 @@
 
 require 'orocos'
 require 'orocos/log'
-require File.join(File.dirname(__FILE__),'vizkit','typelib_qt_adapter.rb')
-require File.join(File.dirname(__FILE__),'vizkit','uiloader')
-require File.join(File.dirname(__FILE__),'vizkit','output_port')
-require File.join(File.dirname(__FILE__),'vizkit','vizkit')
-require File.join(File.dirname(__FILE__),'vizkit','task_proxy')
+require File.join('vizkit','typelib_qt_adapter')
+require File.join('vizkit','uiloader')
+require File.join('vizkit','task_proxy')
+require File.join('vizkit','oqconnection')
+require File.join('vizkit','vizkit')
+require File.join('vizkit','port_proxy_extensions')

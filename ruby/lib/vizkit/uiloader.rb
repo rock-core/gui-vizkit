@@ -433,14 +433,18 @@ module Vizkit
     def widget_names_for_value(value)
       array = @widget_for_hash[value]
       array ||= Array.new
+      return array if !value
 
       if value.respond_to? :superclass
         array.concat(widget_names_for_value(value.superclass))
       end
+      if value.respond_to?(:to_str) && Orocos.registry.include?(value)
+        array.concat(widget_names_for_value(Orocos.registry.get(value)))
+      end
       array
     end
 
-    def widget_for_options(value,options = Hash.new)
+    def widget_from_options(value,options = Hash.new)
       if options[:widget].is_a? String
         options[:widget] = create_widget(options[:widget],options[:parent],options[:reuse]) 
       end
@@ -482,7 +486,7 @@ module Vizkit
         control_names_for_value(value)
       end
     end  
-    
+
     def control_name_for_value(value)
       return @default_control_for_hash[value] if @default_widget_for_hash.has_key?(value)
       names = control_names_for_value(value)
@@ -499,6 +503,9 @@ module Vizkit
 
       if value.respond_to? :superclass
         array.concat control_names_for_value(value.superclass)
+      end
+      if value.respond_to?(:to_str) && Orocos.registry.include?(value)
+        array.concat(control_names_for_value(Orocos.registry.get(value)))
       end
       array
     end

@@ -4,16 +4,12 @@ require 'utilrb/logger'
 require 'orocos/log'
  
 module Vizkit
-    extend Logger::Root('tree_modeler.rb', Logger::INFO)
     class ContextMenu
-        def self.widget_for(type_name,parent,pos,typelib_type=false)
+        def self.widget_for(type_name,parent,pos)
             menu = Qt::Menu.new(parent)
 
             # Determine applicable widgets for the output port
             widgets = Vizkit.default_loader.widget_names_for_value(type_name)
-            if typelib_type
-                widgets.concat Vizkit.default_loader.widget_names_for_value(Typelib::Type)
-            end
             widgets.uniq!
             widgets.each do |w|
                 menu.add_action(Qt::Action.new(w, parent))
@@ -132,6 +128,7 @@ module Vizkit
             @tooltip = "Right-click for a list of available display widgets for this data type."
             @dirty_items = Array.new
             @force_update = false
+            @readers = Hash.new
 
             #we cannot use object_id from ruby because 
             @object_storage = Array.new
@@ -198,7 +195,7 @@ module Vizkit
         #
         def context_menu(tree_view,pos,auto=false,port=nil)
             item = @model.item_from_index(tree_view.index_at(pos))
-            raise 'no item for this mouse position!' if !item
+            return if !item
 
             #try to find a parent which is a Typelib::CompoundType
             object = item_to_object(item)
@@ -231,7 +228,6 @@ module Vizkit
             subfield = subfield_from_item(item)
             property = property_from_item(item)
 
-
             #if object is a task 
             if object.is_a? Vizkit::TaskProxy
                 ContextMenu.task_state(object,tree_view,pos)
@@ -256,14 +252,14 @@ module Vizkit
                 end
                 #auto can be modified in the other if block
                 if !auto 
-                    type_name = if subfield 
+                    type_name = if !subfield.empty?
                                     item2.text
                                 else
                                     port.type_name
                                 end
-                    widget_name = Vizkit::ContextMenu.widget_for(type_name,tree_view,pos,true)
+                    widget_name = Vizkit::ContextMenu.widget_for(type_name,tree_view,pos)
                     if widget_name
-                        widget = Vizkit.display port, :widget => widget_name,:subfield => subfield,:type_name=> type_name
+                        widget = Vizkit.display(port, :widget => widget_name,:subfield => subfield,:type_name => type_name)
                         widget.setAttribute(Qt::WA_QuitOnClose, false) if widget
                     end
                 end
@@ -465,6 +461,12 @@ module Vizkit
             end
         end
 
+        def reader_for(task_proxy,port_name)
+          full_name = "#{task_proxy.name}_#{port_name}"
+          return @readers[full_name] if @readers.has_key?(full_name)
+          @readers[full_name] = task_proxy.port(port_name).reader
+        end
+
         # Adds object to parent_item as a child. Object's children will be 
         # added as well. The original tree structure will be preserved.
         def update_object(object, parent_item, read_from_model=false, row=0)
@@ -521,12 +523,11 @@ module Vizkit
 
                 encode_data(item,object)
                 encode_data(item2,object)
+                item2.setText(object.state.to_s) 
 
                 if !object.ping
-                    item2.setText("not reachable")
                     item.removeRows(0,item.rowCount)
                 else
-                    item2.setText(object.state.to_s) 
 
                     item3, item4 = child_items(item,0)
                     item3.setText("Properties")
@@ -544,7 +545,7 @@ module Vizkit
 
                     irow = 0
                     orow = 0
-                    object.each_port do |port|
+                    object.__task.each_port do |port|
                         if port.is_a?(Orocos::InputPort)
                             update_object(port,item3,read_from_model,irow)
                             irow += 1
@@ -633,7 +634,7 @@ module Vizkit
                 if update_item?(item)
                     _,task = find_parent(parent_item,Vizkit::TaskProxy)
                     raise "cannot find task for port #{object.name}" if !task
-                    reader = task.__reader_for_port(object.name)
+                    reader = reader_for(task,object.name)
                     update_object(reader.read,item) if reader
                 end
             elsif object.kind_of?(Orocos::InputPort)

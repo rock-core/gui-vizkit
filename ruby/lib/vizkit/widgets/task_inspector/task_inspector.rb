@@ -58,14 +58,19 @@ class TaskInspector
 
         def config(task,options=Hash.new)
             #do not add the task if it is already there
+            task_name = if task.respond_to? :to_str
+                          task.to_str
+                        else
+                          task.name
+                        end
             result = @tasks.find do |t| 
-                t.name == task.name
+                t.name == task_name
             end
             return if result 
 
-            if task.is_a? Orocos::TaskContext
-                @tasks << Vizkit::TaskProxy.new(task.name)
-            elsif task.is_a? Vizkit::TaskProxy
+            if !task.is_a? Vizkit::TaskProxy  
+                @tasks << Vizkit::TaskProxy.new(task_name)
+            else
                 @tasks << task
             end
             options = default_options.merge(options)
