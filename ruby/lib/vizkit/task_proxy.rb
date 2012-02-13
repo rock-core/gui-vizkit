@@ -1,12 +1,12 @@
 #TODO
-# - move orogen port proxy related stuff to the its task context 
-# - add a method which is signaling if an object is connected 
 # - ping and reachable? should have the same behavior like the methods from TaskContext
+# - new_sample for log files is not working like the one from Orocos::Port
 
 #Proxy task for hiding the real task 
 #this is useful if the task context is needed before 
 #the task was started or if the task was restarted
 module Vizkit
+
     #Proxy for Orocos::InputPort Writer and OutputPort Reader which automatically handles reconnects
     class ReaderWriterProxy
         def self.default_policy=(policy=Hash.new)
@@ -25,7 +25,7 @@ module Vizkit
         #options = connections policy {:port_proxy => nil, :proxy_periodicity => 0.2, (see Orocos::InputPort/OutputPort)}
         def initialize(task,port,options = Hash.new)
             options = ReaderWriterProxy.default_policy.merge options
-            @local_options, @policy = Kernel.filter_options options, :port_proxy => nil,:port_proxy_periodicity => 0.2,:proxy_allow_self_connect => false
+            @local_options, @policy = Kernel.filter_options options, :port_proxy => nil,:port_proxy_periodicity => 0.2
 
             @__port = port
             if(@__port.is_a?(String) || @__port.is_a?(Orocos::Port))
@@ -37,149 +37,77 @@ module Vizkit
                 @__orogen_port_proxy = TaskProxy.new(@__orogen_port_proxy)
             end
         
-            if @__orogen_port_proxy && @__orogen_port_proxy.name == @__port.task.name && !@local_options[:proxy_allow_self_connect]
+            if @__orogen_port_proxy && @__orogen_port_proxy.name == @__port.task.name
                 Vizkit.warn "ReaderWriterProxy: Orogen Port_Proxy #{@__orogen_port_proxy.name} would connect to its self. Therefore disabling PortProxy for port #{@__port.full_name}."
                 @__orogen_port_proxy = nil
             end
 
-            @__orogen_port_proxy_out = nil
-            __reader_writer
+            __reader_writer(false)
         end
 
         #returns true if the reader is still valid and the connection active
         #it does not reconnect if it is broken 
         def __valid?
-            if @__port.is_a?(Orocos::Log::OutputPort) || @__port.__port.is_a?(Orocos::Log::OutputPort)
-                return @__reader_writer != nil
-            end
+            return false if !@__reader_writer
 
-            #validate reader
-            if(@__reader_writer && 
-               (!@__reader_writer.port.task.reachable? || (@__reader_writer.respond_to?(:__valid?) && !@__reader_writer.__valid?)))
-                if @__reader_writer.is_a? Orocos::OutputReader
-                    Vizkit.info "Port reader for #{@__port.full_name} is no longer valid."
-                else
-                    Vizkit.info "Port writer for #{@__port.full_name} is no longer valid."
-                end
-                @__reader_writer = nil
-                @__orogen_port_proxy_out = nil
+            if !@__reader_writer.port.task.reachable?
+               if @__reader_writer.is_a? Orocos::OutputReader
+                   Vizkit.info "Port reader for #{@__port.full_name} is no longer valid."
+               else
+                   Vizkit.info "Port writer for #{@__port.full_name} is no longer valid."
+               end
+               @__reader_writer = nil
+               return false
             end
 
             #validate if there is a orocos task which is used as port proxy
-            if(@__orogen_port_proxy && @__orogen_port_proxy_out && !@__orogen_port_proxy_out.task.reachable?)
+            if(@__orogen_port_proxy && !@__orogen_port_proxy.proxy_port?(@__port))
+                Vizkit.info "Task: #{@__orogen_port_proxy.name} is no longer proxing port #{port}."
                 @__reader_writer = nil
-                @__orogen_port_proxy_out = nil
-                Vizkit.info "the task: #{@__orogen_port_proxy.name} which was used as port_proxy is no longer valid."
+                return false
             end
-            (@__reader_writer != nil)
+            return true
         end
 
         #returns a valid reader which can be used for reading or nil if the Task cannot be contacted 
-        def __reader_writer
+        def __reader_writer(disable_proxy_on_error=true)
             return @__reader_writer if __valid?
             return nil if !type_name
 
-            if(@__port.__port.is_a?(Orocos::Log::OutputPort))
-                @__reader_writer = @__port.__port.reader @policy
-                return @__reader_writer
-            end
-
             if  !@__port.task.reachable? 
                 Vizkit.info "Port #{@__port.full_name} is not reachable"
-                pp @__port
-            
                 @__reader_writer = nil
                 return @__reader_writer
             end 
 
-            if !@__orogen_port_proxy
-                #we do not want to use a port porxy between the reader and the orocos task 
-                #which is preventing blocking on slow network connections
-                port = @__port.__port
-                if port
-                    if port.is_a? Orocos::OutputPort
-                        @__reader_writer = port.reader @policy
-                        Vizkit.info "Create reader for output port: #{port.full_name}"
-                    else
-                        @__reader_writer = port.writer @policy
-                        Vizkit.info "Create writer for input port: #{port.full_name}"
-                    end
+            port = if @__orogen_port_proxy
+                       begin 
+                           raise "No Proxy is needed for Log::OutputPort" if @__port.__port.is_a?(Orocos::Log::OutputPort)
+                           raise "Proxy #{@__orogen_port_proxy.name} is not reachable" if !@__orogen_port_proxy.reachable? 
+                           @__orogen_port_proxy.proxy_port(@__port, @local_options)
+                       rescue Exception => e
+                           if(disable_proxy_on_error)
+                               Vizkit.warn "Disabling Proxy for port #{@__port.full_name} because : #{e}"
+                               @__orogen_port_proxy = nil
+                               @__port.__port
+                            else
+                               Vizkit.warn "Cannot proxy port #{@__port.full_name} because : #{e}"
+                               return nil
+                            end
+                       end
+                   else
+                       @__port.__port
+                   end
+            if port
+                if port.respond_to? :reader
+                    @__reader_writer = port.reader @policy
+                    Vizkit.info "Create reader for output port: #{port.full_name}"
                 else
-                    @__reader_writer = nil
+                    @__reader_writer = port.writer @policy
+                    Vizkit.info "Create writer for input port: #{port.full_name}"
                 end
-                return @__reader_writer
-            end
-
-            #we want to use a port porxy between the reader and the orocos task 
-            #which is preventing blocking on slow network connections<
-            ###################################################################
-            #TODO this could be moved to the proxy_task TaskContext
-            ####################################################################
-            if !@__orogen_port_proxy.reachable? 
-                Vizkit.info "Orogen PortProxy #{@__orogen_port_proxy.name} is not reachable"
-                @__reader_writer = nil
-                return @__reader_writer
-            end 
-
-            full_name = @__port.task.name+"_"+@__port.name
-
-            #create new port on the proxy and load the typekit
-            if !@__orogen_port_proxy.has_port?("in_"+full_name)
-                begin
-                    typekit = Orocos::find_typekit_for(@__port.type_name)
-                    typekits = Orocos::plugin_libs_for_name(typekit)
-                rescue Exception => e
-                    Vizkit.warn "ReaderWriterProxy: #{e}"
-                    typekits = Array.new
-                end
-                typekits.each do |kit|
-                    Vizkit.info "ReaderWriterProxy: Ask orogen port_proxy task #{@__orogen_port_proxy.name} to load the typekit #{kit}"
-                    if !@__orogen_port_proxy.loadTypekit(kit)
-                        Vizkit.warn "PortProxy reported that the typekit #{kit} cannot be loaded! Is the port_proxy running on another machine?"
-                    end
-                end
-                if !@__orogen_port_proxy.createProxyConnection(full_name,@__port.type_name,@local_options[:port_proxy_periodicity])
-                    Vizkit.warn "PortProxy could not generate dynmic ports for #{full_name}"
-                    Vizkit.warn "Disabling PortProxy for port #{@__port.full_name}"
-                    @__orogen_port_proxy = nil
-                    return __reader_writer
-                end
-                Vizkit.info "Create port_proxy ports: in_#{full_name} and out_#{full_name}."
-            end
-
-            #connect the proxy to the orocos task
-            port = @__port.__port
-
-            port_proxy_port_in = @__orogen_port_proxy.port("in_"+full_name)
-            @__orogen_port_proxy_out = @__orogen_port_proxy.port("out_"+full_name)
-
-            port_in = port_proxy_port_in.__port
-            port_out = @__orogen_port_proxy_out.__port
-
-            if !port || !port_in || !port_out
-                Vizkit.warn "Failed to connect #{port.full_name} with #{port_proxy_port_in.full_name} "
-                @__reader_writer = nil
-                return @__reader_writer
-            end
-
-            #check if the port is of the right type
-            if port.type_name != @__orogen_port_proxy_out.type_name
-                raise "Port #{@__orogen_port_proxy_out.name} of task #{port.task.name} is of type #{@__port_proxy_port.type_name} but type #{port.type_name} was expected!"
-            end
-
-            if port.is_a? Orocos::OutputPort
-                port.connect_to port_in ,:pull => true
-                Vizkit.info "Connecting #{port.full_name} with #{port_proxy_port_in.full_name} "
-                #get reader to the port 
-                @__reader_writer = port_out.reader @policy
-                Vizkit.info "Create reader for output port: #{@__port.full_name} which is shadowed by #{@__orogen_port_proxy_out.full_name}"
             else
-                #TODO policy for the connection between proxy and task
-                port_out.connect_to port
-                Vizkit.info "Connecting #{port_out.full_name} with #{port.full_name} "
-                #get writer to the port 
-                @__reader_writer = port_in.writer @policy
-                Vizkit.info "Create writer for input port #{@__port.full_name} which is shadowed by #{port_proxy_port_in.full_name}"
+                @__reader_writer = nil
             end
             @__reader_writer
         rescue Orocos::NotFound, Orocos::CORBAError => e
@@ -308,6 +236,14 @@ module Vizkit
             __port
         end
 
+        #returns the Orocos::InputPort or Orocos::OutputPort object
+        #or raises an error if the task is not reachable
+        def to_orocos_port
+            port = __port
+            raise "Cannot return Orocos Port because task #{task.name} is not reachable" if !port
+            port
+        end
+
         #we need this beacuse it can happen that we do not have a real port object 
         #the subfield is not considered because we do not want to use a separate 
         #port on the orogen port_proxy
@@ -331,6 +267,18 @@ module Vizkit
 
         def task
             @__task
+        end
+
+        def connect_to(port,policy = Hash.new)
+            raise "Cannot connect port #{full_name} to #{full_name} because task #{task.name} is not reachable!" if !task.reachable?
+            raise "Cannot connect port #{full_name} to #{full_name} because task #{port.task.name} is not reachable!" if !port.task.reachable?
+            __port.connect_to(port,policy)
+        end
+
+        def disconnect_from(port,policy = Hash.new)
+            raise "Cannot disconnect port #{full_name} from #{full_name} because task #{task.name} is not reachable!" if !ping
+            raise "Cannot disconnect port #{full_name} from #{full_name} because task #{port.task.name} is not reachable!" if !port.task.readable?
+            __port.disconnect_from(port,policy)
         end
 
         def __port
@@ -414,7 +362,7 @@ module Vizkit
 
         def __task
             ping
-           @__task
+            @__task
         end
 
         def ping
@@ -468,7 +416,7 @@ module Vizkit
             if ping
                 @__task.state
             else
-               :not_reachable
+                :not_reachable
             end
         end
 

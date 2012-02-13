@@ -95,7 +95,7 @@ module Vizkit
             #call disconnect if widget is no longer visible
             #this could lead to some problems if the widget wants to
             #log the data 
-            if @widget && @widget.is_a?(Qt::Widget) && !@widget.visible
+            if @widget && @widget.respond_to?(:visible) && !@widget.visible
                 Vizkit.info "OQConnection for #{@port.name} and widget #{widget.objectName}. Widget is not visible!" 
                 disconnect
                 return
@@ -196,14 +196,11 @@ module Vizkit
     end
 
     class PortProxy
-        def org_connect_to(input_port, options = Hash.new)
-            method_missing(:connect_to,options)
-        end
-        def org_disconnect_from(input)
-            method_missing(:disconnect_from,input)
-        end
+        alias :org_connect_to :connect_to
+        alias :org_disconnect_from :disconnect_from
+        remove_method :connect_to,:disconnect_from
         def org_disconnect_all
-            method_missing(:disconnect_all,nil)
+            method_missing(:disconnect_all)
         end
         include OQConnectionIntegration
     end

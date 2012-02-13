@@ -62,7 +62,7 @@ module Vizkit
         end
       end
     end
-    widget.show
+    widget.show if widget.respond_to? :show
     widget
   end
 
@@ -165,7 +165,7 @@ module Vizkit
           end
         end
       end
-    when Orocos::OutputPort:
+    else
       @connections.delete_if do |connection|
         if connection.port == handle
           connection.disconnect
@@ -174,8 +174,6 @@ module Vizkit
           false
         end
       end
-    else
-      raise "Cannot handle #{handle.class}"
     end
   end
 
