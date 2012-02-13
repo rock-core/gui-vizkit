@@ -18,7 +18,7 @@ end
 class LoaderUiTest < Test::Unit::TestCase
     def setup
         Vizkit::OQConnection::max_reconnect_frequency = 1
-        Vizkit::ReaderWriterProxy.default_policy = {:port_proxy => Vizkit::TaskProxy.new("port_proxy"),:init => true,:proxy_allow_self_connect => true}
+        Vizkit::ReaderWriterProxy.default_policy = {:port_proxy => Vizkit::TaskProxy.new("port_proxy"),:init => true}
     end
 
     def test_OQConnection

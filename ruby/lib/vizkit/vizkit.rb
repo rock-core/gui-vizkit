@@ -64,7 +64,7 @@ module Vizkit
         end
       end
     end
-    widget.show if widget.respond_to? :show
+    widget.show if widget.is_a? Qt::Widget #respond_to is not working because qt is using method_missing
     widget
   end
 
@@ -133,8 +133,8 @@ module Vizkit
      if !ReaderWriterProxy.default_policy[:port_proxy]
          $qApp.exec
      else
-         proxy =  TaskProxy.new("port_proxy_#{Process.pid}")
-         ReaderWriterProxy.default_policy[:port_proxy] = proxy
+         proxy =  ReaderWriterProxy.default_policy[:port_proxy]
+         proxy.__change_name("port_proxy_#{Process.pid}")
          Orocos.run "port_proxy::Task" => proxy.name do
              proxy.start
              $qApp.exec
@@ -283,7 +283,7 @@ module Vizkit
   @connections = Array.new
   @default_loader = UiLoader.new
   @vizkit_local_options = {:widget => nil,:reuse => true,:parent =>nil,:widget_type => :display}
-  ReaderWriterProxy.default_policy = {:port_proxy => true}
+  ReaderWriterProxy.default_policy = {:port_proxy => TaskProxy.new("port_proxy")}
 
   class << self
     # When using Vizkit3D widgets, this is a [task_name, port_name] pair of a

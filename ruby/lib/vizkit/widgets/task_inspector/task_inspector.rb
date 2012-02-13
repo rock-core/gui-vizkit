@@ -20,6 +20,13 @@ class TaskInspector
             return options
         end
 
+        def enable_tooling=(value)
+            @tree_view.enable_tooling=value
+        end
+        def enable_tooling
+            @tree_view.enable_tooling
+        end
+
         def init
             buttonFrame.hide
             @brush = Qt::Brush.new(Qt::Color.new(200,200,200))
@@ -68,11 +75,14 @@ class TaskInspector
             end
             return if result 
 
-            if !task.is_a? Vizkit::TaskProxy  
-                @tasks << Vizkit::TaskProxy.new(task_name)
-            else
-                @tasks << task
-            end
+            task = if !task.is_a? Vizkit::TaskProxy  
+                       Vizkit::TaskProxy.new(task_name)
+                   else
+                       task
+                   end
+            return if !enable_tooling && task.respond_to?(:tooling?) && task.tooling?
+
+            @tasks << task
             options = default_options.merge(options)
             @tree_view.update(task,nil,@tree_view.root,false,@tasks.size-1)
             @timer.start(options[:interval])

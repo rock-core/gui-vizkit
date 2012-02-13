@@ -49,6 +49,19 @@ module Orocos
             end
         end
 
+        def tooling?
+            true
+        end
+
+        def port(name,options=Hash.new)
+            port = super 
+            #prevents that the proxy is proxyied by an other proxy task
+            def port.force_local?
+                true
+            end
+            port
+        end
+
         #loads the plugins (typekit,transport) into the proxy
         def load_plugins_for_type(type_name)
             name = Orocos::find_typekit_for(type_name)

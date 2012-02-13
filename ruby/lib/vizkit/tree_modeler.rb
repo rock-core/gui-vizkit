@@ -118,7 +118,7 @@ module Vizkit
     # with possibly multiple layers of data. 
     # Multilayer recognition only works with Typelib::CompoundType.
     class TreeModeler
-        attr_accessor :model,:root,:force_update
+        attr_accessor :model,:root,:force_update,:enable_tooling
 
         def initialize(tree_view)
             @max_array_fields = 30 
@@ -129,6 +129,9 @@ module Vizkit
             @dirty_items = Array.new
             @force_update = false
             @readers = Hash.new
+
+            #do not show state ports
+            @enable_tooling = false
 
             #we cannot use object_id from ruby because 
             @object_storage = Array.new
@@ -550,6 +553,7 @@ module Vizkit
                             update_object(port,item3,read_from_model,irow)
                             irow += 1
                         else
+                            next if !enable_tooling && port.name == "state"
                             update_object(port,item5,read_from_model,orow)
                             orow +=1
                         end
@@ -566,6 +570,7 @@ module Vizkit
                 row = 0
                 object.each_port do |port|
                     next unless port.used?
+                    next if !enable_tooling && port.name == "state"
                     update_object(port,item,read_from_model,row)
                     row += 1
                 end

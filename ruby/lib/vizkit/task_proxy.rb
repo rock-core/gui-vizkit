@@ -82,7 +82,7 @@ module Vizkit
 
             port = if @__orogen_port_proxy
                        begin 
-                           raise "No Proxy is needed for Log::OutputPort" if @__port.__port.is_a?(Orocos::Log::OutputPort)
+                           raise "force_local? is set to true" if @__port.respond_to?(:force_local?) && @__port.force_local?
                            raise "Proxy #{@__orogen_port_proxy.name} is not reachable" if !@__orogen_port_proxy.reachable? 
                            @__orogen_port_proxy.proxy_port(@__port, @local_options)
                        rescue Exception => e
@@ -91,7 +91,7 @@ module Vizkit
                                @__orogen_port_proxy = nil
                                @__port.__port
                             else
-                               Vizkit.warn "Cannot proxy port #{@__port.full_name} because : #{e}"
+                               Vizkit.info "Cannot proxy port #{@__port.full_name} because : #{e}"
                                return nil
                             end
                        end
@@ -197,7 +197,9 @@ module Vizkit
 
     class WriterProxy < ReaderWriterProxy
         def initialize(task,port,options = Hash.new)
-            super
+            temp_options, options = Kernel.filter_options options,:subfield => Array.new ,:type_name => nil
+            raise "Subfields are not supported for WriterProxy #{port.full_name}" if options.has_key?(:subfield) && !options[:subfield].empty?
+            super(task,port,options)
             Vizkit.info "Create WriterProxy for #{port.full_name}"
         end
     end
@@ -211,8 +213,14 @@ module Vizkit
         #if the PortProxy is used for a subfield reader the type_name of the subfield must be given
         #because otherwise the type_name would only be known after the first sample was received 
         def initialize(task, port,options = Hash.new)
-            @local_options, options = Kernel::filter_options options,{:subfield => Array.new,:type_name => nil}
+            @local_options, options = Kernel::filter_options options,{:subfield => Array.new,:type_name => nil,:port_proxy => nil}
             @local_options[:subfield] = @local_options[:subfield].to_a
+
+            if port.respond_to?(:force_local?) && port.force_local?
+                task = port.task
+                Vizkit.info "No port proxy is used for port #{port.full_name}"
+                @local_options[:port_proxy] = nil 
+            end
 
             @__task = task
             if(@__task.is_a?(String) || @__task.is_a?(Orocos::TaskContext))
@@ -298,7 +306,7 @@ module Vizkit
         end
 
         def writer(policy = Hash.new)
-            WriterProxy.new(@__task_proxy,self,policy)
+            WriterProxy.new(@__task_proxy,self,@local_options.merge(policy))
         end
 
         def reader(policy = Hash.new)
@@ -365,6 +373,13 @@ module Vizkit
             @__task
         end
 
+        def __change_name(name)
+            if self.name != name
+                @__task_name = name
+                __reconnect
+            end
+        end
+
         def ping
             if !@__task || !@__task.reachable?
                 begin 
@@ -393,6 +408,11 @@ module Vizkit
                     block.call(pport)
                 end
             end
+        end
+
+        def respond_to?(method)
+            return true if super || Orocos::TaskContext.public_instance_methods.include?(method.to_s) ||__task.respond_to?(method)
+            false
         end
 
         def port(name,options = Hash.new)

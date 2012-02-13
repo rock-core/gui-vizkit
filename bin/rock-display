@@ -4,10 +4,14 @@ require 'vizkit'
 require 'orocos'
 require 'optparse'
 
+@show_all = false
 parser = OptionParser.new do |opt|
     opt.banner = "rock-display [--host hostname] task_name[:port_name] [task_name[:port_name]]"
     opt.on('--host=HOSTNAME', String, "the corba nameserver we should contact") do |name|
         Orocos::CORBA.name_service = name
+    end
+    opt.on('-a','--all',"Display all tasks") do
+        @show_all = true
     end
     opt.on('--help') do
         puts parser
@@ -22,15 +26,16 @@ Orocos.initialize
 if remaining.empty?
   @timer = Qt::Timer.new
   task_inspector ||= Vizkit.default_loader.task_inspector
+  task_inspector.enable_tooling=@show_all
 
   #check for new tasks every 5 seconds 
   refresh = Proc.new do 
-    Orocos.task_names.each do |name|
-        task_inspector.config(name)
-    end
+      Orocos.task_names.each do |name|
+          task_inspector.config(name)
+      end
   end
   @timer.connect SIGNAL('timeout()') do 
-        refresh.call
+      refresh.call
   end
   refresh.call
   @timer.start(5000)
