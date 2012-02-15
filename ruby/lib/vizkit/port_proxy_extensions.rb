@@ -1,9 +1,12 @@
 module Orocos
     extend_task 'port_proxy::Task' do
-
         #returns the Output-/InputPort of the proxy which writes/reads the data from/to the given port
         #raises an exception if the proxy is unable to proxy the given port 
         def proxy_port(port,options=Hash.new)
+            options, policy = Kernel.filter_options options,
+                :periodicity => nil,
+                :keep_last_value => false
+
             if !reachable? 
                 raise "Task #{name}: is not reachable. Cannot proxy connection #{port.full_name}"
             end
@@ -12,7 +15,7 @@ module Orocos
             port = port.to_orocos_port if port.respond_to?(:to_orocos_port)
             if !has_port?("in_"+full_name)
                 load_plugins_for_type(port.orocos_type_name)
-                if !createProxyConnection(full_name,port.orocos_type_name,options[:port_proxy_periodicity])
+                if !createProxyConnection(full_name,port.orocos_type_name,options[:periodicity],policy[:init] || options[:keep_last_value])
                     raise "Task #{name}: Cannot generate proxy ports for #{full_name}"
                 end
                 Orocos.info "Task #{name}: Create port_proxy ports: in_#{full_name} and out_#{full_name}."
@@ -38,12 +41,12 @@ module Orocos
             else
                 @@ports[port.full_name] = port
                 if port.is_a? Orocos::OutputPort
-                    port.connect_to port_in ,:pull => true
-                    Orocos.info "Task #{name}: Connecting #{port.full_name} with #{port_in.full_name} "
+                    port.connect_to port_in, policy
+                    Orocos.info "Task #{name}: Connecting #{port.full_name} with #{port_in.full_name}, policy=#{policy}"
                     port_out
                 else
-                    port_out.connect_to port
-                    Orocos.info "Task #{name}: Connecting #{port_out.full_name} with #{port.full_name} "
+                    port_out.connect_to port, policy
+                    Orocos.info "Task #{name}: Connecting #{port_out.full_name} with #{port.full_name}, policy=#{policy}"
                     port_in
                 end
             end

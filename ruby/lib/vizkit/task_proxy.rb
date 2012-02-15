@@ -84,7 +84,17 @@ module Vizkit
                        begin 
                            raise "force_local? is set to true" if @__port.respond_to?(:force_local?) && @__port.force_local?
                            raise "Proxy #{@__orogen_port_proxy.name} is not reachable" if !@__orogen_port_proxy.reachable? 
-                           @__orogen_port_proxy.proxy_port(@__port, @local_options)
+                           options = { :periodicity => @local_options[:port_proxy_periodicity] }
+                           if @policy[:init]
+                               options[:keep_last_value] = true
+                           end
+
+                           options = options.merge(@policy)
+                           real_port = @__port.to_orocos_port
+                           if real_port.kind_of?(Orocos::OutputPort) && !options.has_key?(:pull)
+                               options[:pull] = true
+                           end
+                           @__orogen_port_proxy.proxy_port(@__port, options)
                        rescue Interrupt
                            raise
                        rescue Exception => e
