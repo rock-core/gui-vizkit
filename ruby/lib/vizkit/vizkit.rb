@@ -39,7 +39,7 @@ module Vizkit
   end
 
   def self.default_loader
-    @default_loader
+    @default_loader ||= UiLoader.new
   end
 
   def self.setup_widget(widget,value=nil,options = Hash.new,type = :display,&block)
@@ -281,7 +281,6 @@ module Vizkit
   end
 
   @connections = Array.new
-  @default_loader = UiLoader.new
   @vizkit_local_options = {:widget => nil,:reuse => true,:parent =>nil,:widget_type => :display}
   ReaderWriterProxy.default_policy = {:port_proxy => TaskProxy.new("port_proxy")}
 
