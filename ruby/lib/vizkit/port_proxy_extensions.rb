@@ -67,15 +67,18 @@ module Orocos
             name = Orocos::find_typekit_for(type_name)
             plugins = Orocos::plugin_libs_for_name(name)
             plugins.each do |kit|
-                Orocos.info "Task #{self.name}: Trying to load plugin #{kit}"
+                Orocos.info "Task #{self.name}: trying to load plugin #{kit}"
                 if !loadTypekit(kit)
-                    Orogen.warn "Task #{self.name} cannot load plugin #{name}! Is the task running on another machine?"
+                    Orocos.warn "Task #{self.name} cannot load plugin #{kit}! Is the task running on another machine?"
                     return nil
                 end
             end
             true
-        rescue Exception
-            Orocos.warn "Task #{name}: #{e}"
+        rescue Exception => e
+            Orocos.warn "failed to load plugins for #{type_name} on #{name}: #{e}"
+            e.backtrace.each do |line|
+                Orocos.warn "  #{line}"
+            end
             return nil
         end
 

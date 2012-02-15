@@ -87,11 +87,17 @@ module Vizkit
                            @__orogen_port_proxy.proxy_port(@__port, @local_options)
                        rescue Exception => e
                            if(disable_proxy_on_error)
-                               Vizkit.warn "Disabling Proxy for port #{@__port.full_name} because : #{e}"
+                               Vizkit.warn "Disabling proxying of port #{@__port.full_name}: #{e}"
+                               e.backtrace.each do |line|
+                                   Vizkit.warn "  #{line}"
+                               end
                                @__orogen_port_proxy = nil
                                @__port.__port
                             else
-                               Vizkit.info "Cannot proxy port #{@__port.full_name} because : #{e}"
+                               Vizkit.info "cannot proxy port #{@__port.full_name}: #{e}"
+                               e.backtrace.each do |line|
+                                   Vizkit.info "  #{line}"
+                               end
                                return nil
                             end
                        end
@@ -111,7 +117,10 @@ module Vizkit
             end
             @__reader_writer
         rescue Orocos::NotFound, Orocos::CORBAError => e
-            Vizkit.Warn "ReaderWriterProxy: Got an error #{e}"
+            Vizkit.warn "ReaderWriterProxy: error while proxuing the port: #{e}"
+            e.backtrace.each do |line|
+                Vizkit.warn "  #{line}"
+            end
             @__reader_writer = nil
         end
 
