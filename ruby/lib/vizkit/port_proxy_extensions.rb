@@ -11,8 +11,8 @@ module Orocos
             full_name = "#{port.task.name}_#{port.name}"
             port = port.to_orocos_port if port.respond_to?(:to_orocos_port)
             if !has_port?("in_"+full_name)
-                load_plugins_for_type(port.type_name)
-                if !createProxyConnection(full_name,port.type_name,options[:port_proxy_periodicity])
+                load_plugins_for_type(port.orocos_type_name)
+                if !createProxyConnection(full_name,port.orocos_type_name,options[:port_proxy_periodicity])
                     raise "Task #{name}: Cannot generate proxy ports for #{full_name}"
                 end
                 Orocos.info "Task #{name}: Create port_proxy ports: in_#{full_name} and out_#{full_name}."
@@ -20,7 +20,7 @@ module Orocos
 
             port_in = self.port("in_"+full_name)
             port_out = self.port("out_"+full_name)
-            if  port_in.type_name != port.type_name
+            if  port_in.orocos_type_name != port.orocos_type_name
                 raise "Task #{name} cannot proxy port #{name} because the already existing proxy port has a different type!"
             end
 
