@@ -71,7 +71,7 @@ module Vizkit
                 if @callback_fct && !@callback_fct.respond_to?(:call)
                     @callback_fct = @widget.method(@callback_fct) 
                 end
-                raise "Widget #{@widget.objectName}(#{@widget.class_name}) has no callback function "if !@callback_fct
+                raise "Widget #{@widget} has no callback function "if !@callback_fct
                 Vizkit.info "Found callback_fct #{@callback_fct} for OQConnection connected to port #{@port.full_name}"
                 @callback_fct
             else
@@ -122,6 +122,7 @@ module Vizkit
             end
         rescue Exception => e
             Vizkit.warn "could not read on #{reader}: #{e.message}"
+            Vizkit.warn e.backtrace
             disconnect
         end
 
@@ -173,7 +174,7 @@ module Vizkit
                 options = widget
                 widget = nil
             end
-            if widget.is_a?(Qt::Object) || block_given? || widget.is_a?(Method)
+            if widget.is_a?(Qt::Object) || (block_given? && !self.to_orocos_port.is_a?(Orocos::Log::OutputPort)) || widget.is_a?(Method)
                 return connect_to_widget(widget,options,&block)
             else
                 return org_connect_to widget,options
