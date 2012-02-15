@@ -68,8 +68,9 @@ module Vizkit
 			    matches = false
 			    break;
 			end
+                    rescue Interrupt
+                        raise
 		    rescue Exception => e  
-# 			puts e.message  			
 			matches = false
 			break;
 		    end

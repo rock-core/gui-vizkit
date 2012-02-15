@@ -120,6 +120,8 @@ module Vizkit
                 @using_reduced_update_frequency = true
                 self.update_frequency = OQConnection::max_reconnect_frequency
             end
+        rescue Interrupt
+            raise
         rescue Exception => e
             Vizkit.warn "could not read on #{reader}: #{e.message}"
             Vizkit.warn e.backtrace
@@ -144,6 +146,8 @@ module Vizkit
             else
                 false
             end
+        rescue Interrupt
+            raise
         rescue Exception => e
             Vizkit.warn "failed to reconnect: #{e.message}"
             false

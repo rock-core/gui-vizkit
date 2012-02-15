@@ -85,6 +85,8 @@ module Vizkit
                            raise "force_local? is set to true" if @__port.respond_to?(:force_local?) && @__port.force_local?
                            raise "Proxy #{@__orogen_port_proxy.name} is not reachable" if !@__orogen_port_proxy.reachable? 
                            @__orogen_port_proxy.proxy_port(@__port, @local_options)
+                       rescue Interrupt
+                           raise
                        rescue Exception => e
                            if(disable_proxy_on_error)
                                Vizkit.warn "Disabling proxying of port #{@__port.full_name}: #{e}"

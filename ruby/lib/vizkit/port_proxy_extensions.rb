@@ -74,6 +74,8 @@ module Orocos
                 end
             end
             true
+        rescue Interrupt
+            raise
         rescue Exception => e
             Orocos.warn "failed to load plugins for #{type_name} on #{name}: #{e}"
             e.backtrace.each do |line|
