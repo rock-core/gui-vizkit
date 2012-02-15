@@ -15,7 +15,7 @@ module Vizkit
         def self.default_policy
             @@default_policy
         end
-        ReaderWriterProxy::default_policy = {:init => true}
+        # Default policy is configured in vizkit.rb
 
         #the type of the port is determining if the object is a reader or writer
         #to automatically set up a orogen port proxy task set the hash value :port_proxy to the name of the port_proxy task
