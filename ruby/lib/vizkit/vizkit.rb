@@ -82,7 +82,7 @@ module Vizkit
                  else
                      value
                  end
-    widget = @default_loader.widget_from_options(value_temp,local_options)
+    widget = default_loader.widget_from_options(value_temp,local_options)
     setup_widget(widget,value,options,local_options[:widget_type],&block)
   end
 
@@ -148,7 +148,7 @@ module Vizkit
   end
 
   def self.load(ui_file,parent = nil)
-    @default_loader.load(ui_file,parent)
+    default_loader.load(ui_file,parent)
   end
 
   def self.disconnect_from(handle)
