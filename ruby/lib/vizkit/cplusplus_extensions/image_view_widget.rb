@@ -95,5 +95,5 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "ImageView" do
   end
 end
 
-Vizkit::UiLoader.register_widget_for("ImageView","/base/samples/frame/Frame",:display)
-Vizkit::UiLoader.register_widget_for("ImageView","/base/samples/frame/FramePair",:display2)
+Vizkit::UiLoader.register_default_widget_for("ImageView","/base/samples/frame/Frame",:display)
+Vizkit::UiLoader.register_default_widget_for("ImageView","/base/samples/frame/FramePair",:display2)
