@@ -177,7 +177,7 @@ module Vizkit
             if widget.is_a?(Qt::Object) || (block_given? && !self.to_orocos_port.is_a?(Orocos::Log::OutputPort)) || widget.is_a?(Method)
                 return connect_to_widget(widget,options,&block)
             else
-                return org_connect_to widget,options
+                return org_connect_to widget,options,&block
             end
             self
         end
