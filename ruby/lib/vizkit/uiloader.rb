@@ -67,33 +67,38 @@ module Vizkit
       attr_accessor :widget_value_map
       attr_accessor :control_value_map
 
+      def current_loader_instance
+          raise "No Uiloader. Call Vizkit.default_loader to create one!" if !@current_loader_instance
+          @current_loader_instance
+      end
+
       #interface for ruby extensions
       def register_widget_for(widget_name,value,callback_fct=:update)
-        @current_loader_instance.register_widget_for(widget_name,value,callback_fct)
+        current_loader_instance.register_widget_for(widget_name,value,callback_fct)
       end
       def register_default_widget_for(widget_name,value,callback_fct=:update)
-        @current_loader_instance.register_default_widget_for(widget_name,value,callback_fct)
+        current_loader_instance.register_default_widget_for(widget_name,value,callback_fct)
       end
       def register_control_for(widget_name,value,callback_fct=:control)
-        @current_loader_instance.register_control_for(widget_name,value,callback_fct)
+        current_loader_instance.register_control_for(widget_name,value,callback_fct)
       end
       def register_default_control_for(widget_name,value,callback_fct=:control)
-        @current_loader_instance.register_default_control_for(widget_name,value,callback_fct)
+        current_loader_instance.register_default_control_for(widget_name,value,callback_fct)
       end
       def register_ruby_widget(widget_name,widget_class)
-        @current_loader_instance.register_ruby_widget(widget_name,widget_class)
+        current_loader_instance.register_ruby_widget(widget_name,widget_class)
       end
       def extend_cplusplus_widget_class(class_name,&block)
-        @current_loader_instance.extend_cplusplus_widget_class(class_name,&block)
+        current_loader_instance.extend_cplusplus_widget_class(class_name,&block)
       end
       def register_3d_plugin(widget_name,lib_name,plugin_name)
-        @current_loader_instance.register_3d_plugin(widget_name,lib_name,plugin_name)
+        current_loader_instance.register_3d_plugin(widget_name,lib_name,plugin_name)
       end
       def register_3d_plugin_for(widget_name,type_name,display_method = nil,&filter)
-        @current_loader_instance.register_3d_plugin_for(widget_name,type_name,display_method,&filter)
+        current_loader_instance.register_3d_plugin_for(widget_name,type_name,display_method,&filter)
       end
       def register_default_3d_plugin_for(widget_name,type_name,display_method = nil,&filter)
-        @current_loader_instance.register_default_3d_plugin_for(widget_name,type_name,display_method,&filter)
+        current_loader_instance.register_default_3d_plugin_for(widget_name,type_name,display_method,&filter)
       end
 
       def define_control_for_methods(name,*klasses,&map)
