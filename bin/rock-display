@@ -52,7 +52,6 @@ else
         task = Vizkit::TaskProxy.new task_name
         if !port_name || !task.ping
             task_inspector ||= Vizkit.default_loader.task_inspector
-            task_inspector.force_update = true
             task_inspector.config(task)
         else
             widget = Vizkit.default_loader.widget_for task.port(port_name)
@@ -64,6 +63,7 @@ else
             end
         end
     end
+    task_inspector.force_update = true if task_inspector
 end
 
 if task_inspector

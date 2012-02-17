@@ -137,6 +137,10 @@ module Vizkit
          proxy.__change_name("port_proxy_#{Process.pid}")
          Orocos.run "port_proxy::Task" => proxy.name do
              proxy.start
+             #wait unti the proxy is running 
+             while !proxy.running?
+                 sleep(0.01)
+             end
              $qApp.exec
          end
      end

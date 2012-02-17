@@ -519,11 +519,6 @@ module Vizkit
                 item, item2 = child_items(parent_item,row)
                 item.setText(object.name)
 
-                if object.doc?
-                  item.set_tool_tip(object.doc)
-                  item2.set_tool_tip(object.doc)
-                end
-
                 encode_data(item,object)
                 encode_data(item2,object)
                 item2.setText(object.state.to_s) 
@@ -531,6 +526,10 @@ module Vizkit
                 if !object.ping
                     item.removeRows(0,item.rowCount)
                 else
+                    if object.doc?
+                        item.set_tool_tip(object.doc)
+                        item2.set_tool_tip(object.doc)
+                    end
 
                     item3, item4 = child_items(item,0)
                     item3.setText("Properties")
@@ -590,8 +589,8 @@ module Vizkit
                 item.setText(object.name)
 
                 if object.doc?
-                  item.set_tool_tip(object.doc)
-                  item2.set_tool_tip(object.doc)
+                    item.set_tool_tip(object.doc)
+                    item2.set_tool_tip(object.doc)
                 end
 
                 if update_item?(item) || read_from_model
@@ -623,12 +622,12 @@ module Vizkit
                 item2.setText(object.type_name.to_s)
 
                 if object.doc?
-                  item.set_tool_tip(object.doc)
-                  item2.set_tool_tip(object.doc)
+                    item.set_tool_tip(object.doc)
+                    item2.set_tool_tip(object.doc)
                 else
-                  # Set tooltip informing about context menu
-                  item.set_tool_tip(@tooltip)
-                  item2.set_tool_tip(@tooltip)
+                    # Set tooltip informing about context menu
+                    item.set_tool_tip(@tooltip)
+                    item2.set_tool_tip(@tooltip)
                 end
 
                 #do not encode the object because 
@@ -645,8 +644,8 @@ module Vizkit
             elsif object.kind_of?(Orocos::InputPort)
                 item, item2 = child_items(parent_item,row)
                 if object.doc?
-                  item.set_tool_tip(object.doc)
-                  item2.set_tool_tip(object.doc)
+                    item.set_tool_tip(object.doc)
+                    item2.set_tool_tip(object.doc)
                 end
                 item.setText(object.name)
                 item2.setText(object.type_name.to_s)
@@ -679,15 +678,15 @@ module Vizkit
                 else
                     item3.setText("no")
                 end
-                
-        elsif object.kind_of?(Hash)
+
+            elsif object.kind_of?(Hash)
                 object.each_pair do |key,value|
                     item, item2 = child_items(parent_item,row)
                     item.setText(key.to_s)
                     item2.setText(value.to_s)
                     row+=1
                 end
-        elsif object.kind_of?(Typelib::CompoundType)
+            elsif object.kind_of?(Typelib::CompoundType)
                 Vizkit.debug("update_object->CompoundType")
 
                 row = 0;
@@ -803,6 +802,8 @@ module Vizkit
                 end
             end
             object
+        rescue Orocos::NotFound,Orocos::CORBAError
+            Vizkit.warn "Communication Error"
         end
     end
 end

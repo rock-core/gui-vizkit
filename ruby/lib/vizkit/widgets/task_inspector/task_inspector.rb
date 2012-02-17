@@ -47,6 +47,7 @@ class TaskInspector
 
             @timer = Qt::Timer.new(self)
             @timer.connect(SIGNAL('timeout()')) do 
+                return if !visible
                 @tasks.each_with_index do |task,index|
                     @tree_view.update(task,nil,@tree_view.root,false,index)
                 end
