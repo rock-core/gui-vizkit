@@ -3,6 +3,7 @@
 require 'vizkit'
 require 'orocos'
 require 'optparse'
+require 'rock/bundle'
 
 @show_all = false
 @proxy = true
@@ -27,7 +28,7 @@ end
 remaining = parser.parse(ARGV)
 task_inspector = nil
 
-Orocos.initialize
+Bundles.initialize
 Vizkit::ReaderWriterProxy.default_policy[:port_proxy] = nil if !@proxy
 
 if remaining.empty?
