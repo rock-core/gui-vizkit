@@ -51,11 +51,10 @@ module Vizkit
 
 		matches = true
 		
-		params.each_index do |i|
-		    param = params[i]
-
+		parameters_cxx = []
+		params.each_with_index do |param, i|
 		    begin
-			# the plugin reports a C++ type name. We need a typelib type name
+			# the plugin reports a C++ type name, convert from Ruby
 			typename = Typelib::GCCXMLLoader.cxx_to_typelib(param)
 			if !Orocos.registered_type?(param)
 			    Orocos.load_typekit_for(typename, true) 
@@ -64,10 +63,7 @@ module Vizkit
 			ruby_typelib_name = Orocos.typelib_type_for(typename)
 			ruby_typelib_names << ruby_typelib_name
 
-			if(parameters[i].class.name != ruby_typelib_name.name)
-			    matches = false
-			    break;
-			end
+			parameters_cxx << Typelib.from_ruby(parameters[i], ruby_typelib_name)
                     rescue Interrupt
                         raise
 		    rescue Exception => e  
@@ -84,12 +80,6 @@ module Vizkit
 		    #fetch it from qt, as we allready verified that out
 		    #parameters are correct.
 		    signature = adapter.getMethodSignatureFromNumber(method_name, params_idx)
-		    
-		    parameters_cxx = []
-		    parameters.each_index do |p|
-			parameters_cxx << Typelib.from_ruby(parameters[p], ruby_typelib_names[p])
-		    end
-		    
 		    return adapter.callQtMethodWithSignature(signature, parameters_cxx, param_list_typelib, return_value)
 		end
 	    end
