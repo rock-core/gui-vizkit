@@ -104,9 +104,9 @@ module Vizkit
             if @reader.__reader_writer
                 @last_sample ||= @reader.new_sample
                 if @using_reduced_update_frequency
-                    @using_reduced_update_frequency = false
                     Vizkit.info "OQConnection for #{@port.name}: Port is reachable setting update_frequency back to #{@local_options[:update_frequency]}" 
-                    self.update_frequency= @local_options[:update_frequency]
+                    self.update_frequency= @using_reduced_update_frequency
+                    @using_reduced_update_frequency = false
                 end
                 while(sample = @reader.read_new(@last_sample))
                     Vizkit.info "OQConnection to port #{@port.full_name} received new sample"
@@ -117,7 +117,7 @@ module Vizkit
                 end
             elsif !@using_reduced_update_frequency
                 Vizkit.info "OQConnection for #{@port.name}: Port is not reachable reducing update_frequency to #{OQConnection::max_reconnect_frequency}" 
-                @using_reduced_update_frequency = true
+                @using_reduced_update_frequency = self.update_frequency
                 self.update_frequency = OQConnection::max_reconnect_frequency
             end
         rescue Interrupt
