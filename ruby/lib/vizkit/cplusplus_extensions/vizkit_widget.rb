@@ -306,6 +306,10 @@ module VizkitPluginLoaderExtension
         widget_name, update_method, filter = VizkitPluginLoaderExtension.type_to_widget_name[data.class.name]
         plugin = plugins[widget_name]
 
+	if !update_method
+	    Kernel.raise ArgumentError, "invalid argument #{data} on #{self}"
+	end
+
 	#inform widget about the frame for the plugin
         if frame_name = port_frame_associations[port_name]
             Vizkit.debug "#{port_name}: associated to the #{frame_name} frame for plugin #{plugin}"
