@@ -135,7 +135,7 @@ module Vizkit
      else
          proxy =  ReaderWriterProxy.default_policy[:port_proxy]
          proxy.__change_name("port_proxy_#{Process.pid}")
-         Orocos.run "port_proxy::Task" => proxy.name do
+         Orocos.run "port_proxy::Task" => proxy.name, :output => "%m-%p.txt" do
              proxy.start
              #wait unti the proxy is running 
              while !proxy.running?
