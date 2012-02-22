@@ -237,12 +237,6 @@ module Vizkit
             @local_options, options = Kernel::filter_options options,{:subfield => Array.new,:type_name => nil,:port_proxy => nil}
             @local_options[:subfield] = @local_options[:subfield].to_a
 
-            if port.respond_to?(:force_local?) && port.force_local?
-                task = port.task
-                Vizkit.info "No port proxy is used for port #{port.full_name}"
-                @local_options[:port_proxy] = nil 
-            end
-
             @__task = task
             if(@__task.is_a?(String) || @__task.is_a?(Orocos::TaskContext))
                 @__task = TaskProxy.new(task)
@@ -263,6 +257,10 @@ module Vizkit
                 Vizkit.info "Create PortProxy for: #{full_name}"
             end
             __port
+            if @__port.respond_to?(:force_local?) && @__port.force_local?
+                Vizkit.info "No port proxy is used for port #{@__port.full_name}"
+                @local_options[:port_proxy] = nil 
+            end
         end
 
         #returns the Orocos::InputPort or Orocos::OutputPort object
@@ -314,8 +312,14 @@ module Vizkit
             if @__task.reachable? && (!@__port || !@__port.task.reachable?)
                 if(@__task.has_port?(@__port_name))
                     task = @__task.__task
-                    @__port = task.port(@__port_name) if task
-                    Vizkit.info "Create Port for: #{@__port.full_name}"
+                    if task
+                        @__port = task.port(@__port_name) 
+                        Vizkit.info "Create Port for: #{@__port.full_name}"
+                        if @__port.respond_to? :tracked=
+                            Vizkit.info "Call tracked=true on port #{@__port.full_name}"
+                            @__port.tracked=true
+                        end
+                    end
                 else
                     Vizkit.warn "Task #{task().name} has no port #{name}. This can happen for tasks with dynamic ports."
                     @__port = nil
@@ -335,7 +339,11 @@ module Vizkit
         end
 
         def new_sample
-            Orocos.registry.get(type_name).new
+            if @__port
+                @__port.new_sample
+            else
+                Orocos.registry.get(type_name).new
+            end
         end
 
         def method_missing(m, *args, &block)
@@ -373,6 +381,9 @@ module Vizkit
             @__readers = Hash.new
             @__ports = Hash.new
             Vizkit.info "Create TaskProxy for task: #{name}"
+
+            #needed to automatically track log task
+            ping if Vizkit.use_log_task? name
         end
 
         #code block is called every time a new connection is set up
