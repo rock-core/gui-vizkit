@@ -10,6 +10,7 @@ module Vizkit
 
             # Determine applicable widgets for the output port
             widgets = Vizkit.default_loader.widget_names_for_value(type_name)
+            widgets = widgets + Vizkit.default_loader.widget_names_for_value(Typelib::CompoundType)
             widgets.uniq!
             widgets.each do |w|
                 menu.add_action(Qt::Action.new(w, parent))
@@ -242,8 +243,6 @@ module Vizkit
                     end
             #if object is a port or part of a port
             elsif(port) 
-                #TODO
-                #create a proxy class for subfields which behave like ports
                 if auto && !subfield
                     #check if there is a default widget 
                     begin 
