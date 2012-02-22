@@ -3,6 +3,7 @@ module Orocos
         #returns the Output-/InputPort of the proxy which writes/reads the data from/to the given port
         #raises an exception if the proxy is unable to proxy the given port 
         def proxy_port(port,options=Hash.new)
+            port = port.to_orocos_port
             options, policy = Kernel.filter_options options,
                 :periodicity => nil,
                 :keep_last_value => false
@@ -12,7 +13,6 @@ module Orocos
             end
 
             full_name = "#{port.task.name}_#{port.name}"
-            port = port.to_orocos_port if port.respond_to?(:to_orocos_port)
             if !has_port?("in_"+full_name)
                 load_plugins_for_type(port.orocos_type_name)
                 if !createProxyConnection(full_name,port.orocos_type_name,options[:periodicity],policy[:init] || options[:keep_last_value])
@@ -40,7 +40,7 @@ module Orocos
                 end
             else
                 @@ports[port.full_name] = port
-                if port.is_a? Orocos::OutputPort
+                if port.respond_to? :reader
                     port.connect_to port_in, policy
                     Orocos.info "Task #{name}: Connecting #{port.full_name} with #{port_in.full_name}, policy=#{policy}"
                     port_out
