@@ -92,7 +92,7 @@ class LoaderUiTest < Test::Unit::TestCase
         Orocos.run "rock_port_proxy" do 
             task.start
 
-            assert(task.createProxyConnection("test","/base/Time",0.01))
+            assert(task.createProxyConnection("test","/base/Time",0.01,true))
             assert(task.has_port? "in_test")
             
             widget = Vizkit.display task.in_test
@@ -119,7 +119,7 @@ class LoaderUiTest < Test::Unit::TestCase
         Orocos.run "rock_port_proxy" do 
             task.start
 
-            assert(task.createProxyConnection("test","/base/Angle",0.01))
+            assert(task.createProxyConnection("test","/base/Angle",0.01,true))
             assert(task.has_port? "in_test")
             
             widget = Vizkit.control task.out_test
@@ -139,6 +139,25 @@ class LoaderUiTest < Test::Unit::TestCase
         while $qApp.hasPendingEvents
             $qApp.processEvents
         end
+    end
+
+    def test_vizkit_connect_port_to
+        puts "###########################"
+        log = Orocos::Log::Replay.open(@log_path+".0.log")
+        Vizkit.use_tasks log.tasks
+        assert(log)
+        time = nil
+        Vizkit.connect_port_to("test_task","time") do |sample, _|
+            time = sample
+            puts 123
+        end
+        log.step
+        sleep(0.5)
+        while $qApp.hasPendingEvents
+            $qApp.processEvents
+        end
+        assert(time)
+        #test connect_port_to with an orocos task
     end
 
     def test_vizkit_disconnect
