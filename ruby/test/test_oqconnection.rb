@@ -54,7 +54,7 @@ class LoaderUiTest < Test::Unit::TestCase
         #start task
         Orocos.run "rock_port_proxy" do 
             task.start
-            assert(task.createProxyConnection("test","/base/Time",0.01))
+            assert(task.createProxyConnection("test","/base/Time",0.01,true))
             assert(task.has_port? "in_test")
             assert(task.has_port? "out_test")
 
@@ -90,7 +90,7 @@ class LoaderUiTest < Test::Unit::TestCase
                 $qApp.processEvents
             end
 
-            assert(task.createProxyConnection("test","/base/Time",0.01))
+            assert(task.createProxyConnection("test","/base/Time",0.01,true))
             assert(task.has_port? "in_test")
             assert(task.has_port? "out_test")
 

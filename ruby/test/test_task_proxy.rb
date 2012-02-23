@@ -19,7 +19,7 @@ class LoaderUiTest < Test::Unit::TestCase
         writer = task.port("in_test").writer(:port_proxy =>  nil)
         Orocos.run "port_proxy::Task" => "port_proxy" do 
             task.start
-            assert(task.createProxyConnection("test","/base/Time",0.01))
+            assert(task.createProxyConnection("test","/base/Time",0.01,true))
             assert(task.has_port? "in_test")
             assert(task.has_port? "out_test")
             reader = task.out_test.reader
@@ -34,7 +34,7 @@ class LoaderUiTest < Test::Unit::TestCase
         writer = task.port("in_test").writer(:port_proxy =>  nil)
         Orocos.run "rock_port_proxy" do 
             task.start
-            assert(task.createProxyConnection("test","/base/Time",0.01))
+            assert(task.createProxyConnection("test","/base/Time",0.01,true))
             assert(task.has_port? "in_test")
             assert(task.has_port? "out_test")
             reader = task.out_test.reader
@@ -51,11 +51,11 @@ class LoaderUiTest < Test::Unit::TestCase
         Orocos.run "rock_port_proxy" do 
             task.start
             assert(task.load_plugins_for_type("/base/Time"))
-            assert(task.createProxyConnection("test","/base/Time",0.01))
+            assert(task.createProxyConnection("test","/base/Time",0.01,true))
             assert(task.has_port? "in_test")
             assert(task.has_port? "out_test")
             assert(!task.proxy_port?(port))
-            proxy_port = task.proxy_port(port,{:port_proxy_periodicity => 0.2})
+            proxy_port = task.proxy_port(port,{:periodicity => 0.2})
             assert(proxy_port)
             assert(task.has_port? "in_port_proxy_out_test")
             assert(task.has_port? "out_port_proxy_out_test")
@@ -99,7 +99,7 @@ class LoaderUiTest < Test::Unit::TestCase
 
             task.start
 
-            assert(task.createProxyConnection("test","/base/Time",0.01))
+            assert(task.createProxyConnection("test","/base/Time",0.01,true))
             assert(task.has_port? "in_test")
             assert(task.has_port? "out_test")
             assert(port.type_name)
@@ -130,7 +130,7 @@ class LoaderUiTest < Test::Unit::TestCase
             task.start
 
             #create ports again
-            assert(task.createProxyConnection("test","/base/Time",0.01))
+            assert(task.createProxyConnection("test","/base/Time",0.01,true))
             assert(task.has_port? "in_test")
             assert(task.has_port? "out_test")
 
@@ -146,7 +146,7 @@ class LoaderUiTest < Test::Unit::TestCase
             task = Vizkit::ReaderWriterProxy.default_policy[:port_proxy]
             task.start
 
-            assert(task.createProxyConnection("test","/base/samples/frame/FramePair",0.01))
+            assert(task.createProxyConnection("test","/base/samples/frame/FramePair",0.01,true))
             assert(task.has_port? "in_test")
             assert(task.has_port? "out_test")
 

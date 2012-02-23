@@ -23,6 +23,7 @@ class LoaderUiTest < Test::Unit::TestCase
         @log_path = File.join(File.dirname(__FILE__),"test_log")
         if !File.exist?(@log_path+".0.log")
             output = Pocolog::Logfiles.create(@log_path,Orocos.registry)
+            Orocos.load_typekit_for("/base/Time")
             stream_output = output.stream("test_task.time","/base/Time",true)
 
             time = Time.now
