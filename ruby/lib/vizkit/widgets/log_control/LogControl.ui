@@ -7,15 +7,21 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>508</width>
-    <height>298</height>
+    <width>505</width>
+    <height>367</height>
    </rect>
   </property>
   <property name="sizePolicy">
-   <sizepolicy hsizetype="Fixed" vsizetype="Expanding">
+   <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
     <horstretch>0</horstretch>
     <verstretch>0</verstretch>
    </sizepolicy>
+  </property>
+  <property name="minimumSize">
+   <size>
+    <width>505</width>
+    <height>0</height>
+   </size>
   </property>
   <property name="windowTitle">
    <string>LogControl</string>
@@ -23,10 +29,16 @@
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
     <widget class="QWidget" name="widget" native="true">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
      <property name="minimumSize">
       <size>
-       <width>0</width>
-       <height>100</height>
+       <width>250</width>
+       <height>70</height>
       </size>
      </property>
      <widget class="QPushButton" name="bback">
@@ -505,41 +517,54 @@
        <string/>
       </property>
      </widget>
-     <widget class="RockSlider" name="slider">
-      <property name="geometry">
-       <rect>
-        <x>0</x>
-        <y>70</y>
-        <width>481</width>
-        <height>29</height>
-       </rect>
-      </property>
-      <property name="sizePolicy">
-       <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-        <horstretch>0</horstretch>
-        <verstretch>0</verstretch>
-       </sizepolicy>
-      </property>
-      <property name="minimumSize">
-       <size>
-        <width>0</width>
-        <height>20</height>
-       </size>
-      </property>
-      <property name="toolTip">
-       <string>RockSlider</string>
-      </property>
-      <property name="whatsThis">
-       <string/>
-      </property>
-      <property name="orientation">
-       <enum>Qt::Horizontal</enum>
-      </property>
-     </widget>
+    </widget>
+   </item>
+   <item>
+    <widget class="Timeline" name="timeline">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>16777215</width>
+       <height>26</height>
+      </size>
+     </property>
+     <property name="frameShape">
+      <enum>QFrame::NoFrame</enum>
+     </property>
+     <property name="frameShadow">
+      <enum>QFrame::Plain</enum>
+     </property>
+     <property name="lineWidth">
+      <number>0</number>
+     </property>
+     <property name="margin_topbot" stdset="0">
+      <number>0</number>
+     </property>
+     <property name="margin_lr" stdset="0">
+      <number>5</number>
+     </property>
+     <property name="backgroundColor">
+      <color>
+       <red>240</red>
+       <green>235</green>
+       <blue>226</blue>
+      </color>
+     </property>
     </widget>
    </item>
    <item>
     <widget class="QTreeView" name="treeView">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
      <property name="contextMenuPolicy">
       <enum>Qt::CustomContextMenu</enum>
      </property>
@@ -549,9 +574,9 @@
  </widget>
  <customwidgets>
   <customwidget>
-   <class>RockSlider</class>
-   <extends>QSlider</extends>
-   <header>rock_widget_collection/RockSlider.h</header>
+   <class>Timeline</class>
+   <extends>QGraphicsView</extends>
+   <header>rock_widget_collection/Timeline.h</header>
   </customwidget>
  </customwidgets>
  <resources/>
