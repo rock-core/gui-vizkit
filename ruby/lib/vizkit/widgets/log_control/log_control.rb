@@ -8,7 +8,6 @@ class LogControl
       
       @log_replay = replay
       @replay_on = false 
-      @slider_pressed = false
       @user_speed = @log_replay.speed
       
       dir = File.dirname(__FILE__)
@@ -16,18 +15,30 @@ class LogControl
       @play_icon = Qt::Icon.new(File.join(dir,'play.png'))
       setAttribute(Qt::WA_QuitOnClose, true);
 
-      connect(slider, SIGNAL('valueChanged(int)'), lcd_index, SLOT('display(int)'))
-      slider.connect(SIGNAL('sliderReleased()'),self,:slider_released)
+      connect(timeline, SIGNAL('indexSliderMoved(int)'), lcd_index, SLOT('display(int)'))
+      connect(timeline, SIGNAL('endMarkerMoved(int)'), lcd_index, SLOT('display(int)'))
+      connect(timeline, SIGNAL('startMarkerMoved(int)'), lcd_index, SLOT('display(int)'))
+      timeline.connect(SIGNAL('indexSliderReleased(int)'),self,:slider_released)
       bnext.connect(SIGNAL('clicked()'),self,:bnext_clicked)
       bback.connect(SIGNAL('clicked()'),self,:bback_clicked)
       bstop.connect(SIGNAL('clicked()'),self,:bstop_clicked)
       bplay.connect(SIGNAL('clicked()'),self,:bplay_clicked)
-      slider.connect(SIGNAL(:sliderPressed)) {@slider_pressed = true;}
-      
+    
+      timeline.connect(SIGNAL("endMarkerReleased(int)")) do |index| 
+        lcd_index.display(@log_replay.sample_index)
+      end
+      timeline.connect(SIGNAL("startMarkerReleased(int)")) do |index| 
+        lcd_index.display(@log_replay.sample_index)
+      end
+      timeline.connect SIGNAL('indexSliderClicked()') do 
+          bplay_clicked if playing?
+      end
+
       @log_replay.align unless @log_replay.aligned?
       return if !@log_replay.replay?
       @log_replay.process_qt_events = true
-      slider.maximum = @log_replay.size-1
+      timeline.setSteps(@log_replay.size-1)
+      timeline.setStepSize 1
 
       #add replayed streams to tree view 
       @tree_view = Vizkit::TreeModeler.new(treeView)
@@ -43,6 +54,7 @@ class LogControl
       @brush = Qt::Brush.new(Qt::Color.new(200,200,200))
       @widget_hash = Hash.new
 
+      timeline.setSliderIndex(@log_replay.sample_index)
       display_info
     end
 
@@ -51,10 +63,10 @@ class LogControl
     end
 
     def display_info
-      slider.setSliderPosition(@log_replay.sample_index) unless @slider_pressed
       if @log_replay.time
         timestamp.text = @log_replay.time.strftime("%a %D %H:%M:%S." + "%06d" % @log_replay.time.usec)
         lcd_speed.display(@log_replay.actual_speed)
+        lcd_index.display(@log_replay.sample_index)
         last_port.text = @log_replay.current_port.full_name if @log_replay.current_port
       else
         timestamp.text = "0"
@@ -78,21 +90,22 @@ class LogControl
       last_warn = Time.now 
       last_info = Time.now
       while @replay_on
-       bplay_clicked if !@log_replay.step(true) #stop replay if end of file is reached
+       bplay_clicked if @log_replay.sample_index >= timeline.getEndMarkerIndex || !@log_replay.step(true)
        if Time.now - last_info > 0.1
         last_info = Time.now
         $qApp.processEvents
         display_info      #we do not display the info every step to save cpu time
+        timeline.setSliderIndex(@log_replay.sample_index)
        end
       end
       display_info        #display info --> otherwise info is maybe not up to date
+      timeline.setSliderIndex(@log_replay.sample_index)
     end
 
-    def slider_released
-      @slider_pressed = false
-      return if !@log_replay.replay?
+    def slider_released(index)
+  #    return if !@log_replay.replay?
       @log_replay.reset_time_sync
-      @log_replay.seek(slider.value)
+      @log_replay.seek(timeline.getSliderIndex)
       display_info
     end
     
@@ -106,6 +119,7 @@ class LogControl
       else
         @log_replay.step(false)
       end
+      timeline.setSliderIndex(@log_replay.sample_index)
       display_info
     end
 
@@ -117,19 +131,30 @@ class LogControl
       else
         @log_replay.step_back
       end
+      timeline.setSliderIndex(@log_replay.sample_index)
       display_info
     end
     
     def bstop_clicked 
        return if !@log_replay.replay?
        bplay_clicked if @replay_on
-       @log_replay.rewind
+       if timeline.getStartMarkerIndex == 0
+         @log_replay.rewind
+       else
+         seek_to(timeline.getStartMarkerIndex)
+       end
        @log_replay.reset_time_sync
+       timeline.setSliderIndex(@log_replay.sample_index)
        display_info
     end
 
     def refresh
         @log_replay.refresh
+    end
+
+    def seek_to(index)
+        timeline.setSliderIndex index
+        slider_released(index)
     end
     
     def bplay_clicked 
@@ -139,6 +164,9 @@ class LogControl
         @replay_on = false
       else
         bplay.icon = @pause_icon
+        if(timeline.getSliderIndex < timeline.getStartMarkerIndex || timeline.getSliderIndex >= timeline.getEndMarkerIndex)
+            seek_to(timeline.getStartMarkerIndex)
+        end
         bstop_clicked if @log_replay.eof?
         self.speed = @user_speed
         auto_replay
