@@ -168,7 +168,7 @@ module Vizkit
 
     module OQConnectionIntegration
         def connect_to_widget(widget=nil,options = Hash.new,&block)
-            connection = Vizkit::OQConnection.new(self.task.name,self, options,widget,&block)
+            connection = Vizkit::OQConnection.new(self.task,self, options,widget,&block)
             Vizkit.connections << connection
             connection.connect
         end
