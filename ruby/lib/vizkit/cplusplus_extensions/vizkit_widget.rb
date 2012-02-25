@@ -297,7 +297,7 @@ module VizkitPluginLoaderExtension
     # Dispatcher method, that dispatches the data to the different plugins
     def update(data, port_name)
         if @connected_to_broadcaster
-            if data.kind_of?(Types::Transformer::ConfigurationState)
+            if data.class.name == "/transformer/ConfigurationState"
                 pushTransformerConfiguration(data)
                 return
             end
