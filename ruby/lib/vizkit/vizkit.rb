@@ -33,7 +33,10 @@ end
 module Vizkit
   extend Logger::Root('vizkit.rb', Logger::WARN)
 
-  Qt::Application.new(ARGV)
+  if !ENV['VIZKIT_NO_GUI']
+      Qt::Application.new(ARGV)
+  end
+
   def self.app
     $qApp
   end
