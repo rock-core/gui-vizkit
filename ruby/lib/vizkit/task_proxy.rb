@@ -275,7 +275,11 @@ module Vizkit
         #the subfield is not considered because we do not want to use a separate 
         #port on the orogen port_proxy
         def full_name
-            "#{task.name}.#{name}"
+            if @local_options[:subfield].empty?
+                "#{task.name}.#{name}"
+            else
+                "#{task.name}.#{name}.#{@local_options[:subfield].join(".")}"
+            end
         end
 
         def name
@@ -286,7 +290,16 @@ module Vizkit
             if(type = @local_options[:type_name]) != nil
                 type
             elsif @__port || __port
-                @__port.type_name
+                if !@local_options[:subfield].empty?
+                    @new_sample ||= @__port.new_sample
+                    sample = @new_sample
+                    @local_options[:subfield].each do |f| 
+                        sample = sample[f]
+                    end
+                    sample.class
+                else
+                    @__port.type_name
+                end
             elsif
                 nil
             end
@@ -339,10 +352,16 @@ module Vizkit
         end
 
         def new_sample
-            if @__port
-                @__port.new_sample
+            if type_name.respond_to?(:new)
+                type_name.new
+            elsif respond_to? :to_str
+                if @__port && @__port.new_sample.class.name == type_name
+                    @__port.new_sample
+                else
+                    Orocos.registry.get(type_name).new
+                end
             else
-                Orocos.registry.get(type_name).new
+                nil
             end
         end
 
@@ -456,12 +475,11 @@ module Vizkit
                         else
                             name
                         end
-            return @__ports[full_name] if @__ports.has_key?(full_name)
-            @__ports[full_name] = if @__task.is_a? Orocos::Log::TaskContext
-                                      @__task.port(name)
-                                  else
-                                      PortProxy.new(self,name,options)
-                                  end
+            if @__ports.has_key?(full_name)
+                @__ports[full_name]
+            else
+                @__ports[full_name] = PortProxy.new(self,name,options)
+            end
         end
 
         def state
