@@ -40,8 +40,14 @@ if remaining.empty?
 
   #check for new tasks every 5 seconds 
   refresh = Proc.new do 
+      begin
       Orocos.task_names.each do |name|
           task_inspector.config(name)
+      end
+      rescue Orocos::CORBAError => e
+          Vizkit.warn "Corba error. Maybe Orocos is not initialized."
+          Vizkit.warn e
+          Vizkit.warn e.backtrace
       end
   end
   @timer.connect SIGNAL('timeout()') do 
@@ -62,7 +68,7 @@ else
                 Vizkit.connect_port_to task_name,port_name,widget
                 widget.show
             else
-                puts "Cannot find a display widget for #{port_name}"
+                Vizkit.warn "Cannot find a display widget for #{port_name}"
             end
         end
     end
