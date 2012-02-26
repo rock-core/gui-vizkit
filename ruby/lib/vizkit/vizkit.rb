@@ -47,7 +47,7 @@ module Vizkit
 
   def self.setup_widget(widget,value=nil,options = Hash.new,type = :display,&block)
     return nil if !widget
-    widget.config(value,options) if widget.respond_to? :config
+    config_result = widget.config(value,options,&block) if widget.respond_to? :config
 
     if type == :control
       callback_fct = if widget.respond_to?(:loader)
@@ -55,12 +55,11 @@ module Vizkit
                      end
       widget.method(callback_fct).call(value, options, &block) if(callback_fct && callback_fct != :config)
     else
-      if type == :display && value.respond_to?(:connect_to)
+      if type == :display && value.respond_to?(:connect_to) && config_result != :do_not_connect
         value.connect_to widget,options ,&block
         callback_fct = if widget.respond_to?(:loader)
                          widget.loader.callback_fct widget,value
                        end
-
         if(callback_fct && callback_fct != :config && value.respond_to?(:read))
           sample = value.read
           widget.method(callback_fct).call(sample, value.name) if sample
@@ -135,7 +134,7 @@ module Vizkit
 
      if !ReaderWriterProxy.default_policy[:port_proxy]
          $qApp.exec
-     else
+     elsif Orocos::CORBA.initialized?
          proxy =  ReaderWriterProxy.default_policy[:port_proxy]
          proxy.__change_name("port_proxy_#{Process.pid}")
          Orocos.run "port_proxy::Task" => proxy.name, :output => "%m-%p.txt" do
@@ -146,6 +145,8 @@ module Vizkit
              end
              $qApp.exec
          end
+     else
+         $qApp.exec
      end
      gc_timer.stop
   end
