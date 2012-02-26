@@ -23,7 +23,6 @@ class StructViewer
 
         #add a default value 
         def config(port,options=Hash.new)
-            return if options[:subfield] || !port
             #encode some values 
             #otherwise tree_view is not able to open a new widget for an embedded type 
             task = Vizkit::TaskProxy.new port.task
