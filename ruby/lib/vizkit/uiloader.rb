@@ -209,14 +209,16 @@ module Vizkit
       #check if there is already a widget of the same type
       #which can handle multiple values 
       if reuse
-        widget = @created_widgets.find do |widget| 
+        widgets = @created_widgets.find_all do |widget| 
           if(widget.respond_to?(:ruby_widget?) && widget.ruby_widget?)
             widget.ruby_class_name == class_name
           else
             widget.class_name == class_name
           end
         end
-        return widget if(widget.respond_to?(:multi_value?) && widget.multi_value?)
+        widgets.each do |widget|
+            return widget if(widget.respond_to?(:multi_value?) && widget.multi_value?)
+        end
       end
 
       klass = @ruby_widget_hash[class_name]
