@@ -201,31 +201,18 @@ module Vizkit
             item = @model.item_from_index(tree_view.index_at(pos))
             return if !item
 
-            #try to find a parent which is a Typelib::CompoundType
+            item = if item.parent && item.column != 0
+                       item = item.parent.child(item.row,0)
+                   else
+                       item
+                   end
+            item2 = item.parent.child(item.row,1) if item.parent
             object = item_to_object(item)
-            if !object 
-                item,type = find_parent(item,Typelib::CompoundType.class)
-                object = item_to_object(item)
-                return if !object
-            end
-
-            item2 = item
-            if item.parent
-                if item.column == 0
-                    item2 = item.parent.child(item.row,1)
-                else
-                    item = item.parent.child(item.row,0)
-                end
-            end
 
             #if no port is given try to find one by searching for a parent of type Port
             #this is needed to determine if someone clicked on a subfield
             if !port
-                if(object == Orocos::Log::OutputPort || object == Orocos::OutputPort) 
-                    port = port_from_item(item)
-                elsif(object == Typelib::CompoundType.class)
-                    port = port_from_item(item)
-                end
+                port = port_from_item(item)
             end
 
             #check if someone clicked on a property 
@@ -254,14 +241,15 @@ module Vizkit
                 end
                 #auto can be modified in the other if block
                 if !auto 
-                    type_name = if !subfield.empty?
-                                    item2.text
+                    #create a sub port
+                    port_temp = if !subfield.empty?
+                                    port.task.port(port.name,:subfield => subfield)
                                 else
-                                    port.type_name
+                                    port
                                 end
-                    widget_name = Vizkit::ContextMenu.widget_for(type_name,tree_view,pos)
+                    widget_name = Vizkit::ContextMenu.widget_for(port_temp.type_name,tree_view,pos)
                     if widget_name
-                        widget = Vizkit.display(port, :widget => widget_name,:subfield => subfield,:type_name => type_name)
+                        widget = Vizkit.display(port_temp, :widget => widget_name)
                         widget.setAttribute(Qt::WA_QuitOnClose, false) if widget
                     end
                 end
