@@ -32,14 +32,15 @@ module Orocos
             @@proxy_name ||= self.name
             raise "Cannot handle multiple PortProxies from the same ruby instance!" if @@proxy_name != self.name
             @@ports ||= Hash.new
-            if @@ports.has_key?(port.full_name) && @@ports[port.full_name].task.reachable?
+            name = "#{port.task.name}_#{port.name}"
+            if @@ports.has_key?(name) && @@ports[name].task.reachable?
                 if port.is_a? Orocos::OutputPort
                     port_out
                 else
                     port_in
                 end
             else
-                @@ports[port.full_name] = port
+                @@ports[name] = port
                 if port.respond_to? :reader
                     port.connect_to port_in, policy
                     Orocos.info "Task #{name}: Connecting #{port.full_name} with #{port_in.full_name}, policy=#{policy}"
@@ -92,12 +93,13 @@ module Orocos
         #between the proxy and the given port died
         def proxy_port?(port)
             return false if !reachable? 
-            return false if !has_port?("in_#{port.task.name}_#{port.name}")
-            if !@@ports.has_key?(port.full_name)
-                Vizkit.Warn "Task #{self.name} is managed by an other ruby instance!"
-                false
+            name = "#{port.task.name}_#{port.name}"
+            return false if !has_port?("in_#{name}")
+            if !@@ports.has_key?(name)
+                puts "Task #{self.name} is managed by an other ruby instance!"
+                return false
             end
-            return false if !@@ports[port.full_name].task.reachable?
+            return false if !@@ports[name].task.reachable?
             true
         end
     end
