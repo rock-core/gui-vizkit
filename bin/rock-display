@@ -28,9 +28,8 @@ end
 remaining = parser.parse(ARGV)
 task_inspector = nil
 
-#Bundles.public_logs = false
-#Bundles.initialize
-Orocos.initialize
+Bundles.public_logs = false
+Bundles.initialize
 
 Vizkit::ReaderWriterProxy.default_policy[:port_proxy] = nil if !@proxy
 
