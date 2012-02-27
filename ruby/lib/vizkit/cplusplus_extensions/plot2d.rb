@@ -27,8 +27,9 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "Plot2d" do
         if !@init
             @init = true
             @options = default_options
-            @graphs ||= Hash.new
-            @time ||= time.to_f
+            @graphs = Hash.new
+            @time = time.to_f
+            
             getLegend.setVisible(true)
             getXAxis.setLabel("Time in sec")
             setTitle("Rock-Plot2d")
@@ -72,12 +73,12 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "Plot2d" do
     end
 
     def config(value,options)
-        init
         @log_replay = if value.respond_to? :task
                           if value.task.respond_to? :log_replay
                               value.task.log_replay
                           end
                       end
+        init
         @options = options.merge(@options)
         graph2(value.full_name) if value.respond_to? :full_name
     end
