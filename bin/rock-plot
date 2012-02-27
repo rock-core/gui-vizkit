@@ -37,13 +37,18 @@ remaining.each do |spec|
     begin
         plots = spec.split(' ')
         plots.each do |plot| 
-            task,port_name,subfields = spec.split('.')
+            task,port_name,*subfields = plot.split('.')
             raise "No task name was given!" if(!task)
             raise "No port name was given!" if(!port_name)
             subfields << nil if subfields.empty?
-            subfields = subfields.split(':')
-            subfields.each do |subfield|
-                port =Vizkit::PortProxy.new(task,port_name,:subfield => subfield)
+            subsubfields = subfields.pop.split(':').to_a
+            subsubfields.each do |subsubfield|
+                subsubfield =  if(subsubfield.to_i.to_s == subsubfield)
+                                   subsubfield.to_i 
+                               else 
+                                   subsubfield
+                               end
+                port =Vizkit::PortProxy.new(task,port_name,:subfield => subfields + [subsubfield])
                 Vizkit.display port, :widget=> plot_widget
             end
         end

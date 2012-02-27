@@ -377,7 +377,11 @@ module Vizkit
             else
                 if item.parent 
                     fields = subfield_from_item(item.parent)
-                    fields << item.text
+                    if(i = item.text =~ /[(\d)]/)
+                        fields << i
+                    else
+                        fields << item.text
+                    end
                 else
                     fields
                 end

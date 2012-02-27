@@ -291,7 +291,7 @@ module Vizkit
                 type
             elsif @__port || __port
                 if !@local_options[:subfield].empty?
-                    @new_sample ||= @__port.new_sample
+                    @new_sample ||= @__port.new_sample.zero!
                     sample = @new_sample
                     @local_options[:subfield].each do |f| 
                         sample = sample[f]
