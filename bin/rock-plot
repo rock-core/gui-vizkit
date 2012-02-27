@@ -7,12 +7,16 @@ require 'optparse'
 @show_all = false
 @proxy = true
 parser = OptionParser.new do |opt|
-    opt.banner = "rock-plot [--host hostname] task_name.port_name.field_name1:field_name2 ..."
+
+    opt.banner = <<-EOT
+
+usage: rock-plot [--host hostname] task_name.port_name.field_name1:field_name2 ...
+
+Plots data from one or more Orocos port sample fields
+
+    EOT
     opt.on('--host=HOSTNAME', String, "the corba nameserver we should contact") do |name|
         Orocos::CORBA.name_service = name
-    end
-    opt.on('-a','--all',"Display all tasks") do
-        @show_all = true
     end
     opt.on('--help') do
         puts parser
@@ -31,24 +35,24 @@ Vizkit::ReaderWriterProxy.default_policy[:port_proxy] = nil
 plot_widget = Vizkit.default_loader.Plot2d
 remaining.each do |spec|
     begin
-    plots = spec.split(' ')
-    plots.each do |plot| 
-        task,port_name,subfields = spec.split('.')
-        raise "No task name was given!" if(!task)
-        raise "No port name was given!" if(!port_name)
-        subfields << nil if subfields.empty?
-        subfields = subfields.split(':')
-        subfields.each do |subfield|
-            port =Vizkit::PortProxy.new(task,port_name,:subfield => subfield)
-            Vizkit.display port, :widget=> plot_widget
+        plots = spec.split(' ')
+        plots.each do |plot| 
+            task,port_name,subfields = spec.split('.')
+            raise "No task name was given!" if(!task)
+            raise "No port name was given!" if(!port_name)
+            subfields << nil if subfields.empty?
+            subfields = subfields.split(':')
+            subfields.each do |subfield|
+                port =Vizkit::PortProxy.new(task,port_name,:subfield => subfield)
+                Vizkit.display port, :widget=> plot_widget
+            end
         end
+    rescue ArgumentError,RuntimeError => e
+        Vizkit.warn "cannot plot #{task}:#{port_name}:#{subfield.to_a.join(":")}"
+        Vizkit.warn e
+        Vizkit.warn. backtrace
+        exit 1
     end
-rescue ArgumentError,RuntimeError => e
-    Vizkit.warn "cannot plot #{task}:#{port_name}:#{subfield.to_a.join(":")}"
-    Vizkit.warn e
-    Vizkit.warn. backtrace
-    exit 1
-end
 end
 plot_widget.replot
 Vizkit.exec
