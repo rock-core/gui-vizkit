@@ -100,13 +100,21 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "Plot2d" do
                     if(@graphs.size < @options[:colors].size)
                         graph.setPen(Qt::Pen.new(Qt::Brush.new(@options[:colors][@graphs.size]),1))
                     end
-                    @options[:use_y_axis2] = true;
                     @graphs[name] = graph
                 end
     end
 
     def multi_value?
         @options[:reuse]
+    end
+
+    def rename_graph(old_name,new_name)
+        graph = @graphs[old_name]
+        if graph
+            graph.setName(new_name)
+            @graphs[new_name] = @graphs[old_name]
+            @graphs.delete old_name
+        end
     end
 
     #diplay is called each time new data are available on the orocos output port
@@ -122,7 +130,17 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "Plot2d" do
         end
         replot
     end
+
+    def update_orientation(sample,name)
+        new_sample = sample.to_euler(2,1,0)
+        rename_graph(name,name+"_yaw")
+        update(new_sample[0],name+"_yaw")
+        update(new_sample[1],name+"_pitch")
+        update(new_sample[2],name+"_roll")
+    end
+
 end
 
 Vizkit::UiLoader.register_widget_for("Plot2d",Fixnum,:update)
 Vizkit::UiLoader.register_widget_for("Plot2d",Float,:update)
+Vizkit::UiLoader.register_widget_for("Plot2d",Eigen::Quaternion,:update_orientation)

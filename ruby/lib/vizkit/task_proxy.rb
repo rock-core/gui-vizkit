@@ -353,7 +353,8 @@ module Vizkit
 
         def new_sample
             if type_name.respond_to?(:new)
-                type_name.new
+		#the type is a class
+                return nil
             elsif respond_to? :to_str
                 if @__port && @__port.new_sample.class.name == type_name
                     @__port.new_sample
