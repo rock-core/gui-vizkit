@@ -92,7 +92,7 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "Plot2d" do
                 @options[:multi_use_menu] = false
                 getXAxis.setLabel "Bin Number"
             end
-        elsif value.type_name == "/std/vector</uint8_t>"
+        elsif value.type_name =~ /\/std\/vector</ || value.type_name == "/base/samples/LaserScan"
             if !@graphs.empty?
                 puts "Cannot plot std::vector because plot is already used!"
                 return :do_not_connect
@@ -160,7 +160,7 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "Plot2d" do
         update(new_sample[2],name+"_roll")
     end
 
-    def update_vector_int(sample,name)
+    def update_vector(sample,name)
         if sample.size() > 10000
             Vizkit.logger.warn "Cannot plot #{name}. Vector is too big"
             return
@@ -178,7 +178,10 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "Plot2d" do
     end
 
     def update_sonar_beam(sample,name)
-        update_vector_int sample.beam,name
+        update_vector sample.beam,name
+    end
+    def update_laser_scan(sample,name)
+        update_vector sample.ranges,name
     end
     def update_angle(sample,name)
         update sample.rad,name
@@ -189,5 +192,10 @@ Vizkit::UiLoader.register_widget_for("Plot2d","Fixnum",:update)
 Vizkit::UiLoader.register_widget_for("Plot2d","Float",:update)
 Vizkit::UiLoader.register_widget_for("Plot2d","Eigen::Quaternion",:update_orientation)
 Vizkit::UiLoader.register_widget_for("Plot2d","/base/samples/SonarBeam",:update_sonar_beam)
-Vizkit::UiLoader.register_widget_for("Plot2d","/std/vector</uint8_t>",:update_vector_int)
+Vizkit::UiLoader.register_widget_for("Plot2d","/base/samples/LaserScan",:update_laser_scan)
+Vizkit::UiLoader.register_widget_for("Plot2d","/std/vector</uint8_t>",:update_vector)
+Vizkit::UiLoader.register_widget_for("Plot2d","/std/vector</uint16_t>",:update_vector)
+Vizkit::UiLoader.register_widget_for("Plot2d","/std/vector</uint32_t>",:update_vector)
+Vizkit::UiLoader.register_widget_for("Plot2d","/std/vector</double>",:update_vector)
+Vizkit::UiLoader.register_widget_for("Plot2d","/std/vector</float>",:update_vector)
 Vizkit::UiLoader.register_widget_for("Plot2d","/base/Angle",:update_angle)
