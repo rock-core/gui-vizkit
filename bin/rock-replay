@@ -56,7 +56,7 @@ Examples:
         replay_connections << conn.split(':')
     end
     opt.on('--debug') do
-        debug = true
+        Vizkit.logger.level = Logger::INFO
     end
 end
 
