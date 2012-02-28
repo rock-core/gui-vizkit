@@ -244,7 +244,7 @@ module Vizkit
                 if !auto 
                     #create a sub port
                     port_temp = if !subfield.empty?
-                                    port.task.port(port.name,:subfield => subfield)
+                                    Vizkit::PortProxy.new(port.task,port,:subfield => subfield)
                                 else
                                     port
                                 end
@@ -373,7 +373,8 @@ module Vizkit
         def subfield_from_item(item)
             object = item_to_object(item)
             fields = Array.new
-            if object == Orocos::OutputPort || object == Orocos::Log::OutputPort
+            if object.is_a?(Orocos::OutputPort) || object.is_a?(Orocos::Log::OutputPort) || 
+               object.is_a?(Vizkit::PortProxy)
                 fields 
             else
                 if item.parent 
@@ -746,8 +747,8 @@ module Vizkit
                     item = parent_item # == parent_item.parent.child(parent_item.row,parent_item.column)
                     item2 = parent_item.parent.child(parent_item.row,parent_item.column+1)
                 else
-                    item, item2 = child_items(parent_item,row)
-                    item.set_text parent_item.text
+                    item = parent_item
+                    item2 = @root.child(parent_item.row,parent_item.column+1)
                 end
 
                 if object != nil
