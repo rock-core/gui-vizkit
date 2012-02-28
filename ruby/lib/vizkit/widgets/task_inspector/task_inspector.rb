@@ -34,6 +34,7 @@ class TaskInspector
 
             @tasks = Array.new
             @read_obj = false
+            @black_list = Array.new
 
             setPropButton.connect(SIGNAL('clicked()')) do
                 @tree_view.update_dirty_items
@@ -71,6 +72,7 @@ class TaskInspector
                         else
                           task.name
                         end
+            return if @black_list.include?(task_name)
             result = @tasks.find do |t| 
                 t.name == task_name
             end
@@ -81,7 +83,11 @@ class TaskInspector
                    else
                        task
                    end
-            return if !enable_tooling && task.respond_to?(:tooling?) && task.tooling?
+            if !enable_tooling && task.respond_to?(:tooling?) && task.tooling?
+                @black_list << task_name
+                Vizkit.info "Adding task #{task.name} to the black list because it is tooling."
+                return
+            end
 
             @tasks << task
             options = default_options.merge(options)
