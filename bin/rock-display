@@ -18,6 +18,9 @@ parser = OptionParser.new do |opt|
     opt.on('--noproxy',"Do not use a port proxy between the task inspector and other orocos tasks") do
         @proxy = false
     end
+    opt.on('--debug',"Show debug information") do
+        Vizkit.logger.level = Logger::INFO
+    end
     opt.on('--help') do
         puts parser
         exit 0
