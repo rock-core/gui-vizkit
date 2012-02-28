@@ -56,6 +56,7 @@ module Vizkit
                else
                    Vizkit.info "Port writer for #{@__port.full_name} is no longer valid."
                end
+               disconnect
                @__reader_writer = nil
                return false
             end
@@ -67,6 +68,15 @@ module Vizkit
                 return false
             end
             return true
+        end
+
+        def disconnect
+            return if !@__port
+            if @__orogen_port_proxy && !@__port
+                Vizkit.info "Calling disconnect_proxy_port for #{@__port.full_name}."
+                @__orogen_port_proxy.delete_proxy_port(@__port)
+            end
+            @__reader_writer.disconnect if @__reader_writer
         end
 
         #returns a valid reader which can be used for reading or nil if the Task cannot be contacted 
@@ -441,6 +451,12 @@ module Vizkit
         def ping
             if !@__task || !@__task.reachable?
                 begin 
+                    if @__task
+                        Vizkit.info "Task #{name} is no longer reachable."
+                        proxy = ReaderWriterProxy.default_policy[:port_proxy]
+                        proxy.delete_proxy_ports_for_task(name) if proxy && proxy.reachable?
+                    end
+
                     @__readers.clear
                     @__task = if Vizkit.use_log_task? name
                                   Vizkit.info "TaskProxy #{name } is using an Orocos::Log::TaskContext as underlying task"

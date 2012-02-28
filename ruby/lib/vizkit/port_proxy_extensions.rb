@@ -12,6 +12,8 @@ module Orocos
                 raise "Task #{name}: is not reachable. Cannot proxy connection #{port.full_name}"
             end
 
+            #the have to generate the name by our self because subfield name have a different 
+            #full_name but we want to use the same port of the port proxy
             full_name = "#{port.task.name}_#{port.name}"
             if !has_port?("in_"+full_name)
                 load_plugins_for_type(port.orocos_type_name)
@@ -50,6 +52,37 @@ module Orocos
                     Orocos.info "Task #{name}: Connecting #{port_out.full_name} with #{port.full_name}, policy=#{policy}"
                     port_in
                 end
+            end
+        end
+
+        def delete_proxy_port(port)
+            #the have to generate the name by our self because subfield name have a different 
+            #full_name but we want to use the same port of the port proxy
+            full_name = "#{port.task.name}_#{port.name}"
+            port = port("in_" + full_name)
+            port.disconnect_all if port 
+            port = port("out_" + full_name)
+            port.disconnect_all if port 
+            if closeProxyConnection(full_name)
+                Vizkit.info "Delete connection #{full_name}"
+            else
+                Vizkit.warn "Cannot delete connection #{full_name}"
+            end
+        end
+
+        def delete_proxy_ports_for_task(task)
+            name = if(task.respond_to? :to_str)
+                       task
+                   else
+                       task.name
+                   end
+            if @@ports
+                @@ports = @@ports.delete_if do |key,value| 
+                            if(value.task.name == name) 
+                                delete_proxy_port(value)
+                                true
+                            end
+                          end
             end
         end
 
@@ -93,11 +126,10 @@ module Orocos
         #between the proxy and the given port died
         def proxy_port?(port)
             return false if !reachable? 
-            name = "#{port.task.name}_#{port.name}"
-            return false if !has_port?("in_#{name}")
-            if !@@ports.has_key?(name)
-                puts "Task #{self.name} is managed by an other ruby instance!"
-                return false
+            return false if !has_port?("in_#{port.task.name}_#{port.name}")
+            if !@@ports.has_key?(port.full_name)
+                Vizkit.warn "Task #{self.name} is managed by an other ruby instance!"
+                @@ports[port.full_name] = port
             end
             return false if !@@ports[name].task.reachable?
             true
