@@ -711,8 +711,7 @@ module Vizkit
                     item2 = if parent_item.parent
                                 parent_item.parent.child(parent_item.row,parent_item.column+1)
                             else
-                                item,item2 = child_items(parent_item,row)
-                                item2
+                                @root.child(parent_item.row,parent_item.column+1)
                             end
                     item2.set_text "#{object.size} fields ..."
                 elsif object.size > 0

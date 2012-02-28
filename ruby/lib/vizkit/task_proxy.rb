@@ -294,10 +294,14 @@ module Vizkit
                 if !@local_options[:subfield].empty?
                     @new_sample ||= @__port.new_sample.zero!
                     sample = @new_sample
-                    @local_options[:subfield].each do |f| 
+                    @local_options[:subfield].each do |f|
                         sample = sample[f]
                     end
-                    sample.class
+                    if sample.class.respond_to? :name
+                        sample.class.name
+                    else
+                        sample.class
+                    end
                 else
                     @__port.type_name
                 end
