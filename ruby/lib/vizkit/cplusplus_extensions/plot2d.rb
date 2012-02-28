@@ -180,6 +180,9 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "Plot2d" do
     def update_sonar_beam(sample,name)
         update_vector_int sample.beam,name
     end
+    def update_angle(sample,name)
+        update sample.rad,name
+    end
 end
 
 Vizkit::UiLoader.register_widget_for("Plot2d","Fixnum",:update)
@@ -187,3 +190,4 @@ Vizkit::UiLoader.register_widget_for("Plot2d","Float",:update)
 Vizkit::UiLoader.register_widget_for("Plot2d","Eigen::Quaternion",:update_orientation)
 Vizkit::UiLoader.register_widget_for("Plot2d","/base/samples/SonarBeam",:update_sonar_beam)
 Vizkit::UiLoader.register_widget_for("Plot2d","/std/vector</uint8_t>",:update_vector_int)
+Vizkit::UiLoader.register_widget_for("Plot2d","/base/Angle",:update_angle)
