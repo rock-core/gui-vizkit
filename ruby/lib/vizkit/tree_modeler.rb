@@ -373,7 +373,7 @@ module Vizkit
         def subfield_from_item(item)
             object = item_to_object(item)
             fields = Array.new
-            if object.is_a?(Orocos::OutputPort) || object.is_a?(Orocos::Log::OutputPort) || 
+            if object == Orocos::OutputPort || object.is_a?(Orocos::Log::OutputPort) || 
                object.is_a?(Vizkit::PortProxy)
                 fields 
             else

@@ -12,9 +12,7 @@ module Orocos
                 raise "Task #{name}: is not reachable. Cannot proxy connection #{port.full_name}"
             end
 
-            #the have to generate the name by our self because subfield name have a different 
-            #full_name but we want to use the same port of the port proxy
-            full_name = "#{port.task.name}_#{port.name}"
+            full_name = port_full_name(port)
             if !has_port?("in_"+full_name)
                 load_plugins_for_type(port.orocos_type_name)
                 if !createProxyConnection(full_name,port.orocos_type_name,options[:periodicity],policy[:init] || options[:keep_last_value])
@@ -34,31 +32,28 @@ module Orocos
             @@proxy_name ||= self.name
             raise "Cannot handle multiple PortProxies from the same ruby instance!" if @@proxy_name != self.name
             @@ports ||= Hash.new
-            name = "#{port.task.name}_#{port.name}"
-            if @@ports.has_key?(name) && @@ports[name].task.reachable?
+            if @@ports.has_key?(full_name) && @@ports[full_name].task.reachable?
                 if port.is_a? Orocos::OutputPort
                     port_out
                 else
                     port_in
                 end
             else
-                @@ports[name] = port
+                @@ports[full_name] = port
                 if port.respond_to? :reader
                     port.connect_to port_in, policy
-                    Orocos.info "Task #{name}: Connecting #{port.full_name} with #{port_in.full_name}, policy=#{policy}"
+                    Orocos.info "Task #{full_name}: Connecting #{port.full_name} with #{port_in.full_name}, policy=#{policy}"
                     port_out
                 else
                     port_out.connect_to port, policy
-                    Orocos.info "Task #{name}: Connecting #{port_out.full_name} with #{port.full_name}, policy=#{policy}"
+                    Orocos.info "Task #{full_name}: Connecting #{port_out.full_name} with #{port.full_name}, policy=#{policy}"
                     port_in
                 end
             end
         end
 
         def delete_proxy_port(port)
-            #the have to generate the name by our self because subfield name have a different 
-            #full_name but we want to use the same port of the port proxy
-            full_name = "#{port.task.name}_#{port.name}"
+            full_name = port_full_name(port)
             port = port("in_" + full_name)
             port.disconnect_all if port 
             port = port("out_" + full_name)
@@ -99,6 +94,12 @@ module Orocos
             port
         end
 
+        def port_full_name(port)
+            #the have to generate the name by our self because subfield name have a different 
+            #full_name but we want to use the same port of the port proxy
+            full_name = "#{port.task.name}_#{port.name}"
+        end
+
         #loads the plugins (typekit,transport) into the proxy
         def load_plugins_for_type(type_name)
             name = Orocos::find_typekit_for(type_name)
@@ -126,12 +127,13 @@ module Orocos
         #between the proxy and the given port died
         def proxy_port?(port)
             return false if !reachable? 
-            return false if !has_port?("in_#{port.task.name}_#{port.name}")
-            if !@@ports.has_key?(port.full_name)
+            full_name = port_full_name(port)
+            return false if !has_port?("in_#{full_name}")
+            if !@@ports.has_key?(full_name)
                 Vizkit.warn "Task #{self.name} is managed by an other ruby instance!"
-                @@ports[port.full_name] = port
+                @@ports[full_name] = port
             end
-            return false if !@@ports[name].task.reachable?
+            return false if !@@ports[full_name].task.reachable?
             true
         end
     end
