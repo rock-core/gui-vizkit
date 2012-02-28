@@ -237,15 +237,16 @@ module Vizkit
             @local_options, options = Kernel::filter_options options,{:subfield => Array.new,:type_name => nil,:port_proxy => nil}
             @local_options[:subfield] = @local_options[:subfield].to_a
 
-            @__task = task
-            if(@__task.is_a?(String) || @__task.is_a?(Orocos::TaskContext))
-                @__task = TaskProxy.new(task)
-            end
+            @__task = TaskProxy.new(task)
             raise "Cannot create PortProxy if no task is given" if !@__task
 
             if(port.is_a? String)
                 @__port_name = port
                 @__port = nil
+            elsif(port.is_a? PortProxy)
+                @__port_name = port.name
+                @__port = port.instance_variable_get(:@__port)
+                @local_options[:subfield] = port.instance_variable_get(:@local_options)[:subfield]+@local_options[:subfield]
             else
                 @__port_name = port.name
                 @__port = port
@@ -390,10 +391,11 @@ module Vizkit
         #task_name = name of the task or its TaskContext
         #code block  = is called every time a TaskContext is created (every connect or reconnect)
         def initialize(task_name,&block)
-            task_name if task_name.is_a? TaskProxy #just return the same TaskProxy if task_name is already one 
-
             if task_name.is_a?(Orocos::TaskContext) || task_name.is_a?(Orocos::Log::TaskContext)
                 @__task = task_name if task_name.is_a? Orocos::Log::TaskContext
+                task_name = task_name.name
+            elsif task_name.is_a? TaskProxy
+                @__task = task_name.instance_variable_get(:@__task)
                 task_name = task_name.name
             end
             @__task_name = task_name

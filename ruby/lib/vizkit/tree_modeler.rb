@@ -21,6 +21,7 @@ module Vizkit
         end
 
         def self.task_state(task,parent,pos)
+            return if !task.respond_to? :model
             menu = Qt::Menu.new(parent)
 
             #add some helpers
@@ -389,13 +390,14 @@ module Vizkit
         end
 
         def port_from_item(item)
-            port_item,port = find_parent(item,Orocos::OutputPort)
-            port_item,port = find_parent(item,Orocos::Log::OutputPort) if !port
-            return nil if !port
+            port_item,port = find_parent(item,Orocos::Log::OutputPort)
+            port_item,port = find_parent(item,Vizkit::PortProxy) if !port
+            return port if port
 
+            port_item,port = find_parent(item,Orocos::OutputPort)if !port
+            return nil if !port
             _,task = find_parent(item,Vizkit::TaskProxy)
             _,task = find_parent(item,Orocos::Log::TaskContext) if !task 
-            
             return nil if !port || !task
             if task.respond_to? :ping
                 if task.ping
@@ -650,8 +652,8 @@ module Vizkit
                 item2.set_tool_tip(@tooltip)
 
                 #encode the object 
-                encode_data(item,Orocos::Log::OutputPort)
-                encode_data(item2,Orocos::Log::OutputPort)
+                encode_data(item,object)
+                encode_data(item2,object)
 
                 #add meta data
                 item2, item3 = child_items(item,0)
@@ -705,7 +707,12 @@ module Vizkit
             elsif object.is_a?(Array) || (object.kind_of?(Typelib::Type) && object.respond_to?(:each))
                 Vizkit.debug("update_object->Array||Typelib+each")
                 if object.size > @max_array_fields
-                    item2 = parent_item.parent.child(parent_item.row,parent_item.column+1)
+                    item2 = if parent_item.parent
+                                parent_item.parent.child(parent_item.row,parent_item.column+1)
+                            else
+                                item,item2 = child_items(parent_item,row)
+                                item2
+                            end
                     item2.set_text "#{object.size} fields ..."
                 elsif object.size > 0
                     row = 0

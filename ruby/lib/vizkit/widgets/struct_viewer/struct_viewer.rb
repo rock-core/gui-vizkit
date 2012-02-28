@@ -25,19 +25,13 @@ class StructViewer
         def config(port,options=Hash.new)
             #encode some values 
             #otherwise tree_view is not able to open a new widget for an embedded type 
-            task = Vizkit::TaskProxy.new port.task
+            port = Vizkit::PortProxy.new(port.task,port)
             #add place holder
-            item,item2 = @tree_view.update(nil,port.task.name,@tree_view.root,false,@item_hash.size)
-            @tree_view.encode_data(item,task)
-            @tree_view.encode_data(item2,task)
-
-            item3 = item.child(item.rowCount-1,0)
-            item4 = item.child(item.rowCount-1,1)
-            item3.setText(port.name)
-            item4.setText(port.type_name)
-            @tree_view.encode_data(item3,port.class)
-            @tree_view.encode_data(item4,port.class)
-            @item_hash["#{port.task.name}.#{port.name}"] = item3
+            item,item2 = @tree_view.update(nil,port.full_name,@tree_view.root,false,@item_hash.size)
+            item2.setText(port.type_name.to_s)
+            @tree_view.encode_data(item,port)
+            @tree_view.encode_data(item2,port)
+            @item_hash[port.full_name] = item
         end
 
         def multi_value?
