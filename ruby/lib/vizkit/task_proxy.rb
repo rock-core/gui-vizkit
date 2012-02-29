@@ -475,7 +475,7 @@ module Vizkit
         end
 
         def each_port(options = Hash.new,&block)
-            task == __task
+            task = __task
             if task
                 task.each_port do |port|
                     pport = port(port.name,options)

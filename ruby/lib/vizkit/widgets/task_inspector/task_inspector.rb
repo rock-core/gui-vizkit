@@ -48,15 +48,16 @@ class TaskInspector
 
             @timer = Qt::Timer.new(self)
             @timer.connect(SIGNAL('timeout()')) do 
-                return if !visible
-                @tasks.each_with_index do |task,index|
-                    @tree_view.update(task,nil,@tree_view.root,false,index)
-                end
+                if visible
+                    @tasks.each_with_index do |task,index|
+                        @tree_view.update(task,nil,@tree_view.root,false,index)
+                    end
 
-                if !@tree_view.dirty_items.empty?
-                    buttonFrame.show 
-                else
-                    treeView.resizeColumnToContents(0)
+                    if !@tree_view.dirty_items.empty?
+                        buttonFrame.show 
+                    else
+                        treeView.resizeColumnToContents(0)
+                    end
                 end
             end
         end
@@ -103,5 +104,7 @@ end
 
 Vizkit::UiLoader.register_ruby_widget("task_inspector",TaskInspector.method(:create_widget))
 Vizkit::UiLoader.register_widget_for("task_inspector",Orocos::TaskContext)
+Vizkit::UiLoader.register_widget_for("task_inspector",Vizkit::TaskProxy)
 Vizkit::UiLoader.register_widget_for("task_inspector",Orocos::Log::TaskContext)
 Vizkit::UiLoader.register_control_for("task_inspector",Orocos::TaskContext,nil)
+Vizkit::UiLoader.register_control_for("task_inspector",Vizkit::TaskProxy,nil)
