@@ -12,6 +12,8 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "Plot2d" do
         options[:reuse] = true
         options[:use_y_axis2] = false
         options[:multi_use_menu] = true
+        options[:update_period] = 0.25   # repaint periode if new data are available
+                                         # this prevents repainting for each new sample
         return options 
     end
 
@@ -30,6 +32,13 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "Plot2d" do
             @options = default_options
             @graphs = Hash.new
             @time = time.to_f
+            @timer = Qt::Timer.new
+            @needs_update = false
+            @timer.connect(SIGNAL"timeout()") do 
+                replot if @needs_update
+                @needs_update = false
+            end
+            @timer.start(1000*@options[:update_period])
 
             getLegend.setVisible(true)
             getXAxis.setLabel("Time in sec")
@@ -149,7 +158,7 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "Plot2d" do
             getXAxis.setRange(x-@options[:time_window],x+@options[:pre_time_window])
             graph.rescaleValueAxis(true)
         end
-        replot
+        @needs_update = true
     end
 
     def update_orientation(sample,name)
@@ -174,7 +183,7 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "Plot2d" do
             graph.rescaleKeyAxis(false)
             graph.rescaleValueAxis(false)
         end
-        replot
+        @needs_update = true
     end
 
     def update_sonar_beam(sample,name)
