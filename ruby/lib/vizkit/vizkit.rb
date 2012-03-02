@@ -136,7 +136,7 @@ module Vizkit
          $qApp.exec
      elsif Orocos::CORBA.initialized?
          proxy =  ReaderWriterProxy.default_policy[:port_proxy]
-         proxy.__change_name("port_proxy_#{Process.pid}")
+         proxy.__change_name("port_proxy_#{ENV["USERNAME"]}_#{Process.pid}")
          Orocos.run "port_proxy::Task" => proxy.name, :output => "%m-%p.txt" do
              proxy.start
              #wait unti the proxy is running 
