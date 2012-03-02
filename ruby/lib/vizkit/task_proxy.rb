@@ -178,7 +178,7 @@ module Vizkit
             temp_options, options = Kernel.filter_options options,:subfield => Array.new ,:type_name => nil
             super
             @local_options.merge! temp_options
-            @local_options[:subfield] = @local_options[:subfield].to_a
+            @local_options[:subfield] = Array(@local_options[:subfield])
 
             if !@local_options[:subfield].empty?
                 Vizkit.info "Create ReaderProxy for subfield #{@local_options[:subfield].join(".")} of port #{port.full_name}"
