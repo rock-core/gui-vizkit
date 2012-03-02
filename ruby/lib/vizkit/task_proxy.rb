@@ -245,7 +245,7 @@ module Vizkit
         #because otherwise the type_name would only be known after the first sample was received 
         def initialize(task, port,options = Hash.new)
             @local_options, options = Kernel::filter_options options,{:subfield => Array.new,:type_name => nil,:port_proxy => nil}
-            @local_options[:subfield] = @local_options[:subfield].to_a
+            @local_options[:subfield] = Array(@local_options[:subfield])
 
             @__task = TaskProxy.new(task)
             raise "Cannot create PortProxy if no task is given" if !@__task
@@ -494,7 +494,7 @@ module Vizkit
             #ports which are used to read subfields are regarded 
             #as new port
             full_name = if options.has_key? :subfield 
-                            name + options[:subfield].to_a.join("_")
+                            name + Array(options[:subfield]).join("_")
                         else
                             name
                         end
