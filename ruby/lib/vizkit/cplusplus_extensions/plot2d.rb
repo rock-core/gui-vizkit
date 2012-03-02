@@ -110,7 +110,9 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "Plot2d" do
                 getXAxis.setLabel "Index"
             end
         end
-        graph2(value.full_name) if value.respond_to? :full_name
+        subfield = Array(options[:subfield]).join(".")
+        subfield = "." + subfield if !subfield.empty?
+        graph2(value.full_name+subfield) if value.respond_to? :full_name
     end
 
     def graph2(name)
