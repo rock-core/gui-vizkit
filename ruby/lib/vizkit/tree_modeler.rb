@@ -376,6 +376,8 @@ module Vizkit
             if object == Orocos::OutputPort || object.is_a?(Orocos::Log::OutputPort) || 
                object.is_a?(Vizkit::PortProxy)
                 fields 
+            elsif object == :NO_SUBFIELD
+                fields << object
             else
                 if item.parent 
                     fields = subfield_from_item(item.parent)
@@ -384,9 +386,12 @@ module Vizkit
                     else
                         fields << item.text
                     end
-                else
-                    fields
                 end
+            end
+            if fields.include? :NO_SUBFIELD
+                Array.new
+            else
+                fields
             end
         end
 
@@ -659,14 +664,20 @@ module Vizkit
                 #add meta data
                 item2, item3 = child_items(item,0)
                 item2.setText("Meta Data")
+                encode_data(item2,:NO_SUBFIELD)
+                encode_data(item3,:NO_SUBFIELD)
                 update_object(object.metadata,item2)
 
                 item2, item3 = child_items(item,1)
                 item2.setText("Samples")
                 item3.setText(object.number_of_samples.to_s)
+                encode_data(item2,:NO_SUBFIELD)
+                encode_data(item3,:NO_SUBFIELD)
 
                 item2, item3 = child_items(item,2)
                 item2.setText("Filter")
+                encode_data(item2,:NO_SUBFIELD)
+                encode_data(item3,:NO_SUBFIELD)
                 if object.filter
                     item3.setText("yes")
                 else
