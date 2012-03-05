@@ -124,7 +124,9 @@ module Vizkit
             raise
         rescue Exception => e
             Vizkit.warn "could not read on #{reader}: #{e.message}"
-            Vizkit.warn e.backtrace.to_a[0]
+            0.upto(5) do |i|
+                Vizkit.warn e.backtrace.to_a[i]
+            end
             disconnect
         end
 
