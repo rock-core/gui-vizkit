@@ -317,6 +317,18 @@ Rice::Object TypelibQtAdapter::callQtMethodR(Rice::Object methodName, Rice::Obje
     return Rice::True;
 }
 
+Object TypelibQtAdapter::getMethodListR()
+{
+    Rice::Array arr;
+    const QMetaObject *metaObj = object->metaObject();
+    for(int i = 0; i < metaObj->methodCount(); i++)
+    {
+	std::string signature = metaObj->method(i).signature();
+	arr.push(signature);
+    }
+    return arr;
+}
+
 Object TypelibQtAdapter::getParameterListsR(const std::string& methodName)
 {
     std::vector<std::vector<std::string> > ret;
@@ -379,6 +391,7 @@ void Init_TypelibQtAdapter()
     .define_method("callQtMethod", &TypelibQtAdapter::callQtMethodR)
     .define_method("callQtMethodWithSignature", &TypelibQtAdapter::callQtMethodWithSignatureR) 
     .define_method("getQtObject", &TypelibQtAdapter::initialize)
+    .define_method("getMethodList", &TypelibQtAdapter::getMethodListR)
     .define_method("getMethodSignature", &TypelibQtAdapter::getMethodSignature, (Arg("methodName")))
     .define_method("getMethodSignatureFromNumber", &TypelibQtAdapter::getMethodSignatureFromNumber, (Arg("methodName"), Arg("number")))
     .define_method("getParameterLists", &TypelibQtAdapter::getParameterListsR, (Arg("methodName")));

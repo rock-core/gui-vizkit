@@ -51,6 +51,7 @@ public:
     Rice::Object callQtMethodR(Rice::Object methodName, Rice::Object arguments, Rice::Object returnValue);
     Rice::Object callQtMethodWithSignatureR(const std::string& signature, Rice::Object arguments, Rice::Object opaque_names, Rice::Object returnValue);
     Rice::Object getParameterListsR(const std::string& methodName);
+    Rice::Object getMethodListR();
 
 private:
     QObject *object;

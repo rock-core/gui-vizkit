@@ -22,6 +22,11 @@ module Vizkit
 	    
 	    adapter
 	end
+
+        #Returns a list of all methods which can be invoked by the adapter 
+        def method_list
+            @adapter.getMethodList
+        end
 	
 	# This method calls a method on the qt_object associated with
 	# the given adapter. 
@@ -91,23 +96,26 @@ module Vizkit
 end
 module QtTyplelibExtension
     def method_missing(m, *args, &block)
-	if(@do_forward)
-	    super
-	else
-	    @do_forward = true
-	    begin
-		if(!@qt_object_adapter)
-		    @qt_object_adapter = Vizkit::TypelibQtAdapter.new(self) 
-		end
-		
-		if(!@qt_object_adapter.call_qt_method(m.to_s, args, nil))
-		    return super
-		end
-	    ensure
-		@do_forward = nil
-	    end
-	end
-    end      
+        @qt_object_adapter ||= Vizkit::TypelibQtAdapter.new(self) 
+        if(!@qt_object_adapter.call_qt_method(m.to_s, args, nil))
+            Vizkit.info "cannot find slot #{m.to_s} for #{self.class.name}."
+            if self.is_a? Qt::Widget
+                Vizkit.info "calling super for method #{m.to_s}"
+                return super
+            elsif self.is_a? Qt::Object
+                #calling super on a Qt::Object will lead to a seg fault
+                Vizkit.warn "calling #{m.to_s} on #{self.class.name} failed. Wrong method name?"
+                Vizkit.warn "avilable methods:"
+                Vizkit.warn @qt_object_adapter.method_list.join("; ")
+                raise NoMethodError.new("undefined mehtod '#{m.to_s}' for #{self.class.name}")
+            else
+                Vizkit.info "calling super for method #{m.to_s}"
+                return super
+            end
+        else
+            Vizkit.info "calling slot #{m.to_s} on #{self.class.name}"
+        end
+    end
 end
 
 
