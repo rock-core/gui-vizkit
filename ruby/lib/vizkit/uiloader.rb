@@ -288,22 +288,35 @@ module Vizkit
       end
     end
 
+    # This module is included in all Qt widgets to make sure that the basic
+    # Vizkit API is available on them
+    module VizkitCXXExtension
+      # Called when a C++ widget is created to do some additional
+      # ruby-side initialization
+      def initialize_vizkit_extension
+        super if defined? super
+      end
+
+      attr_accessor :loader
+      def pretty_print(pp)
+        loader.pretty_print_widget(pp, class_name)
+      end
+    end
+
     def extend_widget(widget,mapping = nil)
       redefine_widget_class_name(widget,mapping[widget.objectName]) if mapping
       class_name = widget.class_name
-      if !ruby_widget? class_name
-        extension_module = @cplusplus_extension_hash[class_name]
-        widget.send(:extend,extension_module) if extension_module
-      end
       raise "Cannot extend widget #{class_name} because method loader is alread defined" if widget.respond_to?(:loader)
-      widget.instance_variable_set(:@__loader__,self)
-      def widget.loader
-        @__loader__
+
+      widget.extend VizkitCXXExtension
+      if !ruby_widget? class_name
+        if extension_module = @cplusplus_extension_hash[class_name]
+          widget.extend extension_module
+        end
       end
 
-      def widget.pretty_print(pp)
-        loader.pretty_print_widget(pp,class_name)
-      end
+      widget.loader = self
+      widget.initialize_vizkit_extension
       widget
     end
 

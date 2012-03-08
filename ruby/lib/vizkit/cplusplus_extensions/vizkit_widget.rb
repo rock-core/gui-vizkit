@@ -84,6 +84,21 @@ module VizkitPluginExtension
 end
 
 module VizkitPluginLoaderExtension
+    def initialize_vizkit_extension
+        super
+
+        if !@connected_to_broadcaster
+            @port_frame_associations ||= Hash.new
+            @connected_transformation_producers ||= Hash.new
+            task_name, port_name = Vizkit.vizkit3d_transformer_broadcaster_name
+            Orocos.load_typekit 'transformer'
+            if task_name
+                Vizkit.connect_port_to task_name, port_name, self
+                @connected_to_broadcaster = true
+            end
+        end
+    end
+    
     def load_plugin(path)
         loader = Qt::PluginLoader.new(path)
         loader.load
@@ -297,7 +312,7 @@ module VizkitPluginLoaderExtension
     # Dispatcher method, that dispatches the data to the different plugins
     def update(data, port_name)
         if @connected_to_broadcaster
-            if data.class.name == "/transformer/ConfigurationState"
+            if data.class == Types::Transformer::ConfigurationState
                 pushTransformerConfiguration(data)
                 return
             end
@@ -321,20 +336,6 @@ module VizkitPluginLoaderExtension
             filter.call(plugin,data,port_name)
         else
             plugin.send(update_method,data)
-        end
-    end
-
-    # Called by Vizkit when this widget will be used to display values of the
-    # same kind than +displayed_value+. +options+ is an arbitrary option hash.
-    def config(displayed_value, options)
-        if !@connected_to_broadcaster
-            @port_frame_associations ||= Hash.new
-            @connected_transformation_producers ||= Hash.new
-            task_name, port_name = Vizkit.vizkit3d_transformer_broadcaster_name
-            if task_name
-                Vizkit.connect_port_to task_name, port_name, self
-                @connected_to_broadcaster = true
-            end
         end
     end
 end
