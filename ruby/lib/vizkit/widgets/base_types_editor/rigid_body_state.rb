@@ -86,6 +86,19 @@ class RigidBodyStateEditor
         end
 
         def edit(rigid_body_state=nil,options=nil,&block)
+            if rigid_body_state
+                source_frame.setText rigid_body_state.sourceFrame
+                target_frame.setText rigid_body_state.targetFrame
+                x_start.setValue rigid_body_state.position.x
+                y_start.setValue rigid_body_state.position.y
+                z_start.setValue rigid_body_state.position.z
+
+                angles = rigid_body_state.orientation.to_euler(2,1,0)
+                alpha_start.setValue angles[0]*180/Math::PI
+                beta_start.setValue angles[1]*180/Math::PI
+                gamma_start.setValue angles[2]*180/Math::PI
+            end
+
             @rigid_body_state = rigid_body_state
             @callback_fct = block
         end
