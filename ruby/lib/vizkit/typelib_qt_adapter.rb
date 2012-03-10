@@ -98,22 +98,7 @@ module QtTyplelibExtension
     def method_missing(m, *args, &block)
         @qt_object_adapter ||= Vizkit::TypelibQtAdapter.new(self) 
         if(!@qt_object_adapter.call_qt_method(m.to_s, args, nil))
-            Vizkit.info "cannot find slot #{m.to_s} for #{self.class.name}."
-            if self.is_a? Qt::Widget
-                Vizkit.info "calling super for method #{m.to_s}"
-                return super
-            elsif self.is_a? Qt::Object
-                #calling super on a Qt::Object will lead to a seg fault
-                Vizkit.warn "calling #{m.to_s} on #{self.class.name} failed. Wrong method name?"
-                Vizkit.warn "avilable methods:"
-                Vizkit.warn @qt_object_adapter.method_list.join("; ")
-                raise NoMethodError.new("undefined mehtod '#{m.to_s}' for #{self.class.name}")
-            else
-                Vizkit.info "calling super for method #{m.to_s}"
-                return super
-            end
-        else
-            Vizkit.info "calling slot #{m.to_s} on #{self.class.name}"
+            super
         end
     end
 end
