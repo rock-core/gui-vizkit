@@ -90,32 +90,27 @@ module Vizkit
 	    end
             false
 	end
-	
-    end  
-
-end
-module QtTyplelibExtension
-    def method_missing(m, *args, &block)
-        @qt_object_adapter ||= Vizkit::TypelibQtAdapter.new(self) 
-        if(!@qt_object_adapter.call_qt_method(m.to_s, args, nil))
-            Vizkit.info "cannot find slot #{m.to_s} for #{self.class.name}."
-            if self.is_a? Qt::Widget
-                Vizkit.info "calling super for method #{m.to_s}"
-                return super
-            elsif self.is_a? Qt::Object
-                #calling super on a Qt::Object will lead to a seg fault
-                Vizkit.warn "calling #{m.to_s} on #{self.class.name} failed. Wrong method name?"
-                Vizkit.warn "avilable methods:"
-                Vizkit.warn @qt_object_adapter.method_list.join("; ")
-                raise NoMethodError.new("undefined mehtod '#{m.to_s}' for #{self.class.name}")
-            else
-                Vizkit.info "calling super for method #{m.to_s}"
-                return super
-            end
-        else
-            Vizkit.info "calling slot #{m.to_s} on #{self.class.name}"
-        end
     end
 end
 
-
+class QtTyplelibDelegator < SimpleDelegator
+    def initialize(obj)
+        super(obj)
+        @__qt_object_adapter__ = Vizkit::TypelibQtAdapter.new(obj) 
+    end
+    def method_missing(m, *args, &block)
+        target = self.__getobj__
+        #convert delegate objects back to the original
+        #obj
+        new_args = args.map do |value|
+            if value.is_a? QtTyplelibDelegator
+                value.__getobj__
+            else
+                value
+            end
+        end
+        if(!@__qt_object_adapter__.call_qt_method(m.to_s, new_args, nil))
+            target.__send__(m, *new_args, &block)
+        end
+    end
+end

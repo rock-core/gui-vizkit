@@ -247,7 +247,10 @@ module Vizkit
         #look for c++ widget
         widget = super(class_name,parent)
         redefine_widget_class_name(widget,class_name)
-        extend_widget widget if widget
+        if widget
+            widget = QtTyplelibDelegator.new(widget)
+            extend_widget widget
+        end
       end
       @created_widgets << widget
       widget

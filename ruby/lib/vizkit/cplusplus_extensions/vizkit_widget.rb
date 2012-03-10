@@ -226,7 +226,6 @@ module VizkitPluginLoaderExtension
 	    end
 	end
 	plugin = plugin.createPlugin(plugin_name)
-	addPlugin(plugin)
 	plugin_name = lib_name unless plugin_name
 	lib_name = "lib#{lib_name}-viz.so"
 
@@ -239,8 +238,10 @@ module VizkitPluginLoaderExtension
         def plugin.lib_name
             @__lib_name__
         end
+
+	addPlugin(plugin)
+        plugin = QtTyplelibDelegator.new(plugin)
         plugin.load_adapters
-	plugin.extend(QtTyplelibExtension)
         plugin
     end
 
@@ -277,7 +278,7 @@ module VizkitPluginLoaderExtension
             Vizkit.debug "pushing static transformation #{trsf.sourceFrame} => #{trsf.targetFrame}"
             pushStaticTransformation(trsf)
         end
-        self.port_frame_associations.clear
+        port_frame_associations.clear
         data.port_frame_associations.each do |data_frame|
             port_frame_associations["#{data_frame.task}.#{data_frame.port}"] = data_frame.frame
         end
@@ -342,11 +343,11 @@ end
 
 Vizkit::UiLoader.extend_cplusplus_widget_class "vizkit::Vizkit3DWidget" do
     include VizkitPluginLoaderExtension
-    include QtTyplelibExtension
+#    include QtTyplelibExtension
 end
 
 Vizkit::UiLoader.extend_cplusplus_widget_class "vizkit::QVizkitMainWindow" do
-    include VizkitPluginLoaderExtension
+#    include VizkitPluginLoaderExtension
 end
 
 Vizkit::UiLoader.register_3d_plugin('TrajectoryVisualization', 'TrajectoryVisualization', nil)
