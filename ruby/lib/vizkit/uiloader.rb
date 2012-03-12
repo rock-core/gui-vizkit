@@ -640,7 +640,7 @@ module Vizkit
       callback_fct = UiLoader.adapt_callback_block(callback_fct || block || :control)
       #check if widget is available
       if !widget? class_name
-        return nil
+        raise ArgumentError, "#{class_name} is not the name of a known widget. Known widgets are #{available_widgets.sort.join(", ")}"
       end
 
       @registration_files[class_name] = find_registration_file
@@ -742,8 +742,7 @@ module Vizkit
 
       #check if widget is available
       if !widget? class_name
- #       puts "Widget #{class_name} is unknown to the loader. Cannot extend it!" 
-        return nil
+        raise ArgumentError, "#{class_name} is not the name of a known widget. Known widgets are #{available_widgets.sort.join(", ")}"
       end
 
       if value.respond_to?(:to_str)
