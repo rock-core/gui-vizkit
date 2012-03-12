@@ -50,19 +50,16 @@ module Vizkit
     config_result = widget.config(value,options,&block) if widget.respond_to? :config
 
     if type == :control
-      callback_fct = if widget.respond_to?(:loader)
-                       widget.loader.control_callback_fct widget,value
-                     end
-      widget.method(callback_fct).call(value, options, &block) if(callback_fct && callback_fct != :config)
+      if widget.respond_to?(:loader) && callback_fct = widget.loader.control_callback_fct(widget,value)
+        callback_fct.call(widget, value, options, &block)
+      end
     else
       if type == :display && value.respond_to?(:connect_to) && config_result != :do_not_connect
         value.connect_to widget,options ,&block
-        callback_fct = if widget.respond_to?(:loader)
-                         widget.loader.callback_fct widget,value
-                       end
-        if(callback_fct && callback_fct != :config && value.respond_to?(:read))
-          sample = value.read
-          widget.method(callback_fct).call(sample, value.full_name) if sample
+        if value.respond_to?(:read) && sample = value.read # try pushing the current sample if there is one
+          if widget.respond_to?(:loader) && callback_fct = widget.loader.callback_fct(widget,value)
+            callback_fct.call(widget, sample, value.full_name)
+          end
         end
       end
     end

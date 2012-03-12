@@ -21,9 +21,11 @@ module Vizkit
             @callback_fct = nil
             @using_reduced_update_frequency = false
 
-            if widget.is_a? Method
+            if widget.respond_to?(:call)
                 @callback_fct = widget
-                widget = widget.receiver
+                widget = if widget.respond_to?(:receiver)
+                             widget.receiver
+                         end
             end
             if widget.is_a?(Qt::Widget)
                 super(widget,&nil)
@@ -67,9 +69,10 @@ module Vizkit
                 end
 
                 #use default callback_fct
-                @callback_fct ||= :update if @widget.respond_to?(:update)
-                if @callback_fct && !@callback_fct.respond_to?(:call)
-                    @callback_fct = @widget.method(@callback_fct) 
+                if @callback_fct
+                    @callback_fct = @callback_fct.bind(@widget)
+                elsif @widget.respond_to?(:update)
+                    @callback_fct = @widget.method(:update)
                 end
                 raise "Widget #{@widget} has no callback function "if !@callback_fct
                 Vizkit.info "Found callback_fct #{@callback_fct} for OQConnection connected to port #{@port.full_name}"
