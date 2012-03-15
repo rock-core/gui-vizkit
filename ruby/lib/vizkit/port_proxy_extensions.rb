@@ -57,7 +57,7 @@ module Orocos
             port.disconnect_all if port 
             port = port("out_" + full_name)
             port.disconnect_all if port 
-            if closeProxyConnection(full_name)
+            if closeProxyConnection("in_"+ full_name)
                 Vizkit.info "Delete connection #{full_name}"
             else
                 Vizkit.warn "Cannot delete connection #{full_name}"
