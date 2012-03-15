@@ -32,7 +32,7 @@ class StateViewer < Qt::Widget
             @hash_tasks.each_value do |pair|
                 begin 
                     if !pair.task || !pair.task.reachable?
-                        pair.task =  Vizkit.use_task?(pair.name)
+                        pair.task =  Vizkit.use_log_task?(pair.name)
                         pair.task = Orocos::TaskContext.get pair.name unless pair.task
                     end
                 rescue Orocos::NotFound,Orocos::CORBAError
