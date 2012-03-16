@@ -13,6 +13,7 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "ImageView" do
       options[:fps_overlay] = true
       options[:display_first] = true
       options[:openGL] = true
+      options[:use_typelib_adapter] = true
       options
   end
 
@@ -90,7 +91,15 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "ImageView" do
           end
           @fps_overlay_object.setText(" stat fps: #{stat},  valid #{stat_valid}, invalid #{stat_invalid}")
       end
-      addRawImage(frame.frame_mode.to_s,frame.pixel_size,frame.size.width,frame.size.height,frame.image.to_byte_array[8..-1],frame.image.size)
+      if @options[:use_typelib_adapter]
+        @typelib_adapter ||= Vizkit::TypelibQtAdapter.new(self)
+        if !@typelib_adapter.call_qt_method("addFrame",frame,nil)
+            Vizkit.warn "Cannot reach method addFrame. Disabling TypelibQtAdapter for widget #{self}"
+            @options[:use_typelib_adapter] = false
+        end
+      else
+        addRawImage(frame.frame_mode.to_s,frame.pixel_size,frame.size.width,frame.size.height,frame.image.to_byte_array[8..-1],frame.image.size)
+      end
       update2
   end
 end
