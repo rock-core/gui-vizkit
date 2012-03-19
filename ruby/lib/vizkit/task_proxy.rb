@@ -298,26 +298,31 @@ module Vizkit
         end
 
         def type_name
-            if(type = @local_options[:type_name]) != nil
-                type
-            elsif @__port || __port
-                if !@local_options[:subfield].empty?
-                    @new_sample ||= @__port.new_sample.zero!
-                    sample = @new_sample
-                    @local_options[:subfield].each do |f|
-                        sample = sample[f]
-                    end
-                    if sample.class.respond_to? :name
-                        sample.class.name
-                    else
-                        sample.class
-                    end
-                else
-                    @__port.type_name
-                end
-            elsif
-                nil
-            end
+            @type_name ||= if(type = @local_options[:type_name]) != nil
+                               type
+                           elsif @__port || __port
+                               if !@local_options[:subfield].empty?
+                                   @new_sample ||= @__port.new_sample.zero!
+                                   sample = @new_sample
+                                   @local_options[:subfield].each do |f|
+                                       sample = if sample.respond_to? :raw_get_field
+                                                    sample.raw_get_field(f)
+                                                else
+                                                    sample[f]
+                                                end
+                                   end
+                                   if sample.class.respond_to? :name
+                                       sample.class.name
+                                   else
+                                       sample.class
+                                   end
+                               else
+                                   @__port.type_name
+                               end
+                           elsif
+                               nil
+                           end
+            @type_name
         end
 
         def task
@@ -372,10 +377,18 @@ module Vizkit
 		#the type is a class
                 return nil
             elsif type_name.respond_to? :to_str
-                if @__port && @__port.new_sample.class.name == type_name
+                if @__port && @__port.type_name == type_name
                     @__port.new_sample
                 else
-                    Orocos.registry.get(type_name).new
+                    if @new_sample
+                        @new_sample.class.registry.get(type_name).new
+                    else
+                        if !Orocos.registry.include? type_name
+                            Vizkit.info "load typekit for #{type_name}"
+                            Orocos.load_typekit_for type_name
+                        end
+                        Orocos.registry.get(type_name).new
+                    end
                 end
             else
                 nil
