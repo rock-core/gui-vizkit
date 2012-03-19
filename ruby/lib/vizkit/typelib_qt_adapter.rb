@@ -94,7 +94,7 @@ module Vizkit
     end  
 
 end
-module QtTyplelibExtension
+module QtTypelibExtension
     def method_missing(m, *args, &block)
         @qt_object_adapter ||= Vizkit::TypelibQtAdapter.new(self) 
         if(!@qt_object_adapter.call_qt_method(m.to_s, args, nil))
