@@ -264,6 +264,12 @@ module Vizkit
       end
       mapping = map_objectName_className(ui_file)
       extend_all_widgets form,mapping if form
+      #check that all widgets are available 
+      mapping.each_key do |k|
+        if !form.respond_to?(k.to_s) && form.objectName != k
+            Vizkit.warn "Widgte #{k} of class #{mapping[k]} could not be loaded! Is this Qt Designer Widget installed?"
+        end
+      end
       form
     end
 
