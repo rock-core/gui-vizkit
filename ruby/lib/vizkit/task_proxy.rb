@@ -331,9 +331,10 @@ module Vizkit
         end
 
         def disconnect_from(port,policy = Hash.new)
-            raise "Cannot disconnect port #{full_name} from #{full_name} because task #{task.name} is not reachable!" if !ping
-            raise "Cannot disconnect port #{full_name} from #{full_name} because task #{port.task.name} is not reachable!" if !port.task.readable?
-            __port.disconnect_from(port,policy)
+            raise "Cannot disconnect port #{full_name} from #{full_name} because task #{task.name} is not reachable!" if !task.ping
+            raise "Cannot disconnect port #{full_name} from #{full_name} because task #{port.task.name} is not reachable!" if !port.task.reachable?
+            pp port
+            __port.disconnect_from(port)
         end
 
         def __port
@@ -370,7 +371,7 @@ module Vizkit
             if type_name.respond_to?(:new)
 		#the type is a class
                 return nil
-            elsif respond_to? :to_str
+            elsif type_name.respond_to? :to_str
                 if @__port && @__port.new_sample.class.name == type_name
                     @__port.new_sample
                 else
@@ -454,7 +455,7 @@ module Vizkit
                     if @__task
                         Vizkit.info "Task #{name} is no longer reachable."
                         proxy = ReaderWriterProxy.default_policy[:port_proxy]
-                        proxy.delete_proxy_ports_for_task(name) if proxy && proxy.reachable?
+                        proxy.delete_proxy_ports_for_task(name) if proxy && proxy.reachable? && self != proxy
                     end
 
                     @__readers.clear

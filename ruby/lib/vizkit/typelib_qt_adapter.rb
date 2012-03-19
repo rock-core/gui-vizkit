@@ -35,6 +35,7 @@ module Vizkit
 	#
 	# The return value of the method will be save in return_value
 	def call_qt_method(method_name, parameters, return_value)
+            parameters = Array(parameters)
 	    adapter = @adapter
 	    
 	    parameter_lists = adapter.getParameterLists(method_name)
