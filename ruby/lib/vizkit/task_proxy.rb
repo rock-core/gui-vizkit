@@ -475,15 +475,16 @@ module Vizkit
                     @__task = if Vizkit.use_log_task? name
                                   Vizkit.info "TaskProxy #{name } is using an Orocos::Log::TaskContext as underlying task"
                                   Vizkit.log_task name
-                              elsif Orocos.initialized?
+                              else
                                   task = Orocos::TaskContext.get(name)
                                   Vizkit.info "Create TaskContext for: #{name}"
                                   task
-                              else 
-                                  Vizkit.info "TaskProxy #{name} can not be found (Orocos is not initialized and there is no log task called like this)."
-                                  raise Orocos::NotFound 
                               end
                     @__connection_code_block.call if @__connection_code_block
+
+                rescue Orocos::NotInitialized
+                    Vizkit.info "TaskProxy #{name} can not be found (Orocos is not initialized and there is no log task called like this)."
+                    @__task = nil
                 rescue Orocos::NotFound, Orocos::CORBAError
                     @__task = nil
                 end
