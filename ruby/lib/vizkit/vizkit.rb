@@ -122,7 +122,24 @@ module Vizkit
     @connections
   end
 
+  class ShortCutFilter < Qt::Object
+    def eventFilter(obj,event)
+      if event.is_a?(Qt::KeyEvent)
+        #if someone is pressing ctrl i show a debug window
+        if event.key == 73 && event.modifiers == Qt::ControlModifier
+          @vizkit_info_viewer ||= Vizkit.default_loader.VizkitInfoViewer
+          @vizkit_info_viewer.auto_update(Vizkit.connections)
+          @vizkit_info_viewer.show
+        end
+      end
+      return false
+    end
+  end
   def self.exec()
+     #install event filter
+     obj = ShortCutFilter.new
+     $qApp.installEventFilter(obj)
+
     # the garbage collector has to be called manually for now 
     # because ruby does not now how many objects were created from 
     # the typelib side 

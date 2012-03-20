@@ -513,6 +513,18 @@ module Vizkit
                 item2, item3 = child_items(item,0)
                 item2.setText("index")
                 item3.setText(object.index.to_s)
+            
+            elsif object.kind_of?(Vizkit::OQConnection)
+                item, item2 = child_items(parent_item,row)
+                item.setText(object.port.full_name)
+                if object.alive?
+                    item2.setText("connected")
+                else
+                    item2.setText("not connected")
+                end
+                item2, item3 = child_items(item,0)
+                item2.setText("update_frequency")
+                item3.setText(object.update_frequency.to_s)
 
             elsif object.kind_of?(Vizkit::TaskProxy)
                 item, item2 = child_items(parent_item,row)
