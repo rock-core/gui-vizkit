@@ -166,9 +166,9 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "Plot2d" do
     def update_orientation(sample,name)
         new_sample = sample.to_euler(2,1,0)
         rename_graph(name,name+"_yaw")
-        update(new_sample[0],name+"_yaw")
-        update(new_sample[1],name+"_pitch")
-        update(new_sample[2],name+"_roll")
+        update(new_sample[0]*(180.00/Math::PI),name+"_yaw")
+        update(new_sample[1]*(180.00/Math::PI),name+"_pitch")
+        update(new_sample[2]*(180.00/Math::PI),name+"_roll")
     end
 
     def update_vector(sample,name)
@@ -201,7 +201,7 @@ end
 
 Vizkit::UiLoader.register_widget_for("Plot2d","Fixnum",:update)
 Vizkit::UiLoader.register_widget_for("Plot2d","Float",:update)
-Vizkit::UiLoader.register_widget_for("Plot2d","Eigen::Quaternion",:update_orientation)
+Vizkit::UiLoader.register_widget_for("Plot2d","/base/Quaterniond",:update_orientation)
 Vizkit::UiLoader.register_widget_for("Plot2d","/base/samples/SonarBeam",:update_sonar_beam)
 Vizkit::UiLoader.register_widget_for("Plot2d","/base/samples/LaserScan",:update_laser_scan)
 Vizkit::UiLoader.register_widget_for("Plot2d","/std/vector</uint8_t>",:update_vector)
@@ -210,3 +210,5 @@ Vizkit::UiLoader.register_widget_for("Plot2d","/std/vector</uint32_t>",:update_v
 Vizkit::UiLoader.register_widget_for("Plot2d","/std/vector</double>",:update_vector)
 Vizkit::UiLoader.register_widget_for("Plot2d","/std/vector</float>",:update_vector)
 Vizkit::UiLoader.register_widget_for("Plot2d","/base/Angle",:update_angle)
+Vizkit::UiLoader.register_widget_for("Plot2d","/base/Vector3d",:update_vector)
+
