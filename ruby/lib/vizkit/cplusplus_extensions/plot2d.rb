@@ -170,11 +170,18 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "Plot2d" do
         update(new_sample[1]*(180.00/Math::PI),name+"_pitch")
         update(new_sample[2]*(180.00/Math::PI),name+"_roll")
     end
+    
+    def update_vector3d(sample,name)
+        rename_graph(name,name+"_x")
+        update(sample[0],name+"_x")
+        update(sample[1],name+"_y")
+        update(sample[2],name+"_z")
+    end
 
     def update_vector(sample,name)
         if sample.size() > 10000
-            Vizkit.logger.warn "Cannot plot #{name}. Vector is too big"
-            return
+           Vizkit.logger.warn "Cannot plot #{name}. Vector is too big"
+           return
         end
         graph = graph2(name)
         graph.clearData
@@ -210,5 +217,5 @@ Vizkit::UiLoader.register_widget_for("Plot2d","/std/vector</uint32_t>",:update_v
 Vizkit::UiLoader.register_widget_for("Plot2d","/std/vector</double>",:update_vector)
 Vizkit::UiLoader.register_widget_for("Plot2d","/std/vector</float>",:update_vector)
 Vizkit::UiLoader.register_widget_for("Plot2d","/base/Angle",:update_angle)
-Vizkit::UiLoader.register_widget_for("Plot2d","/base/Vector3d",:update_vector)
+Vizkit::UiLoader.register_widget_for("Plot2d","/base/Vector3d",:update_vector3d)
 
