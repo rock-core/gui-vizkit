@@ -121,6 +121,8 @@ std::string TypelibQtAdapter::getMethodSignatureFromNumber(std::string methodNam
 	{
 	    if(cnt == methodNr)
 		return signature;
+	    
+	    cnt++;
 	}
     }
 
