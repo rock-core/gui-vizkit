@@ -558,12 +558,22 @@ module Vizkit
         if ::File.file?(path) 
             UiLoader.current_loader_instance = self
             Kernel.load path if !path.match(/.ui.rb$/) && ::File.extname(path) ==".rb"
-        else
-          if ::File.exist?(path)
+        elsif ::File.directory?(path)
             load_extensions ::Dir.glob(::File.join(path,"**","*.rb"))
-          else
+        else
+            # Check if we can find the file in $LOAD_PATH and by adding .rb
+            paths.each do |file|
+                $LOAD_PATH.each do |path|
+                    if File.file?(full_path = File.join(path, file))
+                        load_extensions(full_path)
+                        return
+                    elsif File.file?(full_path = "#{full_path}.rb")
+                        load_extensions(full_path)
+                        return
+                    end
+                end
+            end
             warn "Qt designer plugin file or directory does not exist: #{path.inspect}!"
-          end
         end
       end
     end
