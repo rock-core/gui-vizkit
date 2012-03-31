@@ -6,7 +6,8 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "Plot2d" do
     def default_options()
         options = Hash.new
         options[:auto_scrolling] = true
-        options[:time_window] = 60
+        options[:time_window] = 30              #window size during auto scrolling
+        options[:cached_time_window] = 60        #total cached window size
         options[:pre_time_window] = 5
         options[:colors] = [Qt::red, Qt::green, Qt::blue, Qt::cyan, Qt::magenta, Qt::yellow, Qt::gray]
         options[:reuse] = true
@@ -155,6 +156,7 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "Plot2d" do
     def update(sample,name)
         graph = graph2(name)
         x = time.to_f-@time
+        graph.removeDataBefore(x-@options[:cached_time_window])
         graph.addData(x,sample.to_f)
         if @options[:auto_scrolling]
             getXAxis.setRange(x-@options[:time_window],x+@options[:pre_time_window])
