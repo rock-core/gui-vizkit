@@ -379,10 +379,11 @@ module Vizkit
             elsif object == :NO_SUBFIELD
                 fields << object
             else
-                if item.parent 
+                if item.parent
                     fields = subfield_from_item(item.parent)
-                    if(i = item.text =~ /[(\d)]/)
-                        fields << i
+                    item.text =~ /\[(\d+)\]/
+                    if $1
+                        fields << $1.to_i
                     else
                         fields << item.text
                     end
