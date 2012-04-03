@@ -569,6 +569,8 @@ module Vizkit
                             orow +=1
                         end
                     end
+                    item3.remove_rows(irow,item3.row_count-irow) if irow < item3.row_count
+                    item5.remove_rows(orow,item5.row_count-orow) if orow < item5.row_count
                 end
 
             elsif object.kind_of?(Orocos::Log::TaskContext)
