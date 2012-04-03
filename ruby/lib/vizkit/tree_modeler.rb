@@ -251,7 +251,7 @@ module Vizkit
                     widget_name = Vizkit::ContextMenu.widget_for(port_temp.type_name,tree_view,pos)
                     if widget_name
                         widget = Vizkit.display(port_temp, :widget => widget_name)
-                        widget.setAttribute(Qt::WA_QuitOnClose, false) if widget
+                        widget.setAttribute(Qt::WA_QuitOnClose, false) if widget.is_a? Qt::Widget
                     end
                 end
             #if object is a property or part of the property
