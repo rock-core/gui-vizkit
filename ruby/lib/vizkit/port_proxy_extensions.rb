@@ -101,6 +101,12 @@ module Orocos
 
         #loads the plugins (typekit,transport) into the proxy
         def load_plugins_for_type(type_name)
+            #workaround for int types --> there is no plugin
+            #TODO find a more generic solution
+            if(type_name == "int")
+                Orocos.info "Task #{self.name}: ignore load_plugins_for_type because of type int"
+                return true
+            end
             name = Orocos::find_typekit_for(type_name)
             plugins = Orocos::plugin_libs_for_name(name)
             plugins.each do |kit|
