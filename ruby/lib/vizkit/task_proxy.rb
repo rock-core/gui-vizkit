@@ -313,7 +313,13 @@ module Vizkit
                                                     sample[f]
                                                 end
                                    end
-                                   sample.name
+                                   if sample.respond_to? :name
+                                       sample.name
+                                   elsif sample.class.respond_to? :name
+                                       sample.class.name
+                                   else
+                                       sample.class
+                                   end
                                else
                                    @__port.type_name
                                end
