@@ -22,9 +22,6 @@ class ExportToYaml
                 File.open(@@file_path, 'w') do |io|
                     io.write(YAML.dump(temp))
                 end
-                File.open(@@file_path, 'r') do |io|
-                    puts YAML.load(io.read).inspect
-                end
             end
         end
         :do_not_connect
