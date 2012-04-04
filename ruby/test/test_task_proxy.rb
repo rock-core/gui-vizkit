@@ -115,7 +115,7 @@ class LoaderUiTest < Test::Unit::TestCase
             proxy_reader.read
             temp_reader = task.__task.out_port_proxy_out_test.reader
             writer.write Time.now 
-            sleep 0.2
+            sleep 2.0
             assert(temp_reader.read)
             assert(proxy_reader.read)
             puts "#### NOW I AM KILLING THE PROXY TO TEST RECONNECT #####"
@@ -136,7 +136,7 @@ class LoaderUiTest < Test::Unit::TestCase
 
             proxy_reader.read # this should reconnect the proxy
             writer.write Time.now 
-            sleep 0.4
+            sleep 4.0
             assert(proxy_reader.read)
         end
     end
@@ -173,7 +173,7 @@ class LoaderUiTest < Test::Unit::TestCase
             sample.second.frame_status = :STATUS_EMPTY
             sample.second.data_depth = 1
             writer.write sample 
-            sleep(0.2)
+            sleep(2.0)
             assert(reader.read)
 
             #create a subfield reader
@@ -188,7 +188,7 @@ class LoaderUiTest < Test::Unit::TestCase
             reader2 = subfield_port2.reader
 
             writer.write sample 
-            sleep(0.2)
+            sleep(2.0)
             assert(reader.read.time == time_first) 
             assert(reader2.read) 
         end

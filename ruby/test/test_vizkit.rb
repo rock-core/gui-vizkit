@@ -94,9 +94,9 @@ class LoaderUiTest < Test::Unit::TestCase
             task.start
 
             assert(task.createProxyConnection("test","/base/Time",0.01,true))
-            assert(task.has_port? "in_test")
+            assert(task.has_port? "out_test")
             
-            widget = Vizkit.display task.in_test
+            widget = Vizkit.display task.out_test
             assert(widget)
             widget.close
 

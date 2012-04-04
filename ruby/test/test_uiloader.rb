@@ -27,7 +27,7 @@ class LoaderUiTest < Test::Unit::TestCase
     assert @loader.widget_for("123").is_a? Qt::PushButton
     
     Vizkit::UiLoader.register_widget_for("QPushButton","test",:update2)
-    assert_equal :update2, @loader.callback_fct("QPushButton","test")
+    assert_equal :update2, @loader.callback_fct("QPushButton","test").instance_variable_get(:@sym)
   end
   
   def test_loader_widget_name_for
