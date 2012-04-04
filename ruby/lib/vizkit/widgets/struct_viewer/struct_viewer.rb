@@ -48,4 +48,4 @@ class StructViewer
 end
 
 Vizkit::UiLoader.register_ruby_widget("StructViewer",StructViewer.method(:create_widget))
-Vizkit::UiLoader.register_widget_for("StructViewer",Typelib::Type,:update)
+Vizkit::UiLoader.register_default_widget_for("StructViewer",Typelib::Type,:update)
