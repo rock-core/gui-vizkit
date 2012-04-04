@@ -445,9 +445,22 @@ module Vizkit
         widget_names_for_value(value)
       end
     end  
-    
-    def widget_name_for_value(value)
+
+    def default_widget_name_for_value(value)
       return @default_widget_for_hash[value] if @default_widget_for_hash.has_key?(value)
+      name = if(value.respond_to?(:superclass))
+                default_widget_name_for_value(value.superclass)
+             end
+      return name if name
+      if value.respond_to?(:to_str) && Orocos.registry.include?(value)
+        default_widget_name_for_value(Orocos.registry.get(value))
+      end
+    end
+
+    def widget_name_for_value(value)
+      name = default_widget_name_for_value(value)
+      return name if name
+
       names = widget_names_for_value(value)
       if names.size > 1
         raise "There are more than one widget available for #{value.to_s}: #{names.sort.join(", ")} "+ 
@@ -513,8 +526,21 @@ module Vizkit
       end
     end  
 
+    def default_control_name_for_value(value)
+      return @default_control_for_hash[value] if @default_control_for_hash.has_key?(value)
+      name = if(value.respond_to?(:superclass))
+                default_control_name_for_value(value.superclass)
+             end
+      return name if name
+      if value.respond_to?(:to_str) && Orocos.registry.include?(value)
+        default_control_name_for_value(Orocos.registry.get(value))
+      end
+    end
+
     def control_name_for_value(value)
-      return @default_control_for_hash[value] if @default_widget_for_hash.has_key?(value)
+      name = default_control_name_for_value(value)
+      return name if name
+
       names = control_names_for_value(value)
       if names.size > 1
         raise "There are more than one control available for #{value.to_s}. "+ 
