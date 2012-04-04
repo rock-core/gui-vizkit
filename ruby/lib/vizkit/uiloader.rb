@@ -73,17 +73,17 @@ module Vizkit
       end
 
       #interface for ruby extensions
-      def register_widget_for(widget_name,value,callback_fct=:update)
-        current_loader_instance.register_widget_for(widget_name,value,callback_fct)
+      def register_widget_for(widget_name,value,callback_fct=nil,&block)
+        current_loader_instance.register_widget_for(widget_name,value,callback_fct,&block)
       end
-      def register_default_widget_for(widget_name,value,callback_fct=:update)
-        current_loader_instance.register_default_widget_for(widget_name,value,callback_fct)
+      def register_default_widget_for(widget_name,value,callback_fct=nil,&block)
+        current_loader_instance.register_default_widget_for(widget_name,value,callback_fct,&block)
       end
-      def register_control_for(widget_name,value,callback_fct=:control)
-        current_loader_instance.register_control_for(widget_name,value,callback_fct)
+      def register_control_for(widget_name,value,callback_fct=nil,&block)
+        current_loader_instance.register_control_for(widget_name,value,callback_fct,&block)
       end
-      def register_default_control_for(widget_name,value,callback_fct=:control)
-        current_loader_instance.register_default_control_for(widget_name,value,callback_fct)
+      def register_default_control_for(widget_name,value,callback_fct=nil,&block)
+        current_loader_instance.register_default_control_for(widget_name,value,callback_fct,&block)
       end
       def register_ruby_widget(widget_name,widget_class)
         current_loader_instance.register_ruby_widget(widget_name,widget_class)
@@ -558,12 +558,22 @@ module Vizkit
         if ::File.file?(path) 
             UiLoader.current_loader_instance = self
             Kernel.load path if !path.match(/.ui.rb$/) && ::File.extname(path) ==".rb"
-        else
-          if ::File.exist?(path)
+        elsif ::File.directory?(path)
             load_extensions ::Dir.glob(::File.join(path,"**","*.rb"))
-          else
+        else
+            # Check if we can find the file in $LOAD_PATH and by adding .rb
+            paths.each do |file|
+                $LOAD_PATH.each do |path|
+                    if File.file?(full_path = File.join(path, file))
+                        load_extensions(full_path)
+                        return
+                    elsif File.file?(full_path = "#{full_path}.rb")
+                        load_extensions(full_path)
+                        return
+                    end
+                end
+            end
             warn "Qt designer plugin file or directory does not exist: #{path.inspect}!"
-          end
         end
       end
     end
@@ -620,8 +630,8 @@ module Vizkit
         end
     end
 
-    def register_default_control_for(class_name,value,callback_fct=:control)
-      register_control_for(class_name,value,callback_fct)
+    def register_default_control_for(class_name,value,callback_fct=nil,&block)
+      register_control_for(class_name,value,callback_fct,&block)
       @default_control_for_hash[value] = class_name
       self
     end
@@ -636,10 +646,11 @@ module Vizkit
         end
     end
 
-    def register_control_for(class_name,value,callback_fct=:control)
+    def register_control_for(class_name,value,callback_fct=nil,&block)
+      callback_fct = UiLoader.adapt_callback_block(callback_fct || block || :control)
       #check if widget is available
       if !widget? class_name
-        return nil
+        raise ArgumentError, "#{class_name} is not the name of a known widget. Known widgets are #{available_widgets.sort.join(", ")}"
       end
 
       @registration_files[class_name] = find_registration_file
@@ -649,18 +660,18 @@ module Vizkit
       self
     end
 
-    def register_default_widget_for(class_name,value,callback_fct=:update)
-      register_widget_for(class_name,value,callback_fct)
+    def register_default_widget_for(class_name,value,callback_fct=nil,&block)
+      register_widget_for(class_name,value,callback_fct,&block)
       @default_widget_for_hash[value] = class_name
       self
     end
 
-    def register_callback_fct(class_name,value,callback_fct=:update)
+    def register_callback_fct(class_name,value,callback_fct)
       @callback_fct_hash[class_name] ||= Hash.new
       @callback_fct_hash[class_name][value] = callback_fct
     end
 
-    def register_control_callback_fct(class_name,value,callback_fct=:update)
+    def register_control_callback_fct(class_name,value,callback_fct)
       @control_callback_fct_hash[class_name] ||= Hash.new
       @control_callback_fct_hash[class_name][value] = callback_fct
     end
@@ -682,16 +693,71 @@ module Vizkit
       nil
     end
 
-    def register_widget_for(class_name,value,callback_fct=:update)
+    module Callbacks
+        class MethodNameAdapter
+            def initialize(sym)
+                @sym = sym
+            end
+
+            def bind(object)
+                object.method(@sym)
+            end
+
+            def call(*args, &block)
+                obj = args.shift
+                obj.send(@sym, *args, &block)
+            end
+        end
+
+        class UnboundBlockAdapter
+            def initialize(block)
+                @block = block
+            end
+            def bind(object)
+                BlockAdapter.new(@block, object)
+            end
+            def call(*args, &block)
+                if block
+                    args << block
+                end
+                @block.call(*args)
+            end
+        end
+
+        class BlockAdapter
+            def initialize(block, object)
+                @block, @object = block, object
+            end
+            def call(*args, &block)
+                if block
+                    args << block
+                end
+                @block.call(@object, *args)
+            end
+        end
+    end
+
+    def self.adapt_callback_block(block)
+        if block.respond_to?(:to_sym)
+            block = Callbacks::MethodNameAdapter.new(block)
+        elsif !block.kind_of?(Method)
+            block = Callbacks::UnboundBlockAdapter.new(block)
+        else
+            block
+        end
+    end
+
+    def register_widget_for(class_name,value,callback_fct=nil,&block)
+      callback_fct = Vizkit::UiLoader.adapt_callback_block(callback_fct || block || :update)
+
       #check if widget is available
       if !widget? class_name
- #       puts "Widget #{class_name} is unknown to the loader. Cannot extend it!" 
-        return nil
+        raise ArgumentError, "#{class_name} is not the name of a known widget. Known widgets are #{available_widgets.sort.join(", ")}"
       end
 
       if value.respond_to?(:to_str)
           if typelib_type = find_typelib_type_for_opaque(value)
-              register_widget_for(class_name, typelib_type.name, callback_fct)
+              register_widget_for(class_name, typelib_type.name, callback_fct, &block)
           end
       end
 
@@ -728,13 +794,13 @@ module Vizkit
         return register_3d_plugin_for(widget_name, typelib_type.name, display_method, &filter)
       end
 
-      register_callback_fct('vizkit::Vizkit3DWidget',type_name,:update)
+      register_callback_fct('vizkit::Vizkit3DWidget',type_name,UiLoader.adapt_callback_block(:update))
       VizkitPluginLoaderExtension.type_to_widget_name[type_name] = [widget_name,display_method,filter]
       register_widget_for(widget_name,type_name,"not_used")
     end
 
     def register_default_3d_plugin_for(widget_name,type_name,display_method = nil,&filter)
-      register_callback_fct('vizkit::Vizkit3DWidget',type_name,:update)
+      register_callback_fct('vizkit::Vizkit3DWidget',type_name,UiLoader.adapt_callback_block(:update))
       VizkitPluginLoaderExtension.type_to_widget_name[type_name] = [widget_name,display_method,filter]
       register_default_widget_for(widget_name,type_name,"not_used")
     end

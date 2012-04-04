@@ -1,3 +1,4 @@
+if Vizkit::UiLoader.current_loader_instance.widget?("SonarDisplay") # Can be disabled if VTK is not available
 Vizkit::UiLoader::extend_cplusplus_widget_class "SonarDisplay" do
   def default_options()
       options = Hash.new
@@ -29,3 +30,4 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "SonarDisplay" do
 end
 
 Vizkit::UiLoader.register_default_widget_for("SonarDisplay","/base/samples/SonarBeam",:display)
+end
