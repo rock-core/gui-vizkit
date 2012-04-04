@@ -390,9 +390,12 @@ module Vizkit
                 nil
             end
         end
-         
+
+        #this is used by vizkit.rb to get the last value of the port 
+        #and is currently only supproted by Log::OutputPorts
         def read()
-            sample = method_missing(:read)
+            return nil if !__port.respond_to? :read
+            sample = __port.read
             #we have to filter the sample
             if !@local_options[:subfield].empty? && sample
                 __subfield(sample,@local_options[:subfield])
@@ -486,7 +489,7 @@ module Vizkit
                     if @__task
                         Vizkit.info "Task #{name} is no longer reachable."
                         proxy = ReaderWriterProxy.default_policy[:port_proxy]
-                        proxy.delete_proxy_ports_for_task(name) if proxy && proxy.reachable? && self != proxy
+                        proxy.delete_proxy_ports_for_task(name) if proxy && self != proxy && proxy.reachable?
                     end
 
                     @__readers.clear
