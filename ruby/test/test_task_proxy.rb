@@ -134,9 +134,10 @@ class LoaderUiTest < Test::Unit::TestCase
             assert(task.has_port? "in_test")
             assert(task.has_port? "out_test")
 
-            proxy_reader.read # this should reconnect the proxy
             writer.write Time.now 
-            sleep 4.0
+            proxy_reader.read # this should reconnect the proxy
+
+            sleep(1.0)
             assert(proxy_reader.read)
         end
     end
