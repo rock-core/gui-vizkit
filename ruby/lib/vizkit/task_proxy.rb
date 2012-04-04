@@ -390,6 +390,17 @@ module Vizkit
                 nil
             end
         end
+         
+        def read()
+            sample = method_missing(:read)
+            #we have to filter the sample
+            if !@local_options[:subfield].empty? && sample
+                __subfield(sample,@local_options[:subfield])
+            else
+                sample
+            end
+        end
+
         def __subfield(sample,field=Array.new)
             return sample if(field.empty? || !sample)
             field.each do |f| 
