@@ -188,15 +188,7 @@ module Vizkit
         end
 
         def __subfield(sample,field=Array.new)
-            return sample if(field.empty? || !sample)
-            field.each do |f| 
-                sample = sample[f]
-            end
-            #check if the type is right
-            if(sample.respond_to?(:type_name) && sample.type_name != type_name )
-                raise "Type miss match. Expected type #{type_name} but got #{sample.type_name} for subfield #{field.join(".")} of port #{port.full_name}"
-            end
-            sample
+            port.__subfield(sample,field)
         end
 
         def read(sample = nil)
@@ -397,6 +389,17 @@ module Vizkit
             else
                 nil
             end
+        end
+        def __subfield(sample,field=Array.new)
+            return sample if(field.empty? || !sample)
+            field.each do |f| 
+                sample = sample[f]
+            end
+            #check if the type is right
+            if(sample.respond_to?(:type_name) && sample.type_name != type_name )
+                raise "Type miss match. Expected type #{type_name} but got #{sample.type_name} for subfield #{field.join(".")} of port #{full_name}"
+            end
+            sample
         end
 
         def method_missing(m, *args, &block)
