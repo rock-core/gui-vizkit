@@ -583,7 +583,12 @@ module Vizkit
       paths.each do |path|
         if ::File.file?(path) 
             UiLoader.current_loader_instance = self
-            Kernel.load path if !path.match(/.ui.rb$/) && ::File.extname(path) ==".rb"
+            begin 
+                Kernel.load path if !path.match(/.ui.rb$/) && ::File.extname(path) ==".rb"
+            rescue Exception => e
+                Vizkit.warn "Cannot load vizkit extension #{path}"
+                Vizkit.warn "Backtrace:\n############\n #{e.backtrace.join("\n")}\n############"
+            end
         elsif ::File.directory?(path)
             load_extensions ::Dir.glob(::File.join(path,"**","*.rb"))
         else
