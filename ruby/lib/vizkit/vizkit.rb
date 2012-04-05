@@ -323,4 +323,12 @@ module Vizkit
     @vizkit3d_widget ||= default_loader.create_widget("vizkit::Vizkit3DWidget")
     @vizkit3d_widget
   end
+
+  # Make sure that orocos.rb is properly initialized. This must be called in
+  # each widget that require an Orocos component "behind the scenes"
+  def self.ensure_orocos_initialized
+    if !Orocos.initialized?
+      Orocos.initialize
+    end
+  end
 end

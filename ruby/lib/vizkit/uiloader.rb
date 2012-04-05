@@ -804,9 +804,7 @@ module Vizkit
       # This is used to share the plugin instance between the creation method
       # and the display method
       creation_method = lambda do |parent|
-        if !Orocos.initialized?
-          Orocos.initialize
-        end
+        Vizkit.ensure_orocos_initialized
         widget = Vizkit.vizkit3d_widget
         widget.plugins[widget_name] = widget.createPlugin(lib_name, plugin_name)
         widget
