@@ -391,19 +391,6 @@ module Vizkit
             end
         end
 
-        #this is used by vizkit.rb to get the last value of the port 
-        #and is currently only supproted by Log::OutputPorts
-        def read()
-            return nil if !__port.respond_to? :read
-            sample = __port.read
-            #we have to filter the sample
-            if !@local_options[:subfield].empty? && sample
-                __subfield(sample,@local_options[:subfield])
-            else
-                sample
-            end
-        end
-
         def __subfield(sample,field=Array.new)
             return sample if(field.empty? || !sample)
             begin

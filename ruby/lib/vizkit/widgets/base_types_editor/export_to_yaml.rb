@@ -3,8 +3,8 @@ class ExportToYaml
     end
 
     def config(object,options=Hash.new)
-        sample = if object.respond_to? :read
-                     object.read
+        sample = if object.respond_to? :reader
+                     object.reader.read
                  else
                      object
                  end

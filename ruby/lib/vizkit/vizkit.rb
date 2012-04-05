@@ -56,11 +56,6 @@ module Vizkit
     else
       if type == :display && value.respond_to?(:connect_to) && config_result != :do_not_connect
         value.connect_to widget,options ,&block
-        if value.respond_to?(:read) && sample = value.read # try pushing the current sample if there is one
-          if widget.respond_to?(:loader) && callback_fct = widget.loader.callback_fct(widget,value)
-            callback_fct.call(widget, sample, value.full_name)
-          end
-        end
       end
     end
     widget.show if widget.is_a? Qt::Widget #respond_to is not working because qt is using method_missing
