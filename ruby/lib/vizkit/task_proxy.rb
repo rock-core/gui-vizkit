@@ -406,8 +406,13 @@ module Vizkit
 
         def __subfield(sample,field=Array.new)
             return sample if(field.empty? || !sample)
-            field.each do |f| 
-                sample = sample[f]
+            begin
+                field.each do |f| 
+                    sample = sample[f]
+                end
+            rescue ArgumentError => e
+                Vizkit.info "Cannot extract subfield for port #{port.full_name}: Subfield does not exist!"
+                sample = nil
             end
             #check if the type is right
             if(sample.respond_to?(:type_name) && sample.type_name != type_name )
