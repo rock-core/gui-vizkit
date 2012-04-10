@@ -33,7 +33,9 @@ module Vizkit
 	# The specified method will be called with the given parameters
 	# which have to be of type Typelib::Value
 	#
+        # The method will return true if the call was successfully otherwise false
 	# The return value of the method will be save in return_value
+        # 
 	def call_qt_method(method_name, parameters, return_value)
             parameters = Array(parameters)
 	    adapter = @adapter
@@ -74,6 +76,7 @@ module Vizkit
                         raise
 		    rescue Exception => e  
 			matches = false
+                        Vizkit.warn e
 			break;
 		    end
 		    
