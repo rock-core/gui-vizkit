@@ -172,6 +172,8 @@ module Vizkit
       @ruby_widget_hash = Hash.new
       @cplusplus_extension_hash = Hash.new
       @callback_fct_hash = Hash.new
+      @callback_fct_symbols_hash = Hash.new
+      @callback_fct_filter_hash = Hash.new
       @control_callback_fct_hash = Hash.new
       @vizkit3d_widgets = Set.new
       @registration_files = Hash.new
@@ -624,6 +626,14 @@ module Vizkit
     def cplusplus_widget?(class_name)
       available_widgets.include? class_name && !ruby_widget?(class_name)
     end
+    
+    def available_callback_fcts(class_name)
+        @callback_fct_symbols_hash[class_name]
+    end
+    
+    def filter_for_callback_fct(callback_fct)
+        @callback_fct_filter_hash[callback_fct]
+    end
 
     def callback_fct(class_name,value)
         class_name = if class_name.is_a? Qt::Widget
@@ -779,23 +789,30 @@ module Vizkit
     end
 
     def register_widget_for(class_name,value,callback_fct=nil,&block)
-      callback_fct = Vizkit::UiLoader.adapt_callback_block(callback_fct || block || :update)
-
       #check if widget is available
       if !widget? class_name
         raise ArgumentError, "#{class_name} is not the name of a known widget. Known widgets are #{available_widgets.sort.join(", ")}"
       end
-
+      
       if value.respond_to?(:to_str)
           if typelib_type = find_typelib_type_for_opaque(value)
               register_widget_for(class_name, typelib_type.name, callback_fct, &block)
           end
       end
+        
+      if callback_fct && callback_fct.respond_to?(:to_sym)
+        @callback_fct_symbols_hash[class_name] ||= Array.new
+        @callback_fct_symbols_hash[class_name] << callback_fct if !@callback_fct_symbols_hash[class_name].include?(callback_fct)
+        @callback_fct_filter_hash[callback_fct] = block if block
+      end
+        
+      callback_fct = Vizkit::UiLoader.adapt_callback_block(callback_fct || block || :update)
 
       register_callback_fct(class_name,value,callback_fct)
       @registration_files[class_name] = find_registration_file
       @widget_for_hash[value] ||= Array.new
       @widget_for_hash[value] << class_name if !@widget_for_hash[value].include?(class_name)
+
       self
     end
 
@@ -811,27 +828,10 @@ module Vizkit
       creation_method = lambda do |parent|
         Vizkit.ensure_orocos_initialized
         widget = Vizkit.vizkit3d_widget
-        widget.plugins[widget_name] = widget.createPlugin(lib_name, plugin_name)
-        widget
+        widget.createPlugin(lib_name, plugin_name)
       end
       register_ruby_widget(widget_name,creation_method)
       vizkit3d_widgets << widget_name
-    end
-
-    def register_3d_plugin_for(widget_name, type_name, display_method, &filter)
-      if typelib_type = find_typelib_type_for_opaque(type_name)
-        return register_3d_plugin_for(widget_name, typelib_type.name, display_method, &filter)
-      end
-
-      register_callback_fct('vizkit::Vizkit3DWidget',type_name,UiLoader.adapt_callback_block(:update))
-      VizkitPluginLoaderExtension.type_to_widget_name[type_name] = [widget_name,display_method,filter]
-      register_widget_for(widget_name,type_name,"not_used")
-    end
-
-    def register_default_3d_plugin_for(widget_name,type_name,display_method = nil,&filter)
-      register_callback_fct('vizkit::Vizkit3DWidget',type_name,UiLoader.adapt_callback_block(:update))
-      VizkitPluginLoaderExtension.type_to_widget_name[type_name] = [widget_name,display_method,filter]
-      register_default_widget_for(widget_name,type_name,"not_used")
     end
 
     def extend_cplusplus_widget_class(class_name,&block)
@@ -839,6 +839,8 @@ module Vizkit
       self
     end
 
+    alias :register_3d_plugin_for :register_widget_for
+    alias :register_default_3d_plugin_for :register_default_widget_for
     alias :createWidget :create_widget
     alias :availableWidgets :available_widgets
     alias :addPluginPath :add_plugin_path

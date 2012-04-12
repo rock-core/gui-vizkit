@@ -8,6 +8,10 @@ module VizkitPluginExtension
 	end
         @bridges = Hash.new
         @plugins = Hash.new
+        
+        # this is for backward compatibility, to support the depricated call Vizkit.default_loader._Viz.plugins['_Viz']
+        plugins[self.name] = self
+        
         @adapter_collection = getRubyAdapterCollection
         @adapter_collection.getListOfAvailableAdapter.each do |name|
             plugin = @adapter_collection.getAdapter(name)
@@ -241,20 +245,9 @@ module VizkitPluginLoaderExtension
         end
         plugin.load_adapters
 	plugin.extend(QtTypelibExtension)
+        extendUpdateMethods(plugin)
         plugin
     end
-
-    # The set of plugins loaded by display-a-type infrastructure. It is a
-    # mapping from class name (as declared in #register_ruby_widget) to the
-    # corresponding plugin instance
-    attribute(:plugins) { Hash.new }
-
-    class << self
-        # A mapping from the type names to the plugin widget name (as provided by
-        # #register_3d_plugin_for)
-        attr_reader :type_to_widget_name
-    end
-    @type_to_widget_name = Hash.new
 
     # An association between (task_name, port_name) pairs to the frame in which
     # the data produced by the port is expressed
@@ -308,8 +301,7 @@ module VizkitPluginLoaderExtension
             @connected_transformation_producers[[producer.task, producer.port]] = true
         end
     end
-
-    # Dispatcher method, that dispatches the data to the different plugins
+    
     def update(data, port_name)
         if @connected_to_broadcaster
             if data.class == Types::Transformer::ConfigurationState
@@ -317,25 +309,42 @@ module VizkitPluginLoaderExtension
                 return
             end
         end
+    end
+    
+    def extendUpdateMethods(plugin)
+        uiloader = Vizkit.default_loader
+        fcts = uiloader.available_callback_fcts(plugin.name)
+        fcts.each do |fct|
+            # define the code block for the new method
+            block = lambda do |*args|
+                if args.size < 1 || args.size > 2
+                    Vizkit.error "#{fct.to_s}: wrong parameters"
+                    puts "usage: #{fct.to_s}(data [, port_name]), the port_name is optional but necessary to receive transformations."
+                    return
+                end
+                data = args[0] if args[0]
+                port_name = args[1] if args[1]
+                filter = uiloader.filter_for_callback_fct(fct)
 
-        widget_name, update_method, filter = VizkitPluginLoaderExtension.type_to_widget_name[data.class.name]
-        plugin = plugins[widget_name]
+                #inform widget about the frame for the plugin
+                widget = Vizkit.vizkit3d_widget
+                if frame_name = widget.port_frame_associations[port_name]
+                    Vizkit.debug "#{port_name}: associated to the #{frame_name} frame for plugin #{plugin}"
+                    widget.setPluginDataFrame(frame_name, plugin)
+                else
+                    Vizkit.debug "no known frame for #{port_name}, displayed by widget #{plugin.name} (plugin #{plugin})"
+                end
+                if filter && filter.respond_to?(:call)
+                    filter.call(plugin,data,port_name)
+                else
+                    super(data)
+                end
+            end
 
-	if !update_method && !filter
-	    Kernel.raise ArgumentError, "invalid argument #{data} on #{self}"
-	end
-
-	#inform widget about the frame for the plugin
-        if frame_name = port_frame_associations[port_name]
-            Vizkit.debug "#{port_name}: associated to the #{frame_name} frame for plugin #{plugin}"
-            setPluginDataFrame(frame_name, plugin)
-        else
-            Vizkit.debug "no known frame for #{port_name}, displayed by widget #{widget_name} (plugin #{plugin})"
-        end
-        if filter
-            filter.call(plugin,data,port_name)
-        else
-            plugin.send(update_method,data)
+            # replace the old method
+            plugin.class.instance_eval do 
+                define_method(fct, block)
+            end
         end
     end
 end
