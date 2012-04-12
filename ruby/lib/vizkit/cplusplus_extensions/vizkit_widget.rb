@@ -321,7 +321,7 @@ module VizkitPluginLoaderExtension
         widget_name, update_method, filter = VizkitPluginLoaderExtension.type_to_widget_name[data.class.name]
         plugin = plugins[widget_name]
 
-	if !update_method
+	if !update_method && !filter
 	    Kernel.raise ArgumentError, "invalid argument #{data} on #{self}"
 	end
 
