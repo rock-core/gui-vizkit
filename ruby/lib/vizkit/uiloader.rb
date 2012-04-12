@@ -842,6 +842,14 @@ module Vizkit
     alias :createWidget :create_widget
     alias :availableWidgets :available_widgets
     alias :addPluginPath :add_plugin_path
+
+    # Ruby 1.9.3's Delegate has a different behaviour than 1.8 and 1.9.2. This
+    # is breaking the class definition, as some method calls gets undefined.
+    #
+    # Backward compatibility fix.
+    def method_missing(*args, &block)
+      __getobj__.send(*args, &block)
+    end
   end
 end
 

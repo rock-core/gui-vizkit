@@ -170,7 +170,7 @@ module Vizkit
 
   def self.disconnect_from(handle)
     case handle
-    when Qt::Widget:
+    when Qt::Widget then
       @connections.delete_if do |connection|
         if connection.widget.is_a?(Qt::Object) && handle.findChild(Qt::Widget,connection.widget.objectName)
           connection.disconnect
