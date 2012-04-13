@@ -49,7 +49,7 @@ module Vizkit
             elsif @block
                 Vizkit.info "Create new OQConnection for #{@port.name} and code block #{@block}"
             else
-                raise "Cannot Create OQConnection because no widgte, method or code block is given"
+                raise "Cannot Create OQConnection because no widget, method or code block is given"
             end
         end
 
@@ -66,6 +66,10 @@ module Vizkit
                 if !@callback_fct && @widget.respond_to?(:loader)
                     @type_name = @port.type_name if !@type_name
                     @callback_fct = @widget.loader.callback_fct @widget.class_name,@type_name
+                    # compatibility for vizkit 3d plugins, they are stored without the namespace
+                    if !@callback_fct && @widget.class_name.start_with?("vizkit::")
+                        @callback_fct = @widget.loader.callback_fct @widget.class_name[8..@widget.class_name.size],@type_name
+                    end
                 end
 
                 #use default callback_fct

@@ -828,6 +828,7 @@ module Vizkit
       creation_method = lambda do |parent|
         Vizkit.ensure_orocos_initialized
         widget = Vizkit.vizkit3d_widget
+        widget.show if widget.hidden?
         widget.createPlugin(lib_name, plugin_name)
       end
       register_ruby_widget(widget_name,creation_method)
