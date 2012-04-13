@@ -289,7 +289,7 @@ module Vizkit
     end
 
     def redefine_widget_class_name(widget,class_name)
-      if class_name && (widget.class_name == "Qt::Widget" || "Qt::MainWindow")
+      if class_name && (widget.class_name == "Qt::Widget" || widget.class_name == "Qt::MainWindow")
         widget.instance_variable_set(:@real_class_name,class_name)
         def widget.class_name;@real_class_name;end
         def widget.className;@real_class_name;end
@@ -845,6 +845,14 @@ module Vizkit
     alias :createWidget :create_widget
     alias :availableWidgets :available_widgets
     alias :addPluginPath :add_plugin_path
+
+    # Ruby 1.9.3's Delegate has a different behaviour than 1.8 and 1.9.2. This
+    # is breaking the class definition, as some method calls gets undefined.
+    #
+    # Backward compatibility fix.
+    def method_missing(*args, &block)
+      __getobj__.send(*args, &block)
+    end
   end
 end
 
