@@ -15,23 +15,32 @@ class LogControl
       @play_icon = Qt::Icon.new(File.join(dir,'play.png'))
       setAttribute(Qt::WA_QuitOnClose, true);
 
-      connect(timeline, SIGNAL('indexSliderMoved(int)'), lcd_index, SLOT('display(int)'))
-      connect(timeline, SIGNAL('endMarkerMoved(int)'), lcd_index, SLOT('display(int)'))
-      connect(timeline, SIGNAL('startMarkerMoved(int)'), lcd_index, SLOT('display(int)'))
+      connect(timeline, SIGNAL('indexSliderMoved(int)'), index, SLOT('setValue(int)'))
+      connect(timeline, SIGNAL('endMarkerMoved(int)'), index, SLOT('setValue(int)'))
+      connect(timeline, SIGNAL('startMarkerMoved(int)'), index, SLOT('setValue(int)'))
       timeline.connect(SIGNAL('indexSliderReleased(int)'),self,:slider_released)
       bnext.connect(SIGNAL('clicked()'),self,:bnext_clicked)
       bback.connect(SIGNAL('clicked()'),self,:bback_clicked)
       bstop.connect(SIGNAL('clicked()'),self,:bstop_clicked)
       bplay.connect(SIGNAL('clicked()'),self,:bplay_clicked)
     
-      timeline.connect(SIGNAL("endMarkerReleased(int)")) do |index| 
-        lcd_index.display(@log_replay.sample_index)
+      timeline.connect(SIGNAL("endMarkerReleased(int)")) do |value| 
+        index.setValue(@log_replay.sample_index)
       end
-      timeline.connect(SIGNAL("startMarkerReleased(int)")) do |index| 
-        lcd_index.display(@log_replay.sample_index)
+      timeline.connect(SIGNAL("startMarkerReleased(int)")) do |value| 
+        index.setValue(@log_replay.sample_index)
       end
       timeline.connect SIGNAL('indexSliderClicked()') do 
           bplay_clicked if playing?
+      end
+
+      index.connect SIGNAL('editingFinished()') do
+        if @log_replay.sample_index != index.value && !playing?
+          #prevents the bottom play from starting replay
+          #because of enter
+          @replay_on = true
+          seek_to(index.value)
+        end
       end
 
       @log_replay.align unless @log_replay.aligned?
@@ -39,6 +48,8 @@ class LogControl
       @log_replay.process_qt_events = true
       timeline.setSteps(@log_replay.size-1)
       timeline.setStepSize 1
+      timeline.setSliderIndex(@log_replay.sample_index)
+      index.setMaximum(@log_replay.size-1)
 
       #add replayed streams to tree view 
       @tree_view = Vizkit::TreeModeler.new(treeView)
@@ -50,11 +61,9 @@ class LogControl
         @tree_view.update(@log_replay, nil)
       end
 
-      
       @brush = Qt::Brush.new(Qt::Color.new(200,200,200))
       @widget_hash = Hash.new
 
-      timeline.setSliderIndex(@log_replay.sample_index)
       display_info
     end
 
@@ -66,7 +75,7 @@ class LogControl
       if @log_replay.time
         timestamp.text = @log_replay.time.strftime("%a %D %H:%M:%S." + "%06d" % @log_replay.time.usec)
         lcd_speed.display(@log_replay.actual_speed)
-        lcd_index.display(@log_replay.sample_index)
+        index.setValue(@log_replay.sample_index)
         last_port.text = @log_replay.current_port.full_name if @log_replay.current_port
       else
         timestamp.text = "0"
