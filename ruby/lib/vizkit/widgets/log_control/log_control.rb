@@ -1,10 +1,32 @@
 require File.join(File.dirname(__FILE__), '../..', 'tree_modeler.rb')
 
 class LogControl
-  module Functions
 
+  class CloseAllFilter < Qt::Object
+    def initialize(obj)
+      super(nil)
+      @obj = obj
+    end
+    def eventFilter(obj,event)
+      if event.is_a?(Qt::CloseEvent)
+          if(obj.objectName == @obj.objectName)
+            $qApp.closeAllWindows
+          end
+          return true
+      end
+      return false
+    end
+  end
+
+  module Functions
     def config(replay,options=Hash.new)
       raise "Cannot control #{replay.class}" if !replay.instance_of?(Orocos::Log::Replay)
+
+      #workaround because qt objects created via an ui File
+      #cannot be overloaded
+      setObjectName("LogControl")
+      @event_filter = CloseAllFilter.new(self)
+      $qApp.installEventFilter(@event_filter)
       
       @log_replay = replay
       @replay_on = false 
