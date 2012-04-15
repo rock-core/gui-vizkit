@@ -8,10 +8,8 @@ class LogControl
       @obj = obj
     end
     def eventFilter(obj,event)
-      if event.is_a?(Qt::CloseEvent)
-          if(obj.objectName == @obj.objectName)
-            $qApp.closeAllWindows
-          end
+      if event.is_a?(Qt::CloseEvent) && obj.objectName == @obj.objectName
+          $qApp.closeAllWindows
           return true
       end
       return false
