@@ -186,7 +186,12 @@ module Vizkit
 
       paths = plugin_paths()
       paths.each do|path|
-        load_extensions(path)
+        if File.directory?(path)
+          Vizkit.info "Load extension from #{path}"
+          load_extensions(path)
+        else
+          Vizkit.info "No Directory! Cannot load extensions from #{path}."
+        end
       end
       add_widget_accessor
     end
