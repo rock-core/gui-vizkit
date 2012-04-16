@@ -1,22 +1,33 @@
 require File.join(File.dirname(__FILE__), '../..', 'tree_modeler.rb')
 
 class LogControl
+  class StopAllTimer < Qt::Object
+    def eventFilter(obj,event)
+      if(obj.is_a? Qt::Timer)
+          obj.stop
+          $qApp.quit
+      end
+      return false
+    end
+  end
 
   class CloseAllFilter < Qt::Object
     def initialize(obj)
-      super(nil)
-      @obj = obj
+        @obj = obj
+        super
     end
+    
     def eventFilter(obj,event)
-      if event.is_a?(Qt::CloseEvent) && obj.objectName == @obj.objectName
+      if event.is_a?(Qt::CloseEvent)
          # close all is not compatible with ubuntu 10.04 
          # hole qt ruby will freeze 
          # $qApp.closeAllWindows
          
-         #close all windows manually 
-         @obj.loader.created_widgets.each do |widget|
-             widget.close if widget.is_a?(Qt::Widget)
-         end
+         #workaround to stop a running rock-replay 
+         @obj.instance_variable_set(:@replay_on,false)
+         @stop_all_timer = StopAllTimer.new
+         $qApp.installEventFilter(@stop_all_timer)
+         $qApp.quit
       end
       return false
     end
@@ -30,7 +41,7 @@ class LogControl
       #cannot be overloaded
       setObjectName("LogControl")
       @event_filter = CloseAllFilter.new(self)
-      $qApp.installEventFilter(@event_filter)
+      installEventFilter(@event_filter)
       
       @log_replay = replay
       @replay_on = false 
@@ -124,7 +135,7 @@ class LogControl
       @log_replay.reset_time_sync
       last_warn = Time.now 
       last_info = Time.now
-      while @replay_on
+      while @replay_on 
        bplay_clicked if @log_replay.sample_index >= timeline.getEndMarkerIndex || !@log_replay.step(true)
        if Time.now - last_info > 0.1
         last_info = Time.now
@@ -222,14 +233,6 @@ class LogControl
     short = Qt::Shortcut.new(Qt::KeySequence.new("Ctrl+R"),form)
     short.connect(SIGNAL('activated()'))do
         form.refresh
-    end
-
-    #workaround
-    #it is not possible to define virtual functions for qwidgets which are loaded
-    #via UiLoader (qtruby1.8)
-    #stop replay if all windows are closed
-    $qApp.connect(SIGNAL(:lastWindowClosed)) do 
-      form.instance_variable_set(:@replay_on,false)
     end
 
     form
