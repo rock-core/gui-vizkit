@@ -131,10 +131,10 @@ module VizkitPluginLoaderExtension
         nil
     end
 
-    # Returns the list of plugins that are available through external libraries
+    # Returns the list of plugins that are available
     #
     # The returned value is an array of pairs [lib_name, plugin_name]
-    def custom_plugins
+    def plugins
         libs = Array.new
         path = if !ENV['VIZKIT_PLUGIN_RUBY_PATH']
                    "/usr/local/lib:/usr/lib"
@@ -153,7 +153,7 @@ module VizkitPluginLoaderExtension
                         end
 
                     libname = $1
-                    adapters = getListOfExternalPlugins(qt_plugin)
+                    adapters = qt_plugin.getAvailablePlugins
                     adapters.each do |name|
                         libs << [libname, name]
                     end
@@ -163,28 +163,14 @@ module VizkitPluginLoaderExtension
         libs
     end
 
-    # Returns the list of all available vizkit plugins
-    #
-    # The returned value is an array of arrays. Builtin plugins are stored as
-    # [plugin_name] and custom plugins as [lib_name, plugin_name]. This is so
-    # that, in both cases, one can do:
-    #
-    #   pl = plugins[2]
-    #   createPlugin(*pl)
-    #
-    def plugins
-        builtin_plugins.map { |v| [v] } + custom_plugins
+    # For backward compatibility only
+    def custom_plugins
+	plugins
     end
 
     # Creates a vizkit plugin object
     #
-    # Builtin plugins, whose list is returned by #builtin_plugins, are created
-    # with
-    #
-    #   createPlugin(plugin_name)
-    #
-    # External plugins, whose list is returned by #custom_plugins, are created
-    # with
+    # Plugins, whose list is returned by #custom_plugins, are created with
     #
     #   createPlugin(lib_name, plugin_name)
     #
