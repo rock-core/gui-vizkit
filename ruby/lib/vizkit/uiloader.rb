@@ -278,6 +278,7 @@ module Vizkit
             Vizkit.warn "Widgte #{k} of class #{mapping[k]} could not be loaded! Is this Qt Designer Widget installed?"
         end
       end
+      @created_widgets << form
       form
     end
 
