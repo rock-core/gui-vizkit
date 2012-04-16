@@ -162,6 +162,7 @@ module Vizkit
     # The file in which each widget has been registered, as a map from the
     # widget name to the file path
     attr_reader :registration_files
+    attr_reader :created_widgets
 
     def initialize(parent = nil)
       super(Qt::UiLoader.new(parent))

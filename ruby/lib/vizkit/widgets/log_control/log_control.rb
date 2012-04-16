@@ -9,8 +9,14 @@ class LogControl
     end
     def eventFilter(obj,event)
       if event.is_a?(Qt::CloseEvent) && obj.objectName == @obj.objectName
-          $qApp.closeAllWindows
-          return true
+         # close all is not compatible with ubuntu 10.04 
+         # hole qt ruby will freeze 
+         # $qApp.closeAllWindows
+         
+         #close all windows manually 
+         @obj.loader.created_widgets.each do |widget|
+             widget.close if widget.is_a?(Qt::Widget)
+         end
       end
       return false
     end
