@@ -32,7 +32,8 @@ module VizkitPluginExtension
             singleton_class.class_eval do
 		attr_accessor :type_to_method
 		
-                define_method(plugin.getRubyMethod) do |value|
+                define_method(plugin.getRubyMethod) do |*args|
+		    value, _ = *args
                     value = Typelib.from_ruby(value, expected_ruby_type)
                     bridge.wrap(value, typename, is_opaque)
                 end
