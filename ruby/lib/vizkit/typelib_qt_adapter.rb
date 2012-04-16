@@ -76,7 +76,7 @@ module Vizkit
                         raise
 		    rescue Exception => e  
 			matches = false
-                        Vizkit.warn e
+                        Vizkit.info e
 			break;
 		    end
 		    
