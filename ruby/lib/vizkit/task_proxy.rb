@@ -325,6 +325,28 @@ module Vizkit
             @__task
         end
 
+        #returns true if the underlying port is an input port 
+        #if the task is not running it will always return false 
+        def input? 
+            port = __port
+            if port.respond_to? :writer
+               true
+            else
+               false
+            end
+        end
+        
+        #returns true if the underlying port is an output port 
+        #if the task is not running it will always return false 
+        def output?
+            port = __port
+            if port.respond_to? :reader
+               true
+            else
+               false
+            end
+        end
+
         def connect_to(port,policy = Hash.new)
             raise "Cannot connect port #{full_name} to #{full_name} because task #{task.name} is not reachable!" if !task.reachable?
             raise "Cannot connect port #{full_name} to #{full_name} because task #{port.task.name} is not reachable!" if !port.task.reachable?
