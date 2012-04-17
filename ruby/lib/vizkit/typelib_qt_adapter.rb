@@ -1,4 +1,11 @@
+begin 
 require 'TypelibQtAdapter'
+rescue Exception => e
+    #no logger is available at this point so create one 
+    log = Logger.new(STDOUT)
+    log.error "!!! Vizkit is not fully build and installed !!!"
+    raise e
+end
 
 module Vizkit
     class TypelibQtAdapter
