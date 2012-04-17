@@ -465,6 +465,7 @@ module Vizkit
             @__connection_code_block = block
             @__readers = Hash.new
             @__ports = Hash.new
+            @__state = :NotReachable
             Vizkit.info "Create TaskProxy for task: #{name}"
 
             #needed to automatically track log task
@@ -522,6 +523,9 @@ module Vizkit
                     @__task = nil
                 rescue Orocos::NotFound, Orocos::CORBAError
                     @__task = nil
+                rescue Orocos::NoModel
+                    @__task = nil 
+                    @__state = :NoModel 
                 end
             end
             @__task != nil
@@ -562,7 +566,7 @@ module Vizkit
             if ping
                 @__task.state
             else
-                :not_reachable
+                @__state
             end
         end
 
