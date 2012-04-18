@@ -146,7 +146,12 @@ module Vizkit
      elsif Orocos::CORBA.initialized?
          proxy =  ReaderWriterProxy.default_policy[:port_proxy]
          proxy.__change_name("port_proxy_#{ENV["USERNAME"]}_#{Process.pid}")
-         Orocos.run "port_proxy::Task" => proxy.name, :output => "%m-%p.txt" do
+         output = if @port_proxy_log || Vizkit.logger.level < Logger::WARN
+                    "%m-%p.txt"
+                  else
+                      nil
+                  end
+         Orocos.run "port_proxy::Task" => proxy.name, :output => output do
              proxy.start
              #wait unti the proxy is running 
              while !proxy.running?
@@ -310,8 +315,10 @@ module Vizkit
     # A port can also be set directly in
     # Vizkit.vizkit3d_transformer_configuration
     attr_accessor :vizkit3d_transformer_broadcaster_name
+    attr_accessor :port_proxy_log
   end
   @vizkit3d_transformer_broadcaster_name = ['transformer_broadcaster', 'configuration_state']
+  @port_proxy_log = false
 
   #returns the instance of the vizkit 3d widget 
   def self.vizkit3d_widget
