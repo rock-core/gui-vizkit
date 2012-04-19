@@ -835,7 +835,7 @@ module Vizkit
     def register_3d_plugin(widget_name,lib_name,plugin_name)
       # This is used to share the plugin instance between the creation method
       # and the display method
-      creation_method = lambda do |parent|
+      creation_method = lambda do |*parent|
         Vizkit.ensure_orocos_initialized
         widget = Vizkit.vizkit3d_widget
         widget.show if widget.hidden?
