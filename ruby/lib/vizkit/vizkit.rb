@@ -146,10 +146,12 @@ module Vizkit
      elsif Orocos::CORBA.initialized?
          proxy =  ReaderWriterProxy.default_policy[:port_proxy]
          proxy.__change_name("port_proxy_#{ENV["USERNAME"]}_#{Process.pid}")
-         output = if @port_proxy_log || Vizkit.logger.level < Logger::WARN
+         output = if @port_proxy_log.respond_to?(:to_str)
+                    @port_proxy_log
+                  elsif @port_proxy_log || (@port_proxy_log.nil? && Vizkit.logger.level < Logger::WARN)
                     "%m-%p.txt"
                   else
-                      nil
+                    "/dev/null"
                   end
          Orocos.run "port_proxy::Task" => proxy.name, :output => output do
              proxy.start
@@ -315,10 +317,24 @@ module Vizkit
     # A port can also be set directly in
     # Vizkit.vizkit3d_transformer_configuration
     attr_accessor :vizkit3d_transformer_broadcaster_name
+
+    # Control of the output of the port proxy started by Vizkit
+    #
+    # If nil (the default), the output of the port proxy is discarded if the
+    # loglevel of Vizkit.logger is WARN or higher. Otherwise, the port proxy
+    # output is port_proxy-%p.log (where %p is the PID).
+    #
+    # If set to false, the output is always disabled
+    #
+    # If set to true, the output is always enabled with the default output file
+    # of port_proxy-%p.log (where %p is the PID).
+    #
+    # Finally, if set to a string, the output is always enabled and uses the
+    # provided file name.
     attr_accessor :port_proxy_log
   end
   @vizkit3d_transformer_broadcaster_name = ['transformer_broadcaster', 'configuration_state']
-  @port_proxy_log = false
+  @port_proxy_log = nil
 
   #returns the instance of the vizkit 3d widget 
   def self.vizkit3d_widget
