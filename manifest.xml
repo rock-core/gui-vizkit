@@ -10,13 +10,14 @@
     <depend package="base/types" />
     <depend package="external/yaml-cpp" />
     <depend package="drivers/transformer" />
-    <depend package="drivers/orogen/transformer" />
     <!-- needed for the vizkit/Ruby parts -->
-    <depend package="tools/orocos.rb" optional="1" />
     <rosdep name="osg" />
     <rosdep name="qt4" />
     <rosdep name="qt-designer" />
-    <rosdep name="qtruby" />
-    <rosdep name="tools/port_proxy" />
-    <rosdep name="gui/rock_widget_collection" />
+
+    <depend package="drivers/orogen/transformer" optional="1"/>
+    <depend package="tools/orocos.rb" optional="1" />
+    <depend package="qtruby" optional="1"/>
+    <depend package="tools/port_proxy" optional="1"/>
+    <depend package="gui/rock_widget_collection"  optional="1"/>
 </package>
