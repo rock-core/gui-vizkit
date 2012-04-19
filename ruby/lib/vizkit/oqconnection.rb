@@ -136,8 +136,8 @@ module Vizkit
             raise
         rescue Exception => e
             Vizkit.warn "could not read on #{reader}: #{e.message}"
-            0.upto(5) do |i|
-                Vizkit.warn e.backtrace.to_a[i]
+            e.backtrace.each do |line|
+                Vizkit.warn "  #{line}"
             end
             disconnect
         end
@@ -164,6 +164,9 @@ module Vizkit
             raise
         rescue Exception => e
             Vizkit.warn "failed to reconnect: #{e.message}"
+            e.backtrace.each do |line|
+                Vizkit.warn "  #{line}"
+            end
             false
         end
 

@@ -109,14 +109,14 @@ module Vizkit
                            raise
                        rescue Exception => e
                            if(disable_proxy_on_error)
-                               Vizkit.warn "Disabling proxying of port #{@__port.full_name}: #{e}"
+                               Vizkit.warn "Disabling proxying of port #{@__port.full_name}: #{e.message}"
                                e.backtrace.each do |line|
                                    Vizkit.warn "  #{line}"
                                end
                                @__orogen_port_proxy = nil
                                @__port.__port
                             else
-                               Vizkit.info "cannot proxy port #{@__port.full_name}: #{e}"
+                               Vizkit.info "cannot proxy port #{@__port.full_name}: #{e.message}"
                                e.backtrace.each do |line|
                                    Vizkit.info "  #{line}"
                                end
@@ -440,7 +440,10 @@ module Vizkit
                 super
             end
         rescue Orocos::NotFound, Orocos::CORBAError => e
-            Vizkit.warn "PortProxy #{full_name} got an Error: #{e}"
+            Vizkit.warn "PortProxy #{full_name} got an error: #{e.message}"
+            e.backtrace.each do |line|
+                Orocos.warn "  #{line}"
+            end
             @__port = nil
         end
     end
