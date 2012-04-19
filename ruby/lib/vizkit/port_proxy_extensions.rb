@@ -107,12 +107,12 @@ module Orocos
                 Orocos.info "Task #{self.name}: ignore load_plugins_for_type because of type int"
                 return true
             end
-            name = Orocos::find_typekit_for(type_name)
-            plugins = Orocos::plugin_libs_for_name(name)
+            name = Orocos.find_typekit_for(type_name)
+            plugins = Orocos.plugin_libs_for_name(name)
             plugins.each do |kit|
-                Orocos.info "Task #{self.name}: trying to load plugin #{kit}"
+                Orocos.info "Task #{self.name}: loading plugin #{kit} for type #{type_name}"
                 if !loadTypekit(kit)
-                    Orocos.warn "Task #{self.name} cannot load plugin #{kit}! Is the task running on another machine?"
+                    Orocos.warn "Task #{self.name} failed to load plugin #{kit} to access type #{type_name}! Is the task running on another machine ?"
                     return nil
                 end
             end
