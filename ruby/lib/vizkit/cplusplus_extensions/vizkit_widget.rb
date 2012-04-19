@@ -219,7 +219,6 @@ module VizkitPluginLoaderExtension
 	plugin = plugin.createPlugin(plugin_name)
 	addPlugin(plugin)
 	plugin_name = lib_name unless plugin_name
-	lib_name = "lib#{lib_name}-viz.so"
 
         plugin.extend VizkitPluginExtension
         plugin.instance_variable_set(:@__name__,plugin_name)
@@ -300,7 +299,13 @@ module VizkitPluginLoaderExtension
     
     def extendUpdateMethods(plugin)
         uiloader = Vizkit.default_loader
-        fcts = uiloader.available_callback_fcts(plugin.name)
+        fcts = uiloader.available_callback_fcts(plugin.name) ||
+	    uiloader.available_callback_fcts("#{plugin.lib_name}::#{plugin.name}") ||
+	    uiloader.available_callback_fcts("vizkit::#{plugin.name}")
+	if !fcts
+	    Kernel.raise ArgumentError, "no callback functions registered for Vizkit3D plugin #{plugin.name} from #{plugin.lib_name}"
+	end
+
         fcts.each do |fct|
             # define the code block for the new method
             block = lambda do |*args|
