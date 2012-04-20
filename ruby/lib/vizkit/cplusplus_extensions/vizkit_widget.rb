@@ -199,7 +199,7 @@ module VizkitPluginLoaderExtension
     #
     #   createPlugin("vfh_star")
     #
-    def createPlugin(lib_name, plugin_name = nil)
+    def createPlugin(lib_name, plugin_name = nil,ruby_name=nil)
 	path = findPluginPath(lib_name)
 	
 	#try to load build in plugins
@@ -230,6 +230,8 @@ module VizkitPluginLoaderExtension
 	    end
 	end
 	plugin = plugin.createPlugin(plugin_name)
+        redefine_widget_class_name(plugin,ruby_name)
+        
 	addPlugin(plugin)
 	plugin_name = lib_name unless plugin_name
 	lib_name = "lib#{lib_name}-viz.so"
@@ -313,7 +315,7 @@ module VizkitPluginLoaderExtension
     
     def extendUpdateMethods(plugin)
         uiloader = Vizkit.default_loader
-        fcts = uiloader.available_callback_fcts(plugin.name)
+        fcts = uiloader.callback_fcts(plugin)
         fcts.each do |fct|
             # define the code block for the new method
             block = lambda do |*args|
@@ -324,7 +326,6 @@ module VizkitPluginLoaderExtension
                 end
                 data = args[0] if args[0]
                 port_name = args[1] if args[1]
-                filter = uiloader.filter_for_callback_fct(fct)
 
                 #inform widget about the frame for the plugin
                 widget = Vizkit.vizkit3d_widget
@@ -334,14 +335,8 @@ module VizkitPluginLoaderExtension
                 else
                     Vizkit.debug "no known frame for #{port_name}, displayed by widget #{plugin.name} (plugin #{plugin})"
                 end
-                if filter && filter.respond_to?(:call)
-                    filter.call(plugin,data,port_name)
-                else
-                    super(data)
-                end
             end
 
-            # replace the old method
             plugin.class.instance_eval do 
                 define_method(fct, block)
             end
