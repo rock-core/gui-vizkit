@@ -108,6 +108,7 @@ module VizkitPluginLoaderExtension
         loader = Qt::PluginLoader.new(path)
         loader.load
         if !loader.isLoaded
+            Vizkit.error "Cannot load Vizkit3D pluign #{path}. Library seems to be incompatible to the qt loader. Have you created a plugin factory?"
             Kernel.raise "Cannot load #{path}. Last error is: #{loader.errorString}"
         end
         plugin_instance = loader.instance
