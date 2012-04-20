@@ -304,7 +304,8 @@ module VizkitPluginLoaderExtension
 	    uiloader.available_callback_fcts("#{plugin.lib_name}::#{plugin.name}") ||
 	    uiloader.available_callback_fcts("vizkit::#{plugin.name}")
 	if !fcts
-	    Kernel.raise ArgumentError, "no callback functions registered for Vizkit3D plugin #{plugin.name} from #{plugin.lib_name}"
+	    Vizkit.info "no callback functions registered for Vizkit3D plugin #{plugin.ruby_name} (c++ name: #{plugin.name}) from #{plugin.lib_name}"
+            return
 	end
 
         fcts.each do |fct|
