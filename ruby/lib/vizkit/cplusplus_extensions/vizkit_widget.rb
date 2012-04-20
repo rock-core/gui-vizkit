@@ -187,7 +187,7 @@ module VizkitPluginLoaderExtension
     #
     #   createPlugin("vfh_star")
     #
-    def createPlugin(lib_name, plugin_name = nil)
+    def createPlugin(lib_name, plugin_name = nil,ruby_name=nil)
 	path = findPluginPath(lib_name)
 	
 	#try to load build in plugins
@@ -225,6 +225,11 @@ module VizkitPluginLoaderExtension
         plugin.instance_variable_set(:@__name__,plugin_name)
         def plugin.name 
             @__name__
+        end
+        ruby_name = plugin_name unless ruby_name
+        plugin.instance_variable_set(:@__ruby_name__,ruby_name)
+        def plugin.ruby_name
+            @__ruby_name__
         end
         plugin.instance_variable_set(:@__lib_name__,lib_name)
         def plugin.lib_name
@@ -300,9 +305,9 @@ module VizkitPluginLoaderExtension
     
     def extendUpdateMethods(plugin)
         uiloader = Vizkit.default_loader
-        fcts = uiloader.available_callback_fcts(plugin.name) ||
-	    uiloader.available_callback_fcts("#{plugin.lib_name}::#{plugin.name}") ||
-	    uiloader.available_callback_fcts("vizkit::#{plugin.name}")
+        fcts = uiloader.available_callback_fcts(plugin.ruby_name) ||
+	    uiloader.available_callback_fcts("#{plugin.lib_name}::#{plugin.ruby_name}") ||
+	    uiloader.available_callback_fcts("vizkit::#{plugin.ruby_name}")
 	if !fcts
 	    Vizkit.info "no callback functions registered for Vizkit3D plugin #{plugin.ruby_name} (c++ name: #{plugin.name}) from #{plugin.lib_name}"
             return
