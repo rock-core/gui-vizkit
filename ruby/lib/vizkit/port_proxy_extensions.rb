@@ -1,5 +1,9 @@
+require 'utilrb/object/attribute'
+
 module Orocos
     extend_task 'port_proxy::Task' do
+        attribute(:proxied_ports) { Hash.new }
+
         #returns the Output-/InputPort of the proxy which writes/reads the data from/to the given port
         #raises an exception if the proxy is unable to proxy the given port 
         def proxy_port(port,options=Hash.new)
@@ -31,14 +35,14 @@ module Orocos
             #all instances are using the same hash because only one proxy per ruby instance is allowed
             @proxy_name ||= self.name
             raise "Cannot handle multiple PortProxies from the same ruby instance!" if @proxy_name != self.name
-            if @proxied_ports.has_key?(full_name) && @proxied_ports[full_name].task.reachable?
+            if proxied_ports.has_key?(full_name) && proxied_ports[full_name].task.reachable?
                 if port.is_a? Orocos::OutputPort
                     port_out
                 else
                     port_in
                 end
             else
-                @proxied_ports[full_name] = port
+                proxied_ports[full_name] = port
                 if port.respond_to? :reader
                     port.connect_to port_in, policy
                     Orocos.info "Task #{full_name}: Connecting #{port.full_name} with #{port_in.full_name}, policy=#{policy}"
@@ -70,8 +74,8 @@ module Orocos
                    else
                        task.name
                    end
-            if @proxied_ports
-              @proxied_ports.delete_if do |key,value| 
+            if proxied_ports
+              proxied_ports.delete_if do |key,value| 
                   if(value.task.name == name) 
                       delete_proxy_port(value)
                       true
@@ -134,11 +138,11 @@ module Orocos
             return false if !reachable? 
             full_name = port_full_name(port)
             return false if !has_port?("in_#{full_name}")
-            if !@proxied_ports.has_key?(full_name)
+            if !proxied_ports.has_key?(full_name)
                 Vizkit.warn "Task #{self.name} is managed by an other ruby instance!"
-                @proxied_ports[full_name] = port
+                proxied_ports[full_name] = port
             end
-            return false if !@proxied_ports[full_name].task.reachable?
+            return false if !proxied_ports[full_name].task.reachable?
             true
         end
     end
