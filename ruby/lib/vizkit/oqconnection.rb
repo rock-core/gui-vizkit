@@ -41,6 +41,11 @@ module Vizkit
                         PortProxy.new task,port,options
                     end
             raise "Cannot create OQConnection because no port is given" if !@port
+            #use update_frequency as periodicity for the port proxy
+            #if not given as option
+            if !@policy.has_key? :port_proxy_periodicity
+               @policy[:port_proxy_periodicity] = 1.0/@local_options[:update_frequency]
+            end
             @reader = @port.reader @policy
             if widget
                 Vizkit.info "Create new OQConnection for #{@port.name} and qt object #{widget}"
