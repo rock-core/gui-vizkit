@@ -218,6 +218,13 @@ module VizkitPluginLoaderExtension
 	    end
 	end
 	plugin = plugin.createPlugin(plugin_name)
+        if ruby_name
+            plugin.setPluginName(ruby_name)
+            plugin.instance_variable_set(:@ruby_class_name,ruby_name)
+            def plugin.class_name;@ruby_class_name;end
+            def plugin.className;@ruby_class_name;end
+        end
+
 	addPlugin(plugin)
 	plugin_name = lib_name unless plugin_name
 
@@ -305,14 +312,11 @@ module VizkitPluginLoaderExtension
     
     def extendUpdateMethods(plugin)
         uiloader = Vizkit.default_loader
-        fcts = uiloader.available_callback_fcts(plugin.ruby_name) ||
-	    uiloader.available_callback_fcts("#{plugin.lib_name}::#{plugin.ruby_name}") ||
-	    uiloader.available_callback_fcts("vizkit::#{plugin.ruby_name}")
+        fcts = uiloader.callback_fcts(plugin)
 	if !fcts
 	    Vizkit.info "no callback functions registered for Vizkit3D plugin #{plugin.ruby_name} (c++ name: #{plugin.name}) from #{plugin.lib_name}"
             return
 	end
-
         fcts.each do |fct|
             # define the code block for the new method
             block = lambda do |*args|
@@ -323,7 +327,6 @@ module VizkitPluginLoaderExtension
                 end
                 data = args[0] if args[0]
                 port_name = args[1] if args[1]
-                filter = uiloader.filter_for_callback_fct(fct)
 
                 #inform widget about the frame for the plugin
                 widget = Vizkit.vizkit3d_widget
@@ -333,14 +336,9 @@ module VizkitPluginLoaderExtension
                 else
                     Vizkit.debug "no known frame for #{port_name}, displayed by widget #{plugin.name} (plugin #{plugin})"
                 end
-                if filter && filter.respond_to?(:call)
-                    filter.call(plugin,data,port_name)
-                else
-                    super(data)
-                end
+                super data
             end
 
-            # replace the old method
             plugin.class.instance_eval do 
                 define_method(fct, block)
             end

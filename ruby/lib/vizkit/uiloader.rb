@@ -173,8 +173,6 @@ module Vizkit
       @ruby_widget_hash = Hash.new
       @cplusplus_extension_hash = Hash.new
       @callback_fct_hash = Hash.new
-      @callback_fct_symbols_hash = Hash.new
-      @callback_fct_filter_hash = Hash.new
       @control_callback_fct_hash = Hash.new
       @vizkit3d_widgets = Set.new
       @registration_files = Hash.new
@@ -637,14 +635,24 @@ module Vizkit
       available_widgets.include? class_name && !ruby_widget?(class_name)
     end
     
-    def available_callback_fcts(class_name)
-        @callback_fct_symbols_hash[class_name]
+    def callback_fcts(class_name)
+        class_name = if class_name.is_a? Qt::Object
+                         class_name.class_name
+                     else
+                         class_name
+                     end
+        if @callback_fct_hash.has_key?(class_name)
+            result = @callback_fct_hash[class_name].values.map do|callback| 
+                if callback.respond_to?(:to_sym)
+                    callback.to_sym
+                end
+            end
+            result.compact
+        else
+            Array.new
+        end
     end
     
-    def filter_for_callback_fct(callback_fct)
-        @callback_fct_filter_hash[callback_fct]
-    end
-
     def callback_fct(class_name,value)
         class_name = if class_name.is_a? Qt::Widget
                          class_name.class_name
@@ -746,8 +754,14 @@ module Vizkit
 
     module Callbacks
         class MethodNameAdapter
+            attr_reader :sym
+
             def initialize(sym)
                 @sym = sym
+            end
+
+            def to_sym
+                sym
             end
 
             def bind(object)
@@ -808,12 +822,6 @@ module Vizkit
           if typelib_type = find_typelib_type_for_opaque(value)
               register_widget_for(class_name, typelib_type.name, callback_fct, &block)
           end
-      end
-        
-      if callback_fct && callback_fct.respond_to?(:to_sym)
-        @callback_fct_symbols_hash[class_name] ||= Array.new
-        @callback_fct_symbols_hash[class_name] << callback_fct if !@callback_fct_symbols_hash[class_name].include?(callback_fct)
-        @callback_fct_filter_hash[callback_fct] = block if block
       end
         
       callback_fct = Vizkit::UiLoader.adapt_callback_block(callback_fct || block || :update)
