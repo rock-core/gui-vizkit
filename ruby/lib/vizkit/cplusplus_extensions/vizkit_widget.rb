@@ -3,16 +3,17 @@ module VizkitPluginExtension
     attr_reader :plugins 
 
     def load_adapters
+        # code for backward compatibility
+        # this is for backward compatibility, to support the depricated call Vizkit.default_loader._Viz.plugins['_Viz']
         if !Orocos.master_project # Check if Orocos has been initialized
    	    raise RuntimeError, 'you need to call Orocos.initialize before using the Ruby bindings for Vizkit3D'
 	end
         @bridges = Hash.new
         @plugins = Hash.new
         
-        # this is for backward compatibility, to support the depricated call Vizkit.default_loader._Viz.plugins['_Viz']
         plugins[self.name] = self
-        
         @adapter_collection = getRubyAdapterCollection
+        return if !@adapter_collection
         @adapter_collection.getListOfAvailableAdapter.each do |name|
             plugin = @adapter_collection.getAdapter(name)
             bridge = TypelibToQVariant.create_bridge
@@ -69,22 +70,66 @@ module VizkitPluginExtension
     def pretty_print(pp)
         pp.text "=========================================================="
         pp.breakable
-        pp.text "Vizkit3d Plugin: #{name}"
+        pp.text "Vizkit3d Plugin: #{name} (#{class_name})"
+        pp.breakable
+        pp.text "Ruby Name: #{ruby_class_name}"
         pp.breakable
         pp.text "Library name: #{lib_name}"
         pp.breakable
+        
         pp.text "----------------------------------------------------------"
-
         pp.breakable 
         pp.text "  Methods:"
-        @plugins.each_value do |plugin|
+        methods = method_list-["destroyed(QObject*)", "destroyed()", "deleteLater()", "_q_reregisterTimers(void*)", "getRubyAdapterCollection()"]
+        methods.each do |method|
             pp.breakable
-            if plugin.getRubyMethod.match(/^update/)
-                pp.text "    updateData(#{plugin.expected_ruby_type.name}) (alias of #{plugin.getRubyMethod})" 
-            else
-                pp.text "    #{plugin.getRubyMethod}(#{plugin.expected_ruby_type.name})"
+            pp.text "    " + method 
+        end
+        #begin
+        #backward compatibility
+        @plugins.each_pair do |key,plugin|
+            if plugin != self
+                pp.breakable
+                pp.text "    " + "depricated: #{key} (#{plugin.expected_ruby_type})" 
+                pp.breakable
+                pp.text "    " + "depricated: #{updateData} (#{plugin.expected_ruby_type})" 
             end
         end
+        #end
+        pp.breakable 
+
+        pp.text "----------------------------------------------------------"
+        pp.breakable 
+        pp.text "  Registerd for:"
+        pp.breakable
+        registered_for.each do |val|
+            callback = callback_fct(val)
+            callback = if callback.respond_to? :to_sym
+                           callback.to_sym
+                        else
+                           callback.class.name
+                        end
+            pp.text "    #{val} (#{callback})"
+            pp.breakable
+        end
+        pp.text "----------------------------------------------------------"
+        pp.breakable
+    end
+
+    def registered_for
+        loader.registered_for(self)
+    end
+
+    def callback_fct(value)
+        loader.callback_fct(ruby_class_name,value)
+    end
+
+    def name
+        @__name__
+    end
+
+    def lib_name
+        @__lib_name__
     end
 end
 
@@ -187,7 +232,7 @@ module VizkitPluginLoaderExtension
     #
     #   createPlugin("vfh_star")
     #
-    def createPlugin(lib_name, plugin_name = nil,ruby_name=nil)
+    def createPlugin(lib_name, plugin_name = nil,ruby_name = nil)
 	path = findPluginPath(lib_name)
 	
 	#try to load build in plugins
@@ -218,33 +263,16 @@ module VizkitPluginLoaderExtension
 	    end
 	end
 	plugin = plugin.createPlugin(plugin_name)
-        if ruby_name
-            plugin.setPluginName(ruby_name)
-            plugin.instance_variable_set(:@ruby_class_name,ruby_name)
-            def plugin.class_name;@ruby_class_name;end
-            def plugin.className;@ruby_class_name;end
-        end
-
 	addPlugin(plugin)
-	plugin_name = lib_name unless plugin_name
 
         plugin.extend VizkitPluginExtension
-        plugin.instance_variable_set(:@__name__,plugin_name)
-        def plugin.name 
-            @__name__
-        end
-        ruby_name = plugin_name unless ruby_name
-        plugin.instance_variable_set(:@__ruby_name__,ruby_name)
-        def plugin.ruby_name
-            @__ruby_name__
-        end
-        plugin.instance_variable_set(:@__lib_name__,lib_name)
-        def plugin.lib_name
-            @__lib_name__
-        end
         plugin.load_adapters
+
 	plugin.extend(QtTypelibExtension)
-        extendUpdateMethods(plugin)
+	plugin_name = lib_name unless plugin_name
+        plugin.instance_variable_set(:@__name__,plugin_name)
+        plugin.instance_variable_set(:@__lib_name__,lib_name)
+        extendUpdateMethods(plugin,ruby_name)
         plugin
     end
 
@@ -310,11 +338,11 @@ module VizkitPluginLoaderExtension
         end
     end
     
-    def extendUpdateMethods(plugin)
+    def extendUpdateMethods(plugin,ruby_name)
         uiloader = Vizkit.default_loader
-        fcts = uiloader.callback_fcts(plugin)
+        fcts = uiloader.callback_fcts(ruby_name)
 	if !fcts
-	    Vizkit.info "no callback functions registered for Vizkit3D plugin #{plugin.ruby_name} (c++ name: #{plugin.name}) from #{plugin.lib_name}"
+	    Vizkit.info "no callback functions registered for Vizkit3D plugin #{plugin.ruby_class_name} (c++ name: #{plugin.name}) from #{plugin.lib_name}"
             return
 	end
         fcts.each do |fct|

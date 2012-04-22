@@ -249,6 +249,14 @@ module Vizkit
         def widget.ruby_class_name
           @__ruby_class_name__
         end
+
+        #if plugin is a qt widget add pretty_print 
+        if widget.is_a? Qt::Widget
+            def widget.pretty_print(pp)
+                loader.pretty_print_widget(pp,self)
+            end
+        end
+
       else 
         #look for c++ widget
         widget = super(class_name,parent)
@@ -314,6 +322,10 @@ module Vizkit
       def pretty_print(pp)
         loader.pretty_print_widget(pp, class_name)
       end
+
+      def registered_for
+        loader.registered_for(self)
+      end
     end
 
     def extend_widget(widget,mapping = nil)
@@ -334,6 +346,7 @@ module Vizkit
     end
 
     def pretty_print_widget(pp,widget_name)
+      widget_name = normalize_class_name(widget_name)
       extension = cplusplus_extension_hash[widget_name]
       ruby_widget_new = ruby_widget_hash[widget_name]
       pp.text "=========================================================="
@@ -370,7 +383,10 @@ module Vizkit
           klass.instance_methods.each do |method|
             if !methods.include? method
               pp.text "ruby method: #{method.to_s}"
+              begin
               pp.text "(#{klass.instance_method(method).arity} parameter)"
+              rescue
+              end
               pp.breakable
             end
           end
@@ -378,11 +394,11 @@ module Vizkit
       end
     end
 
-    def registered_for(widget)
-      widget = widget.class_name if widget.is_a? Qt::Widget
+    def registered_for(class_name)
+      class_name = normalize_class_name(class_name)
       val = Array.new
       @widget_for_hash.each_pair do |key,value|
-        val << key if value == widget  || (value.is_a?(Array) && value.include?(widget))
+        val << key if value == class_name  || (value.is_a?(Array) && value.include?(class_name))
       end
       val
     end
@@ -634,13 +650,21 @@ module Vizkit
     def cplusplus_widget?(class_name)
       available_widgets.include? class_name && !ruby_widget?(class_name)
     end
+
+    def normalize_class_name(class_name)
+        if class_name.is_a? Qt::Object
+            if class_name.respond_to?:ruby_class_name
+                class_name.ruby_class_name
+            else
+                class_name.class_name
+            end
+        else
+            class_name
+        end
+    end
     
     def callback_fcts(class_name)
-        class_name = if class_name.is_a? Qt::Object
-                         class_name.class_name
-                     else
-                         class_name
-                     end
+        class_name = normalize_class_name(class_name)
         if @callback_fct_hash.has_key?(class_name)
             result = @callback_fct_hash[class_name].values.map do|callback| 
                 if callback.respond_to?(:to_sym)
@@ -654,11 +678,7 @@ module Vizkit
     end
     
     def callback_fct(class_name,value)
-        class_name = if class_name.is_a? Qt::Widget
-                         class_name.class_name
-                     else
-                         class_name
-                     end
+        class_name = normalize_class_name(class_name)
         if @callback_fct_hash.has_key?(class_name)
             if @callback_fct_hash[class_name].has_key? value
                 @callback_fct_hash[class_name][value]
@@ -672,11 +692,7 @@ module Vizkit
     end
 
     def control_callback_fct(class_name,value)
-        class_name = if class_name.is_a? Qt::Widget
-                         class_name.class_name
-                     else
-                         class_name
-                     end
+        class_name = normalize_class_name(class_name)
         if @control_callback_fct_hash.has_key?(class_name)
             if @control_callback_fct_hash[class_name].has_key? value
                 @control_callback_fct_hash[class_name][value]

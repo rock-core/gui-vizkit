@@ -106,9 +106,15 @@ module Vizkit
 
 end
 module QtTypelibExtension
+    def method_list
+        @qt_object_adapter ||= Vizkit::TypelibQtAdapter.new(self) 
+        @qt_object_adapter.method_list
+    end
+
     def method_missing(m, *args, &block)
         @qt_object_adapter ||= Vizkit::TypelibQtAdapter.new(self) 
         if(!@qt_object_adapter.call_qt_method(m.to_s, args, nil))
+            "calling super"
             super
         end
     end
