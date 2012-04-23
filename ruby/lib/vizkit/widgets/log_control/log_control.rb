@@ -36,6 +36,7 @@ class LogControl
   module Functions
     def config(replay,options=Hash.new)
       raise "Cannot control #{replay.class}" if !replay.instance_of?(Orocos::Log::Replay)
+      raise "LogControl: config was walled more than once!" if @log_replay
 
       #workaround because qt objects created via an ui File
       #cannot be overloaded
