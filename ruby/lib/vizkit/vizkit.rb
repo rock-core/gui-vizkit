@@ -47,14 +47,12 @@ module Vizkit
 
   def self.setup_widget(widget,value=nil,options = Hash.new,type = :display,&block)
     return nil if !widget
-    config_result = widget.config(value,options,&block) if widget.respond_to? :config
-
     if type == :control
       if widget.respond_to?(:loader) && callback_fct = widget.loader.control_callback_fct(widget,value)
         callback_fct.call(widget, value, options, &block)
       end
     else
-      if type == :display && value.respond_to?(:connect_to) && config_result != :do_not_connect
+      if type == :display && value.respond_to?(:connect_to)
         value.connect_to widget,options ,&block
       end
     end

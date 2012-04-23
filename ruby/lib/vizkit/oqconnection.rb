@@ -186,9 +186,19 @@ module Vizkit
 
     module OQConnectionIntegration
         def connect_to_widget(widget=nil,options = Hash.new,&block)
-            connection = Vizkit::OQConnection.new(self.task,self, options,widget,&block)
-            Vizkit.connections << connection
-            connection.connect
+            config_result = if widget.respond_to? :config 
+                                widget.config(self,options,&block)
+                            else
+                                nil
+                            end
+            if(config_result != :do_not_connect)
+                connection = Vizkit::OQConnection.new(self.task,self, options,widget,&block)
+                Vizkit.connections << connection
+                connection.connect
+            else
+                Vizkit.info "Disable auto connect for widget #{widget} because config returned :do_not_connect"
+                nil
+            end
         end
 
         def connect_to(widget=nil, options = Hash.new,&block)
@@ -196,7 +206,8 @@ module Vizkit
                 options = widget
                 widget = nil
             end
-            if widget.is_a?(Qt::Object) || (block_given? && !self.to_orocos_port.is_a?(Orocos::Log::OutputPort)) || widget.is_a?(Method)
+            if widget.is_a?(Qt::Object) || (block_given? && !self.to_orocos_port.is_a?(Orocos::Log::OutputPort)) || widget.is_a?(Method) ||
+                (widget.respond_to?(:ruby_widget?)&&widget.ruby_widget?)
                 return connect_to_widget(widget,options,&block)
             else
                 return org_connect_to widget,options,&block
