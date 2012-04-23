@@ -92,7 +92,7 @@ module VizkitPluginExtension
                 pp.breakable
                 pp.text "    " + "depricated: #{key} (#{plugin.expected_ruby_type})" 
                 pp.breakable
-                pp.text "    " + "depricated: #{updateData} (#{plugin.expected_ruby_type})" 
+                pp.text "    " + "depricated: updateData (#{plugin.expected_ruby_type})" 
             end
         end
         #end
