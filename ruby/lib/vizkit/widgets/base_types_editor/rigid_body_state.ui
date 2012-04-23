@@ -45,21 +45,33 @@
      <layout class="QGridLayout" name="gridLayout_2">
       <item row="1" column="1">
        <widget class="QDoubleSpinBox" name="x_start">
+        <property name="decimals">
+         <number>3</number>
+        </property>
         <property name="minimum">
          <double>-9999.000000000000000</double>
         </property>
         <property name="maximum">
          <double>9999.989999999999782</double>
+        </property>
+        <property name="singleStep">
+         <double>0.010000000000000</double>
         </property>
        </widget>
       </item>
       <item row="1" column="2">
        <widget class="QDoubleSpinBox" name="x_end">
+        <property name="decimals">
+         <number>3</number>
+        </property>
         <property name="minimum">
          <double>-9999.000000000000000</double>
         </property>
         <property name="maximum">
          <double>9999.989999999999782</double>
+        </property>
+        <property name="singleStep">
+         <double>0.010000000000000</double>
         </property>
        </widget>
       </item>
@@ -79,41 +91,65 @@
       </item>
       <item row="2" column="1">
        <widget class="QDoubleSpinBox" name="y_start">
+        <property name="decimals">
+         <number>3</number>
+        </property>
         <property name="minimum">
          <double>-9999.000000000000000</double>
         </property>
         <property name="maximum">
          <double>9999.989999999999782</double>
+        </property>
+        <property name="singleStep">
+         <double>0.010000000000000</double>
         </property>
        </widget>
       </item>
       <item row="2" column="2">
        <widget class="QDoubleSpinBox" name="y_end">
+        <property name="decimals">
+         <number>3</number>
+        </property>
         <property name="minimum">
          <double>-9999.000000000000000</double>
         </property>
         <property name="maximum">
          <double>9999.989999999999782</double>
+        </property>
+        <property name="singleStep">
+         <double>0.010000000000000</double>
         </property>
        </widget>
       </item>
       <item row="3" column="2">
        <widget class="QDoubleSpinBox" name="z_end">
+        <property name="decimals">
+         <number>3</number>
+        </property>
         <property name="minimum">
          <double>-9999.000000000000000</double>
         </property>
         <property name="maximum">
          <double>9999.989999999999782</double>
+        </property>
+        <property name="singleStep">
+         <double>0.010000000000000</double>
         </property>
        </widget>
       </item>
       <item row="3" column="1">
        <widget class="QDoubleSpinBox" name="z_start">
+        <property name="decimals">
+         <number>3</number>
+        </property>
         <property name="minimum">
          <double>-9999.000000000000000</double>
         </property>
         <property name="maximum">
          <double>9999.989999999999782</double>
+        </property>
+        <property name="singleStep">
+         <double>0.010000000000000</double>
         </property>
        </widget>
       </item>
@@ -154,6 +190,9 @@
       </item>
       <item row="7" column="1">
        <widget class="QDoubleSpinBox" name="alpha_start">
+        <property name="decimals">
+         <number>3</number>
+        </property>
         <property name="minimum">
          <double>-9999.000000000000000</double>
         </property>
@@ -164,6 +203,9 @@
       </item>
       <item row="7" column="2">
        <widget class="QDoubleSpinBox" name="alpha_end">
+        <property name="decimals">
+         <number>3</number>
+        </property>
         <property name="minimum">
          <double>-9999.000000000000000</double>
         </property>
@@ -174,6 +216,9 @@
       </item>
       <item row="8" column="1">
        <widget class="QDoubleSpinBox" name="beta_start">
+        <property name="decimals">
+         <number>3</number>
+        </property>
         <property name="minimum">
          <double>-9999.000000000000000</double>
         </property>
@@ -184,6 +229,9 @@
       </item>
       <item row="8" column="2">
        <widget class="QDoubleSpinBox" name="beta_end">
+        <property name="decimals">
+         <number>3</number>
+        </property>
         <property name="minimum">
          <double>-9999.000000000000000</double>
         </property>
@@ -194,6 +242,9 @@
       </item>
       <item row="9" column="1">
        <widget class="QDoubleSpinBox" name="gamma_start">
+        <property name="decimals">
+         <number>3</number>
+        </property>
         <property name="minimum">
          <double>-9999.000000000000000</double>
         </property>
@@ -204,6 +255,9 @@
       </item>
       <item row="9" column="2">
        <widget class="QDoubleSpinBox" name="gamma_end">
+        <property name="decimals">
+         <number>3</number>
+        </property>
         <property name="minimum">
          <double>-9999.000000000000000</double>
         </property>

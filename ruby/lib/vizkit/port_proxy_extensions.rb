@@ -1,5 +1,9 @@
+require 'utilrb/object/attribute'
+
 module Orocos
     extend_task 'port_proxy::Task' do
+        attribute(:proxied_ports) { Hash.new }
+
         #returns the Output-/InputPort of the proxy which writes/reads the data from/to the given port
         #raises an exception if the proxy is unable to proxy the given port 
         def proxy_port(port,options=Hash.new)
@@ -31,14 +35,14 @@ module Orocos
             #all instances are using the same hash because only one proxy per ruby instance is allowed
             @proxy_name ||= self.name
             raise "Cannot handle multiple PortProxies from the same ruby instance!" if @proxy_name != self.name
-            if @ports.has_key?(full_name) && @ports[full_name].task.reachable?
+            if proxied_ports.has_key?(full_name) && proxied_ports[full_name].task.reachable?
                 if port.is_a? Orocos::OutputPort
                     port_out
                 else
                     port_in
                 end
             else
-                @ports[full_name] = port
+                proxied_ports[full_name] = port
                 if port.respond_to? :reader
                     port.connect_to port_in, policy
                     Orocos.info "Task #{full_name}: Connecting #{port.full_name} with #{port_in.full_name}, policy=#{policy}"
@@ -57,7 +61,7 @@ module Orocos
             port.disconnect_all if port 
             port = port("out_" + full_name)
             port.disconnect_all if port 
-            if closeProxyConnection(full_name)
+            if closeProxyConnection("in_"+ full_name)
                 Vizkit.info "Delete connection #{full_name}"
             else
                 Vizkit.warn "Cannot delete connection #{full_name}"
@@ -70,13 +74,13 @@ module Orocos
                    else
                        task.name
                    end
-            if @ports
-                @ports = @ports.delete_if do |key,value| 
-                            if(value.task.name == name) 
-                                delete_proxy_port(value)
-                                true
-                            end
-                          end
+            if proxied_ports
+              proxied_ports.delete_if do |key,value| 
+                  if(value.task.name == name) 
+                      delete_proxy_port(value)
+                      true
+                  end
+              end
             end
         end
 
@@ -101,12 +105,18 @@ module Orocos
 
         #loads the plugins (typekit,transport) into the proxy
         def load_plugins_for_type(type_name)
-            name = Orocos::find_typekit_for(type_name)
-            plugins = Orocos::plugin_libs_for_name(name)
+            #workaround for int types --> there is no plugin
+            #TODO find a more generic solution
+            if(type_name == "int")
+                Orocos.info "Task #{self.name}: ignore load_plugins_for_type because of type int"
+                return true
+            end
+            name = Orocos.find_typekit_for(type_name)
+            plugins = Orocos.plugin_libs_for_name(name)
             plugins.each do |kit|
-                Orocos.info "Task #{self.name}: trying to load plugin #{kit}"
+                Orocos.info "Task #{self.name}: loading plugin #{kit} for type #{type_name}"
                 if !loadTypekit(kit)
-                    Orocos.warn "Task #{self.name} cannot load plugin #{kit}! Is the task running on another machine?"
+                    Orocos.warn "Task #{self.name} failed to load plugin #{kit} to access type #{type_name}! Is the task running on another machine ?"
                     return nil
                 end
             end
@@ -128,11 +138,11 @@ module Orocos
             return false if !reachable? 
             full_name = port_full_name(port)
             return false if !has_port?("in_#{full_name}")
-            if !@ports.has_key?(full_name)
+            if !proxied_ports.has_key?(full_name)
                 Vizkit.warn "Task #{self.name} is managed by an other ruby instance!"
-                @ports[full_name] = port
+                proxied_ports[full_name] = port
             end
-            return false if !@ports[full_name].task.reachable?
+            return false if !proxied_ports[full_name].task.reachable?
             true
         end
     end

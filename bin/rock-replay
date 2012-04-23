@@ -77,12 +77,17 @@ end
 log = Orocos::Log::Replay.open(remaining,Typelib::Registry.new)
 #select only ports which are not filtered out
 log.track(true, @search_filter)
+
 Vizkit.use_tasks log.tasks
 Vizkit::ReaderWriterProxy.default_policy = {:port_proxy => nil}
 
 def replay(log)
     unless log.replay?
-        puts "No ports are selected!"; 
+        if @search_filter.empty?
+            Vizkit.warn "There are no samples in the log file!"
+        else
+            Vizkit.warn "No ports were selected for replay (ports with no samples cannot be selected)!"
+        end
         exit 0
     end
     puts "Aligning streams. This can take a long time"

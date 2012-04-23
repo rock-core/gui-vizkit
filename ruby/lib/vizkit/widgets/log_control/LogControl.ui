@@ -8,7 +8,7 @@
     <x>0</x>
     <y>0</y>
     <width>505</width>
-    <height>367</height>
+    <height>259</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -68,6 +68,9 @@
         <height>70</height>
        </size>
       </property>
+      <property name="focusPolicy">
+       <enum>Qt::StrongFocus</enum>
+      </property>
       <property name="text">
        <string/>
       </property>
@@ -108,6 +111,9 @@
         <width>70</width>
         <height>70</height>
        </size>
+      </property>
+      <property name="focusPolicy">
+       <enum>Qt::StrongFocus</enum>
       </property>
       <property name="text">
        <string/>
@@ -150,6 +156,9 @@
         <height>70</height>
        </size>
       </property>
+      <property name="focusPolicy">
+       <enum>Qt::StrongFocus</enum>
+      </property>
       <property name="text">
        <string/>
       </property>
@@ -191,6 +200,9 @@
         <height>70</height>
        </size>
       </property>
+      <property name="focusPolicy">
+       <enum>Qt::StrongFocus</enum>
+      </property>
       <property name="text">
        <string/>
       </property>
@@ -203,101 +215,6 @@
         <width>40</width>
         <height>40</height>
        </size>
-      </property>
-     </widget>
-     <widget class="QLCDNumber" name="lcd_index">
-      <property name="geometry">
-       <rect>
-        <x>330</x>
-        <y>10</y>
-        <width>71</width>
-        <height>18</height>
-       </rect>
-      </property>
-      <property name="maximumSize">
-       <size>
-        <width>260</width>
-        <height>20</height>
-       </size>
-      </property>
-      <property name="palette">
-       <palette>
-        <active>
-         <colorrole role="Button">
-          <brush brushstyle="SolidPattern">
-           <color alpha="255">
-            <red>0</red>
-            <green>0</green>
-            <blue>0</blue>
-           </color>
-          </brush>
-         </colorrole>
-         <colorrole role="Light">
-          <brush brushstyle="SolidPattern">
-           <color alpha="255">
-            <red>0</red>
-            <green>0</green>
-            <blue>0</blue>
-           </color>
-          </brush>
-         </colorrole>
-        </active>
-        <inactive>
-         <colorrole role="Button">
-          <brush brushstyle="SolidPattern">
-           <color alpha="255">
-            <red>0</red>
-            <green>0</green>
-            <blue>0</blue>
-           </color>
-          </brush>
-         </colorrole>
-         <colorrole role="Light">
-          <brush brushstyle="SolidPattern">
-           <color alpha="255">
-            <red>0</red>
-            <green>0</green>
-            <blue>0</blue>
-           </color>
-          </brush>
-         </colorrole>
-        </inactive>
-        <disabled>
-         <colorrole role="Button">
-          <brush brushstyle="SolidPattern">
-           <color alpha="255">
-            <red>0</red>
-            <green>0</green>
-            <blue>0</blue>
-           </color>
-          </brush>
-         </colorrole>
-         <colorrole role="Light">
-          <brush brushstyle="SolidPattern">
-           <color alpha="255">
-            <red>0</red>
-            <green>0</green>
-            <blue>0</blue>
-           </color>
-          </brush>
-         </colorrole>
-        </disabled>
-       </palette>
-      </property>
-      <property name="lineWidth">
-       <number>1</number>
-      </property>
-      <property name="smallDecimalPoint">
-       <bool>false</bool>
-      </property>
-      <property name="numDigits">
-       <number>6</number>
-      </property>
-      <property name="value" stdset="0">
-       <double>0.000000000000000</double>
-      </property>
-      <property name="intValue" stdset="0">
-       <number>0</number>
       </property>
      </widget>
      <widget class="QLabel" name="label_4">
@@ -517,6 +434,31 @@
        <string/>
       </property>
      </widget>
+     <widget class="QSpinBox" name="index">
+      <property name="geometry">
+       <rect>
+        <x>329</x>
+        <y>8</y>
+        <width>71</width>
+        <height>21</height>
+       </rect>
+      </property>
+      <property name="focusPolicy">
+       <enum>Qt::StrongFocus</enum>
+      </property>
+      <property name="buttonSymbols">
+       <enum>QAbstractSpinBox::NoButtons</enum>
+      </property>
+      <property name="correctionMode">
+       <enum>QAbstractSpinBox::CorrectToNearestValue</enum>
+      </property>
+      <property name="maximum">
+       <number>99999999</number>
+      </property>
+      <property name="singleStep">
+       <number>1</number>
+      </property>
+     </widget>
     </widget>
    </item>
    <item>
@@ -533,6 +475,9 @@
        <height>26</height>
       </size>
      </property>
+     <property name="focusPolicy">
+      <enum>Qt::ClickFocus</enum>
+     </property>
      <property name="frameShape">
       <enum>QFrame::NoFrame</enum>
      </property>
@@ -548,7 +493,7 @@
      <property name="margin_lr" stdset="0">
       <number>5</number>
      </property>
-     <property name="backgroundColor">
+     <property name="backgroundColor" stdset="0">
       <color>
        <red>240</red>
        <green>235</green>
@@ -565,6 +510,9 @@
        <verstretch>0</verstretch>
       </sizepolicy>
      </property>
+     <property name="focusPolicy">
+      <enum>Qt::ClickFocus</enum>
+     </property>
      <property name="contextMenuPolicy">
       <enum>Qt::CustomContextMenu</enum>
      </property>
@@ -579,6 +527,15 @@
    <header>rock_widget_collection/Timeline.h</header>
   </customwidget>
  </customwidgets>
+ <tabstops>
+  <tabstop>bplay</tabstop>
+  <tabstop>bback</tabstop>
+  <tabstop>bnext</tabstop>
+  <tabstop>bstop</tabstop>
+  <tabstop>index</tabstop>
+  <tabstop>timeline</tabstop>
+  <tabstop>treeView</tabstop>
+ </tabstops>
  <resources/>
  <connections/>
  <designerdata>

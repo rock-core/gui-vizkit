@@ -109,14 +109,14 @@ module Vizkit
                            raise
                        rescue Exception => e
                            if(disable_proxy_on_error)
-                               Vizkit.warn "Disabling proxying of port #{@__port.full_name}: #{e}"
+                               Vizkit.warn "Disabling proxying of port #{@__port.full_name}: #{e.message}"
                                e.backtrace.each do |line|
                                    Vizkit.warn "  #{line}"
                                end
                                @__orogen_port_proxy = nil
                                @__port.__port
                             else
-                               Vizkit.info "cannot proxy port #{@__port.full_name}: #{e}"
+                               Vizkit.info "cannot proxy port #{@__port.full_name}: #{e.message}"
                                e.backtrace.each do |line|
                                    Vizkit.info "  #{line}"
                                end
@@ -188,15 +188,7 @@ module Vizkit
         end
 
         def __subfield(sample,field=Array.new)
-            return sample if(field.empty? || !sample)
-            field.each do |f| 
-                sample = sample[f]
-            end
-            #check if the type is right
-            if(sample.respond_to?(:type_name) && sample.type_name != type_name )
-                raise "Type miss match. Expected type #{type_name} but got #{sample.type_name} for subfield #{field.join(".")} of port #{port.full_name}"
-            end
-            sample
+            port.__subfield(sample,field)
         end
 
         def read(sample = nil)
@@ -298,30 +290,61 @@ module Vizkit
         end
 
         def type_name
-            if(type = @local_options[:type_name]) != nil
-                type
-            elsif @__port || __port
-                if !@local_options[:subfield].empty?
-                    @new_sample ||= @__port.new_sample.zero!
-                    sample = @new_sample
-                    @local_options[:subfield].each do |f|
-                        sample = sample[f]
-                    end
-                    if sample.class.respond_to? :name
-                        sample.class.name
-                    else
-                        sample.class
-                    end
-                else
-                    @__port.type_name
-                end
-            elsif
-                nil
-            end
+            @type_name ||= if(type = @local_options[:type_name]) != nil
+                               type
+                           elsif @__port || __port
+                               if !@local_options[:subfield].empty?
+                                   @new_sample ||= @__port.new_sample.zero!
+                                   sample = @new_sample
+                                   @local_options[:subfield].each do |f|
+                                       sample = if f.is_a? Fixnum 
+                                                    sample.element_t
+                                                elsif sample.respond_to? :raw_get_field
+                                                    sample.raw_get_field(f)
+                                                else
+                                                    sample[f]
+                                                end
+                                   end
+                                   if sample.respond_to? :name
+                                       sample.name
+                                   elsif sample.class.respond_to? :name
+                                       sample.class.name
+                                   else
+                                       sample.class
+                                   end
+                               else
+                                   @__port.type_name
+                               end
+                           elsif
+                               nil
+                           end
+            @type_name
         end
 
         def task
             @__task
+        end
+
+        #returns true if the underlying port is an input port 
+        #if the task is not running it will always return false 
+        def input? 
+            port = __port
+            if port.respond_to? :writer
+               true
+            else
+               false
+            end
+        end
+        
+        #returns true if the underlying port is an output port 
+        #if the task is not running it will always return false 
+        def output?
+            port = __port
+            if port.respond_to? :reader
+               true
+            else
+               false
+            end
         end
 
         def connect_to(port,policy = Hash.new)
@@ -331,9 +354,10 @@ module Vizkit
         end
 
         def disconnect_from(port,policy = Hash.new)
-            raise "Cannot disconnect port #{full_name} from #{full_name} because task #{task.name} is not reachable!" if !ping
-            raise "Cannot disconnect port #{full_name} from #{full_name} because task #{port.task.name} is not reachable!" if !port.task.readable?
-            __port.disconnect_from(port,policy)
+            raise "Cannot disconnect port #{full_name} from #{full_name} because task #{task.name} is not reachable!" if !task.ping
+            raise "Cannot disconnect port #{full_name} from #{full_name} because task #{port.task.name} is not reachable!" if !port.task.reachable?
+            pp port
+            __port.disconnect_from(port)
         end
 
         def __port
@@ -370,15 +394,40 @@ module Vizkit
             if type_name.respond_to?(:new)
 		#the type is a class
                 return nil
-            elsif respond_to? :to_str
-                if @__port && @__port.new_sample.class.name == type_name
+            elsif type_name.respond_to? :to_str
+                if @__port && @__port.type_name == type_name
                     @__port.new_sample
                 else
-                    Orocos.registry.get(type_name).new
+                    if @new_sample
+                        @new_sample.class.registry.get(type_name).new
+                    else
+                        if !Orocos.registry.include? type_name
+                            Vizkit.info "load typekit for #{type_name}"
+                            Orocos.load_typekit_for type_name
+                        end
+                        Orocos.registry.get(type_name).new
+                    end
                 end
             else
                 nil
             end
+        end
+
+        def __subfield(sample,field=Array.new)
+            return sample if(field.empty? || !sample)
+            begin
+                field.each do |f| 
+                    sample = sample[f]
+                end
+            rescue ArgumentError => e
+                Vizkit.info "Cannot extract subfield for port #{port.full_name}: Subfield does not exist!"
+                sample = nil
+            end
+            #check if the type is right
+            if(sample.respond_to?(:type_name) && sample.type_name != type_name )
+                raise "Type miss match. Expected type #{type_name} but got #{sample.type_name} for subfield #{field.join(".")} of port #{full_name}"
+            end
+            sample
         end
 
         def method_missing(m, *args, &block)
@@ -391,7 +440,10 @@ module Vizkit
                 super
             end
         rescue Orocos::NotFound, Orocos::CORBAError => e
-            Vizkit.warn "PortProxy #{full_name} got an Error: #{e}"
+            Vizkit.warn "PortProxy #{full_name} got an error: #{e.message}"
+            e.backtrace.each do |line|
+                Orocos.warn "  #{line}"
+            end
             @__port = nil
         end
     end
@@ -416,6 +468,7 @@ module Vizkit
             @__connection_code_block = block
             @__readers = Hash.new
             @__ports = Hash.new
+            @__state = :NotReachable
             Vizkit.info "Create TaskProxy for task: #{name}"
 
             #needed to automatically track log task
@@ -454,7 +507,7 @@ module Vizkit
                     if @__task
                         Vizkit.info "Task #{name} is no longer reachable."
                         proxy = ReaderWriterProxy.default_policy[:port_proxy]
-                        proxy.delete_proxy_ports_for_task(name) if proxy && proxy.reachable?
+                        proxy.delete_proxy_ports_for_task(name) if proxy && self != proxy && proxy.reachable?
                     end
 
                     @__readers.clear
@@ -467,8 +520,15 @@ module Vizkit
                                   task
                               end
                     @__connection_code_block.call if @__connection_code_block
+
+                rescue Orocos::NotInitialized
+                    Vizkit.info "TaskProxy #{name} can not be found (Orocos is not initialized and there is no log task called like this)."
+                    @__task = nil
                 rescue Orocos::NotFound, Orocos::CORBAError
                     @__task = nil
+                rescue Orocos::NoModel
+                    @__task = nil 
+                    @__state = :NoModel 
                 end
             end
             @__task != nil
@@ -509,7 +569,7 @@ module Vizkit
             if ping
                 @__task.state
             else
-                :not_reachable
+                @__state
             end
         end
 

@@ -42,7 +42,7 @@ public:
     void initialize();
     
     bool callQtMethod(QObject* obj ,const std::string& methodName, const std::vector< Typelib::Value >& arguments, Typelib::Value returnValue);
-    bool callQtMethodWithSignature(QObject* obj ,const std::string& signature, const std::vector<Argument>& arguments, Typelib::Value returnValue);
+    bool callQtMethodWithSignature(QObject* obj ,const std::string& signature, const std::vector<Argument>& arguments, Argument returnValue);
     
     std::string getMethodSignature(const std::string& methodName);
     std::string getMethodSignatureFromNumber(std::string methodName, int methodNr);

@@ -6,7 +6,8 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "Plot2d" do
     def default_options()
         options = Hash.new
         options[:auto_scrolling] = true
-        options[:time_window] = 60
+        options[:time_window] = 30              #window size during auto scrolling
+        options[:cached_time_window] = 60        #total cached window size
         options[:pre_time_window] = 5
         options[:colors] = [Qt::red, Qt::green, Qt::blue, Qt::cyan, Qt::magenta, Qt::yellow, Qt::gray]
         options[:reuse] = true
@@ -25,64 +26,59 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "Plot2d" do
         end
     end
 
-    def init()
-        @init ||= false 
-        if !@init
-            @init = true
-            @options = default_options
-            @graphs = Hash.new
-            @time = time.to_f
-            @timer = Qt::Timer.new
+    def initialize_vizkit_extension
+        @options = default_options
+        @graphs = Hash.new
+        @time = time.to_f
+        @timer = Qt::Timer.new
+        @needs_update = false
+        @timer.connect(SIGNAL"timeout()") do 
+            replot if @needs_update
             @needs_update = false
-            @timer.connect(SIGNAL"timeout()") do 
-                replot if @needs_update
-                @needs_update = false
-            end
-            @timer.start(1000*@options[:update_period])
+        end
+        @timer.start(1000*@options[:update_period])
 
-            getLegend.setVisible(true)
-            getXAxis.setLabel("Time in sec")
-            setTitle("Rock-Plot2d")
-            self.connect(SIGNAL('mousePress(QMouseEvent*)')) do |event|
-                if event.button() == Qt::RightButton 
-                    #show pop up menue 
-                    menu = Qt::Menu.new(self)
-                    action_scrolling = Qt::Action.new("AutoScrolling", self)
-                    action_scrolling.checkable = true
-                    action_scrolling.checked = @options[:auto_scrolling]
-                    menu.add_action(action_scrolling)
-                    if @options[:multi_use_menu]
-                        action_reuse = Qt::Action.new("Reuse Widget", self)
-                        action_reuse.checkable = true
-                        action_reuse.checked = @options[:reuse]
-                        menu.add_action(action_reuse)
-                        action_use_y2 = Qt::Action.new("Use 2. Y-Axis", self)
-                        action_use_y2.checkable = true
-                        action_use_y2.checked = @options[:use_y_axis2]
-                        menu.add_action(action_use_y2)
-                    end
-                    menu.addSeparator
+        getLegend.setVisible(true)
+        getXAxis.setLabel("Time in sec")
+        setTitle("Rock-Plot2d")
+        self.connect(SIGNAL('mousePress(QMouseEvent*)')) do |event|
+            if event.button() == Qt::RightButton 
+                #show pop up menue 
+                menu = Qt::Menu.new(self)
+                action_scrolling = Qt::Action.new("AutoScrolling", self)
+                action_scrolling.checkable = true
+                action_scrolling.checked = @options[:auto_scrolling]
+                menu.add_action(action_scrolling)
+                if @options[:multi_use_menu]
+                    action_reuse = Qt::Action.new("Reuse Widget", self)
+                    action_reuse.checkable = true
+                    action_reuse.checked = @options[:reuse]
+                    menu.add_action(action_reuse)
+                    action_use_y2 = Qt::Action.new("Use 2. Y-Axis", self)
+                    action_use_y2.checkable = true
+                    action_use_y2.checked = @options[:use_y_axis2]
+                    menu.add_action(action_use_y2)
+                end
+                menu.addSeparator
 
-                    action_saving = Qt::Action.new("Save to File", self)
-                    menu.add_action(action_saving)
+                action_saving = Qt::Action.new("Save to File", self)
+                menu.add_action(action_saving)
 
-                    action = menu.exec(mapToGlobal(event.pos))
-                    if(action == action_scrolling)
-                        @options[:auto_scrolling] = !@options[:auto_scrolling]
-                        setZoomAble !@options[:auto_scrolling]
-                        setRangeAble !@options[:auto_scrolling]
-                    elsif(action == action_reuse)
-                        @options[:reuse] = !@options[:reuse]
-                    elsif(action == action_use_y2)
-                        @options[:use_y_axis2] = !@options[:use_y_axis2]
-                    elsif action == action_saving
-                        file_path = Qt::FileDialog::getSaveFileName(nil,"Save Plot to Pdf",File.expand_path("."),"Pdf (*.pdf)")
-                        savePdf(file_path,false,0,0) if file_path
-                    end
+                action = menu.exec(mapToGlobal(event.pos))
+                if(action == action_scrolling)
+                    @options[:auto_scrolling] = !@options[:auto_scrolling]
+                    setZoomAble !@options[:auto_scrolling]
+                    setRangeAble !@options[:auto_scrolling]
+                elsif(action == action_reuse)
+                    @options[:reuse] = !@options[:reuse]
+                elsif(action == action_use_y2)
+                    @options[:use_y_axis2] = !@options[:use_y_axis2]
+                elsif action == action_saving
+                    file_path = Qt::FileDialog::getSaveFileName(nil,"Save Plot to Pdf",File.expand_path("."),"Pdf (*.pdf)")
+                    savePdf(file_path,false,0,0) if file_path
                 end
             end
         end
-
     end
 
     def config(value,options)
@@ -91,7 +87,6 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "Plot2d" do
                               value.task.log_replay
                           end
                       end
-        init
         @options = options.merge(@options)
         if value.type_name == "/base/samples/SonarBeam"
             if !@graphs.empty?
@@ -116,7 +111,6 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "Plot2d" do
     end
 
     def graph2(name)
-        init
         graph = if(@graphs.has_key?(name))
                     @graphs[name]
                 else
@@ -155,6 +149,7 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "Plot2d" do
     def update(sample,name)
         graph = graph2(name)
         x = time.to_f-@time
+        graph.removeDataBefore(x-@options[:cached_time_window])
         graph.addData(x,sample.to_f)
         if @options[:auto_scrolling]
             getXAxis.setRange(x-@options[:time_window],x+@options[:pre_time_window])
@@ -166,9 +161,16 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "Plot2d" do
     def update_orientation(sample,name)
         new_sample = sample.to_euler(2,1,0)
         rename_graph(name,name+"_yaw")
-        update(new_sample[0],name+"_yaw")
-        update(new_sample[1],name+"_pitch")
-        update(new_sample[2],name+"_roll")
+        update(new_sample[0]*(180.00/Math::PI),name+"_yaw")
+        update(new_sample[1]*(180.00/Math::PI),name+"_pitch")
+        update(new_sample[2]*(180.00/Math::PI),name+"_roll")
+    end
+
+    def update_vector3d(sample,name)
+        rename_graph(name,name+"_x")
+        update(sample[0],name+"_x")
+        update(sample[1],name+"_y")
+        update(sample[2],name+"_z")
     end
 
     def update_vector(sample,name)
@@ -201,7 +203,7 @@ end
 
 Vizkit::UiLoader.register_widget_for("Plot2d","Fixnum",:update)
 Vizkit::UiLoader.register_widget_for("Plot2d","Float",:update)
-Vizkit::UiLoader.register_widget_for("Plot2d","Eigen::Quaternion",:update_orientation)
+Vizkit::UiLoader.register_widget_for("Plot2d","/base/Quaterniond",:update_orientation)
 Vizkit::UiLoader.register_widget_for("Plot2d","/base/samples/SonarBeam",:update_sonar_beam)
 Vizkit::UiLoader.register_widget_for("Plot2d","/base/samples/LaserScan",:update_laser_scan)
 Vizkit::UiLoader.register_widget_for("Plot2d","/std/vector</uint8_t>",:update_vector)
@@ -210,3 +212,5 @@ Vizkit::UiLoader.register_widget_for("Plot2d","/std/vector</uint32_t>",:update_v
 Vizkit::UiLoader.register_widget_for("Plot2d","/std/vector</double>",:update_vector)
 Vizkit::UiLoader.register_widget_for("Plot2d","/std/vector</float>",:update_vector)
 Vizkit::UiLoader.register_widget_for("Plot2d","/base/Angle",:update_angle)
+Vizkit::UiLoader.register_widget_for("Plot2d","/base/Vector3d",:update_vector3d)
+

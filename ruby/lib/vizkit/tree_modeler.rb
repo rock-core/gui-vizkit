@@ -251,7 +251,7 @@ module Vizkit
                     widget_name = Vizkit::ContextMenu.widget_for(port_temp.type_name,tree_view,pos)
                     if widget_name
                         widget = Vizkit.display(port_temp, :widget => widget_name)
-                        widget.setAttribute(Qt::WA_QuitOnClose, false) if widget
+                        widget.setAttribute(Qt::WA_QuitOnClose, false) if widget.is_a? Qt::Widget
                     end
                 end
             #if object is a property or part of the property
@@ -379,10 +379,11 @@ module Vizkit
             elsif object == :NO_SUBFIELD
                 fields << object
             else
-                if item.parent 
+                if item.parent
                     fields = subfield_from_item(item.parent)
-                    if(i = item.text =~ /[(\d)]/)
-                        fields << i
+                    item.text =~ /\[(\d+)\]/
+                    if $1
+                        fields << $1.to_i
                     else
                         fields << item.text
                     end
@@ -513,6 +514,18 @@ module Vizkit
                 item2, item3 = child_items(item,0)
                 item2.setText("index")
                 item3.setText(object.index.to_s)
+            
+            elsif object.kind_of?(Vizkit::OQConnection)
+                item, item2 = child_items(parent_item,row)
+                item.setText(object.port.full_name)
+                if object.alive?
+                    item2.setText("connected")
+                else
+                    item2.setText("not connected")
+                end
+                item2, item3 = child_items(item,0)
+                item2.setText("update_frequency")
+                item3.setText(object.update_frequency.to_s)
 
             elsif object.kind_of?(Vizkit::TaskProxy)
                 item, item2 = child_items(parent_item,row)
@@ -556,6 +569,8 @@ module Vizkit
                             orow +=1
                         end
                     end
+                    item3.remove_rows(irow,item3.row_count-irow) if irow < item3.row_count
+                    item5.remove_rows(orow,item5.row_count-orow) if orow < item5.row_count
                 end
 
             elsif object.kind_of?(Orocos::Log::TaskContext)

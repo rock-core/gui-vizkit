@@ -21,9 +21,11 @@ module Vizkit
             @callback_fct = nil
             @using_reduced_update_frequency = false
 
-            if widget.is_a? Method
+            if widget.respond_to?(:call)
                 @callback_fct = widget
-                widget = widget.receiver
+                widget = if widget.respond_to?(:receiver)
+                             widget.receiver
+                         end
             end
             if widget.is_a?(Qt::Widget)
                 super(widget,&nil)
@@ -39,6 +41,11 @@ module Vizkit
                         PortProxy.new task,port,options
                     end
             raise "Cannot create OQConnection because no port is given" if !@port
+            #use update_frequency as periodicity for the port proxy
+            #if not given as option
+            if !@policy.has_key? :port_proxy_periodicity
+               @policy[:port_proxy_periodicity] = 1.0/@local_options[:update_frequency]
+            end
             @reader = @port.reader @policy
             if widget
                 Vizkit.info "Create new OQConnection for #{@port.name} and qt object #{widget}"
@@ -47,7 +54,7 @@ module Vizkit
             elsif @block
                 Vizkit.info "Create new OQConnection for #{@port.name} and code block #{@block}"
             else
-                raise "Cannot Create OQConnection because no widgte, method or code block is given"
+                raise "Cannot Create OQConnection because no widget, method or code block is given"
             end
         end
 
@@ -63,13 +70,14 @@ module Vizkit
                 #try to find callback_fct for port this is not working if no port is given
                 if !@callback_fct && @widget.respond_to?(:loader)
                     @type_name = @port.type_name if !@type_name
-                    @callback_fct = @widget.loader.callback_fct @widget.class_name,@type_name
+                    @callback_fct = @widget.loader.callback_fct @widget,@type_name
                 end
 
                 #use default callback_fct
-                @callback_fct ||= :update if @widget.respond_to?(:update)
-                if @callback_fct && !@callback_fct.respond_to?(:call)
-                    @callback_fct = @widget.method(@callback_fct) 
+                if @callback_fct
+                    @callback_fct = @callback_fct.bind(@widget)
+                elsif @widget.respond_to?(:update)
+                    @callback_fct = @widget.method(:update)
                 end
                 raise "Widget #{@widget} has no callback function "if !@callback_fct
                 Vizkit.info "Found callback_fct #{@callback_fct} for OQConnection connected to port #{@port.full_name}"
@@ -101,6 +109,11 @@ module Vizkit
                 return
             end
 
+            if @port.input?
+                Vizkit.warn "Disconnecting OQConnection to InputPort #{@port.full_name}. Only connections to OutputPorts are supported! "
+                disconnect
+                return
+            end
             if @reader.__reader_writer
                 @last_sample ||= @reader.new_sample
                 if @using_reduced_update_frequency
@@ -124,8 +137,8 @@ module Vizkit
             raise
         rescue Exception => e
             Vizkit.warn "could not read on #{reader}: #{e.message}"
-            0.upto(5) do |i|
-                Vizkit.warn e.backtrace.to_a[i]
+            e.backtrace.each do |line|
+                Vizkit.warn "  #{line}"
             end
             disconnect
         end
@@ -152,6 +165,9 @@ module Vizkit
             raise
         rescue Exception => e
             Vizkit.warn "failed to reconnect: #{e.message}"
+            e.backtrace.each do |line|
+                Vizkit.warn "  #{line}"
+            end
             false
         end
 
@@ -170,9 +186,19 @@ module Vizkit
 
     module OQConnectionIntegration
         def connect_to_widget(widget=nil,options = Hash.new,&block)
-            connection = Vizkit::OQConnection.new(self.task,self, options,widget,&block)
-            Vizkit.connections << connection
-            connection.connect
+            config_result = if widget.respond_to? :config 
+                                widget.config(self,options,&block)
+                            else
+                                nil
+                            end
+            if(config_result != :do_not_connect)
+                connection = Vizkit::OQConnection.new(self.task,self, options,widget,&block)
+                Vizkit.connections << connection
+                connection.connect
+            else
+                Vizkit.info "Disable auto connect for widget #{widget} because config returned :do_not_connect"
+                nil
+            end
         end
 
         def connect_to(widget=nil, options = Hash.new,&block)
@@ -180,7 +206,8 @@ module Vizkit
                 options = widget
                 widget = nil
             end
-            if widget.is_a?(Qt::Object) || (block_given? && !self.to_orocos_port.is_a?(Orocos::Log::OutputPort)) || widget.is_a?(Method)
+            if widget.is_a?(Qt::Object) || (block_given? && !self.to_orocos_port.is_a?(Orocos::Log::OutputPort)) || widget.is_a?(Method) ||
+                (widget.respond_to?(:ruby_widget?)&&widget.ruby_widget?)
                 return connect_to_widget(widget,options,&block)
             else
                 return org_connect_to widget,options,&block

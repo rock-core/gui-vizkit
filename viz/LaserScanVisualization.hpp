@@ -15,7 +15,10 @@ class LaserScanVisualization : public Vizkit3DPlugin<base::samples::LaserScan>, 
 {
     Q_OBJECT
 
-    Q_PROPERTY(bool YForward READ isYForwardModeEnabled WRITE setYForwardMode);
+    Q_PROPERTY(bool YForward READ isYForwardModeEnabled WRITE setYForwardMode)
+    Q_PROPERTY(bool Colorize READ isColorizeEnabled WRITE setColorize)
+    Q_PROPERTY(double ColorizeInterval READ getColorizeInterval WRITE setColorizeInterval)
+    Q_PROPERTY(bool ShowPolygon READ isShowPolygonEnabled WRITE setShowPolygon)
     bool mYForward;
 
 public:
@@ -27,14 +30,30 @@ public:
     virtual void updateMainNode(osg::Node* node);
     virtual osg::ref_ptr< osg::Node > createMainNode();
 
+    Q_INVOKABLE void updateData(const base::samples::LaserScan& data)
+    { Vizkit3DPlugin<base::samples::LaserScan>::updateData(data); }
     Q_INVOKABLE void updateLaserScan(const base::samples::LaserScan& data)
     { updateData(data); }
+    Q_INVOKABLE void updateData(const base::samples::RigidBodyState& data)
+    { Vizkit3DPlugin<base::samples::LaserScan>::updateData(data); }
     Q_INVOKABLE void updatePose(const base::samples::RigidBodyState& data)
     { updateData(data); }
 
 public slots:
     bool isYForwardModeEnabled() const;
     void setYForwardMode(bool enabled);
+    void setColorize(bool value);
+    bool isColorizeEnabled()const;
+
+    //interval in meter 0 = black , interval = white 
+    void setColorizeInterval(double value);
+    double getColorizeInterval()const;
+
+    void setShowPolygon(bool value);
+    bool isShowPolygonEnabled()const;
+
+protected:
+    osg::ref_ptr<osg::Node> cloneCurrentViz();
 
 private:
     base::samples::LaserScan scan;
@@ -43,6 +62,10 @@ private:
     osg::ref_ptr< osg::PositionAttitudeTransform > transformNode;
     osg::ref_ptr<osg::Geode> scanNode;
     osg::ref_ptr<osg::Geometry> scanGeom;
+
+    bool colorize;
+    bool show_polygon;
+    double colorize_interval;   // 1/distance 
 };
 
 }

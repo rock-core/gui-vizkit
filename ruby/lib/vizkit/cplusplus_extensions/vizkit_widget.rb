@@ -3,12 +3,17 @@ module VizkitPluginExtension
     attr_reader :plugins 
 
     def load_adapters
+        # code for backward compatibility
+        # this is for backward compatibility, to support the deprecated call Vizkit.default_loader._Viz.plugins['_Viz']
         if !Orocos.master_project # Check if Orocos has been initialized
    	    raise RuntimeError, 'you need to call Orocos.initialize before using the Ruby bindings for Vizkit3D'
 	end
         @bridges = Hash.new
         @plugins = Hash.new
+        
+        plugins[self.name] = self
         @adapter_collection = getRubyAdapterCollection
+        return if !@adapter_collection
         @adapter_collection.getListOfAvailableAdapter.each do |name|
             plugin = @adapter_collection.getAdapter(name)
             bridge = TypelibToQVariant.create_bridge
@@ -28,7 +33,8 @@ module VizkitPluginExtension
             singleton_class.class_eval do
 		attr_accessor :type_to_method
 		
-                define_method(plugin.getRubyMethod) do |value|
+                define_method(plugin.getRubyMethod) do |*args|
+		    value, _ = *args
                     value = Typelib.from_ruby(value, expected_ruby_type)
                     bridge.wrap(value, typename, is_opaque)
                 end
@@ -64,22 +70,78 @@ module VizkitPluginExtension
     def pretty_print(pp)
         pp.text "=========================================================="
         pp.breakable
-        pp.text "Vizkit3d Plugin: #{name}"
+        pp.text "Vizkit3d Plugin: #{name} (#{class_name})"
+        pp.breakable
+        pp.text "Ruby Name: #{ruby_class_name}"
         pp.breakable
         pp.text "Library name: #{lib_name}"
         pp.breakable
+        
         pp.text "----------------------------------------------------------"
-
         pp.breakable 
         pp.text "  Methods:"
-        @plugins.each_value do |plugin|
+        methods = method_list-["destroyed(QObject*)", "destroyed()", "deleteLater()", "_q_reregisterTimers(void*)", "getRubyAdapterCollection()"]
+        methods.each do |method|
             pp.breakable
-            if plugin.getRubyMethod.match(/^update/)
-                pp.text "    updateData(#{plugin.expected_ruby_type.name}) (alias of #{plugin.getRubyMethod})" 
-            else
-                pp.text "    #{plugin.getRubyMethod}(#{plugin.expected_ruby_type.name})"
+            pp.text "    " + method 
+        end
+        #begin
+        #backward compatibility
+        if @plugins.size > 1
+            pp.breakable
+            pp.breakable
+            pp.text "!!! The vizkit3d plugin is using an old mechanism to update the data" 
+            pp.breakable
+            pp.text "!!! Please update to the new mechanism see" 
+            pp.breakable
+                pp.text "!!! http://www.rock-robotics.org/documentation/graphical_user_interface/450_vizkit3d.html"
+            pp.breakable
+            pp.text "  Bridge Methods:"
+        end
+            
+        @plugins.each_pair do |key,plugin|
+            if plugin != self
+                pp.breakable
+                pp.text "    " + "#{key} (#{plugin.expected_ruby_type})" 
+                pp.breakable
+                pp.text "    " + "updateData (#{plugin.expected_ruby_type})" 
             end
         end
+        #end
+        pp.breakable 
+
+        pp.text "----------------------------------------------------------"
+        pp.breakable 
+        pp.text "  Registerd for:"
+        pp.breakable
+        registered_for.each do |val|
+            callback = callback_fct(val)
+            callback = if callback.respond_to? :to_sym
+                           callback.to_sym
+                        else
+                           callback.class.name
+                        end
+            pp.text "    #{val} (#{callback})"
+            pp.breakable
+        end
+        pp.text "----------------------------------------------------------"
+        pp.breakable
+    end
+
+    def registered_for
+        loader.registered_for(self)
+    end
+
+    def callback_fct(value)
+        loader.callback_fct(ruby_class_name,value)
+    end
+
+    def name
+        @__name__
+    end
+
+    def lib_name
+        @__lib_name__
     end
 end
 
@@ -103,6 +165,7 @@ module VizkitPluginLoaderExtension
         loader = Qt::PluginLoader.new(path)
         loader.load
         if !loader.isLoaded
+            Vizkit.error "Cannot load Vizkit3D pluign #{path}. Library seems to be incompatible to the qt loader. Have you created a plugin factory?"
             Kernel.raise "Cannot load #{path}. Last error is: #{loader.errorString}"
         end
         plugin_instance = loader.instance
@@ -127,10 +190,10 @@ module VizkitPluginLoaderExtension
         nil
     end
 
-    # Returns the list of plugins that are available through external libraries
+    # Returns the list of plugins that are available
     #
     # The returned value is an array of pairs [lib_name, plugin_name]
-    def custom_plugins
+    def plugins
         libs = Array.new
         path = if !ENV['VIZKIT_PLUGIN_RUBY_PATH']
                    "/usr/local/lib:/usr/lib"
@@ -149,7 +212,7 @@ module VizkitPluginLoaderExtension
                         end
 
                     libname = $1
-                    adapters = getListOfExternalPlugins(qt_plugin)
+                    adapters = qt_plugin.getAvailablePlugins
                     adapters.each do |name|
                         libs << [libname, name]
                     end
@@ -159,28 +222,14 @@ module VizkitPluginLoaderExtension
         libs
     end
 
-    # Returns the list of all available vizkit plugins
-    #
-    # The returned value is an array of arrays. Builtin plugins are stored as
-    # [plugin_name] and custom plugins as [lib_name, plugin_name]. This is so
-    # that, in both cases, one can do:
-    #
-    #   pl = plugins[2]
-    #   createPlugin(*pl)
-    #
-    def plugins
-        builtin_plugins.map { |v| [v] } + custom_plugins
+    # For backward compatibility only
+    def custom_plugins
+	plugins
     end
 
     # Creates a vizkit plugin object
     #
-    # Builtin plugins, whose list is returned by #builtin_plugins, are created
-    # with
-    #
-    #   createPlugin(plugin_name)
-    #
-    # External plugins, whose list is returned by #custom_plugins, are created
-    # with
+    # Plugins, whose list is returned by #custom_plugins, are created with
     #
     #   createPlugin(lib_name, plugin_name)
     #
@@ -195,7 +244,7 @@ module VizkitPluginLoaderExtension
     #
     #   createPlugin("vfh_star")
     #
-    def createPlugin(lib_name, plugin_name = nil)
+    def createPlugin(lib_name, plugin_name = nil,ruby_name = nil)
 	path = findPluginPath(lib_name)
 	
 	#try to load build in plugins
@@ -227,34 +276,17 @@ module VizkitPluginLoaderExtension
 	end
 	plugin = plugin.createPlugin(plugin_name)
 	addPlugin(plugin)
-	plugin_name = lib_name unless plugin_name
-	lib_name = "lib#{lib_name}-viz.so"
 
         plugin.extend VizkitPluginExtension
-        plugin.instance_variable_set(:@__name__,plugin_name)
-        def plugin.name 
-            @__name__
-        end
-        plugin.instance_variable_set(:@__lib_name__,lib_name)
-        def plugin.lib_name
-            @__lib_name__
-        end
         plugin.load_adapters
-	plugin.extend(QtTyplelibExtension)
+
+	plugin.extend(QtTypelibExtension)
+	plugin_name = lib_name unless plugin_name
+        plugin.instance_variable_set(:@__name__,plugin_name)
+        plugin.instance_variable_set(:@__lib_name__,lib_name)
+        extendUpdateMethods(plugin,ruby_name)
         plugin
     end
-
-    # The set of plugins loaded by display-a-type infrastructure. It is a
-    # mapping from class name (as declared in #register_ruby_widget) to the
-    # corresponding plugin instance
-    attribute(:plugins) { Hash.new }
-
-    class << self
-        # A mapping from the type names to the plugin widget name (as provided by
-        # #register_3d_plugin_for)
-        attr_reader :type_to_widget_name
-    end
-    @type_to_widget_name = Hash.new
 
     # An association between (task_name, port_name) pairs to the frame in which
     # the data produced by the port is expressed
@@ -308,8 +340,7 @@ module VizkitPluginLoaderExtension
             @connected_transformation_producers[[producer.task, producer.port]] = true
         end
     end
-
-    # Dispatcher method, that dispatches the data to the different plugins
+    
     def update(data, port_name)
         if @connected_to_broadcaster
             if data.class == Types::Transformer::ConfigurationState
@@ -317,32 +348,47 @@ module VizkitPluginLoaderExtension
                 return
             end
         end
-
-        widget_name, update_method, filter = VizkitPluginLoaderExtension.type_to_widget_name[data.class.name]
-        plugin = plugins[widget_name]
-
-	if !update_method
-	    Kernel.raise ArgumentError, "invalid argument #{data} on #{self}"
+    end
+    
+    def extendUpdateMethods(plugin,ruby_name)
+        uiloader = Vizkit.default_loader
+        fcts = uiloader.callback_fcts(ruby_name)
+	if !fcts
+	    Vizkit.info "no callback functions registered for Vizkit3D plugin #{plugin.ruby_class_name} (c++ name: #{plugin.name}) from #{plugin.lib_name}"
+            return
 	end
+        fcts.each do |fct|
+            # define the code block for the new method
+            block = lambda do |*args|
+                if args.size < 1 || args.size > 2
+                    Vizkit.error "#{fct.to_s}: wrong parameters"
+                    puts "usage: #{fct.to_s}(data [, port_name]), the port_name is optional but necessary to receive transformations."
+                    return
+                end
+                data = args[0] if args[0]
+                port_name = args[1] if args[1]
 
-	#inform widget about the frame for the plugin
-        if frame_name = port_frame_associations[port_name]
-            Vizkit.debug "#{port_name}: associated to the #{frame_name} frame for plugin #{plugin}"
-            setPluginDataFrame(frame_name, plugin)
-        else
-            Vizkit.debug "no known frame for #{port_name}, displayed by widget #{widget_name} (plugin #{plugin})"
-        end
-        if filter
-            filter.call(plugin,data,port_name)
-        else
-            plugin.send(update_method,data)
+                #inform widget about the frame for the plugin
+                widget = Vizkit.vizkit3d_widget
+                if frame_name = widget.port_frame_associations[port_name]
+                    Vizkit.debug "#{port_name}: associated to the #{frame_name} frame for plugin #{plugin}"
+                    widget.setPluginDataFrame(frame_name, plugin)
+                else
+                    Vizkit.debug "no known frame for #{port_name}, displayed by widget #{plugin.name} (plugin #{plugin})"
+                end
+                super data
+            end
+
+            plugin.class.instance_eval do 
+                define_method(fct, block)
+            end
         end
     end
 end
 
 Vizkit::UiLoader.extend_cplusplus_widget_class "vizkit::Vizkit3DWidget" do
     include VizkitPluginLoaderExtension
-    include QtTyplelibExtension
+    include QtTypelibExtension
 end
 
 Vizkit::UiLoader.extend_cplusplus_widget_class "vizkit::QVizkitMainWindow" do

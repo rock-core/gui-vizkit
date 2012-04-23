@@ -47,23 +47,13 @@ module Vizkit
 
   def self.setup_widget(widget,value=nil,options = Hash.new,type = :display,&block)
     return nil if !widget
-    config_result = widget.config(value,options,&block) if widget.respond_to? :config
-
     if type == :control
-      callback_fct = if widget.respond_to?(:loader)
-                       widget.loader.control_callback_fct widget,value
-                     end
-      widget.method(callback_fct).call(value, options, &block) if(callback_fct && callback_fct != :config)
+      if widget.respond_to?(:loader) && callback_fct = widget.loader.control_callback_fct(widget,value)
+        callback_fct.call(widget, value, options, &block)
+      end
     else
-      if type == :display && value.respond_to?(:connect_to) && config_result != :do_not_connect
+      if type == :display && value.respond_to?(:connect_to)
         value.connect_to widget,options ,&block
-        callback_fct = if widget.respond_to?(:loader)
-                         widget.loader.callback_fct widget,value
-                       end
-        if(callback_fct && callback_fct != :config && value.respond_to?(:read))
-          sample = value.read
-          widget.method(callback_fct).call(sample, value.full_name) if sample
-        end
       end
     end
     widget.show if widget.is_a? Qt::Widget #respond_to is not working because qt is using method_missing
@@ -122,7 +112,24 @@ module Vizkit
     @connections
   end
 
+  class ShortCutFilter < Qt::Object
+    def eventFilter(obj,event)
+      if event.is_a?(Qt::KeyEvent)
+        #if someone is pressing ctrl i show a debug window
+        if event.key == 73 && event.modifiers == Qt::ControlModifier
+          @vizkit_info_viewer ||= Vizkit.default_loader.VizkitInfoViewer
+          @vizkit_info_viewer.auto_update(Vizkit.connections)
+          @vizkit_info_viewer.show
+        end
+      end
+      return false
+    end
+  end
   def self.exec()
+     #install event filter
+     obj = ShortCutFilter.new
+     $qApp.installEventFilter(obj)
+
     # the garbage collector has to be called manually for now 
     # because ruby does not now how many objects were created from 
     # the typelib side 
@@ -137,7 +144,14 @@ module Vizkit
      elsif Orocos::CORBA.initialized?
          proxy =  ReaderWriterProxy.default_policy[:port_proxy]
          proxy.__change_name("port_proxy_#{ENV["USERNAME"]}_#{Process.pid}")
-         Orocos.run "port_proxy::Task" => proxy.name, :output => "%m-%p.txt" do
+         output = if @port_proxy_log.respond_to?(:to_str)
+                    @port_proxy_log
+                  elsif @port_proxy_log || (@port_proxy_log.nil? && Vizkit.logger.level < Logger::WARN)
+                    "%m-%p.txt"
+                  else
+                    "/dev/null"
+                  end
+         Orocos.run "port_proxy::Task" => proxy.name, :output => output do
              proxy.start
              #wait unti the proxy is running 
              while !proxy.running?
@@ -161,7 +175,7 @@ module Vizkit
 
   def self.disconnect_from(handle)
     case handle
-    when Qt::Widget:
+    when Qt::Widget then
       @connections.delete_if do |connection|
         if connection.widget.is_a?(Qt::Object) && handle.findChild(Qt::Widget,connection.widget.objectName)
           connection.disconnect
@@ -301,12 +315,36 @@ module Vizkit
     # A port can also be set directly in
     # Vizkit.vizkit3d_transformer_configuration
     attr_accessor :vizkit3d_transformer_broadcaster_name
+
+    # Control of the output of the port proxy started by Vizkit
+    #
+    # If nil (the default), the output of the port proxy is discarded if the
+    # loglevel of Vizkit.logger is WARN or higher. Otherwise, the port proxy
+    # output is port_proxy-%p.log (where %p is the PID).
+    #
+    # If set to false, the output is always disabled
+    #
+    # If set to true, the output is always enabled with the default output file
+    # of port_proxy-%p.log (where %p is the PID).
+    #
+    # Finally, if set to a string, the output is always enabled and uses the
+    # provided file name.
+    attr_accessor :port_proxy_log
   end
   @vizkit3d_transformer_broadcaster_name = ['transformer_broadcaster', 'configuration_state']
+  @port_proxy_log = nil
 
   #returns the instance of the vizkit 3d widget 
   def self.vizkit3d_widget
     @vizkit3d_widget ||= default_loader.create_widget("vizkit::Vizkit3DWidget")
     @vizkit3d_widget
+  end
+
+  # Make sure that orocos.rb is properly initialized. This must be called in
+  # each widget that require an Orocos component "behind the scenes"
+  def self.ensure_orocos_initialized
+    if !Orocos.initialized?
+      Orocos.initialize
+    end
   end
 end

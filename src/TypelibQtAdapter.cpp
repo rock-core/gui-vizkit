@@ -121,6 +121,8 @@ std::string TypelibQtAdapter::getMethodSignatureFromNumber(std::string methodNam
 	{
 	    if(cnt == methodNr)
 		return signature;
+	    
+	    cnt++;
 	}
     }
 
@@ -160,7 +162,22 @@ bool TypelibQtAdapter::getParameterLists(const std::string& methodName, std::vec
     return found;
 }
 
-bool TypelibQtAdapter::callQtMethodWithSignature(QObject* obj, const std::string& signature, const std::vector< TypelibQtAdapter::Argument >& arguments, Typelib::Value returnValue)
+typedef std::vector< std::pair<orogen_transports::TypelibMarshallerBase*, orogen_transports::TypelibMarshallerBase::Handle*> > TypelibHandles;
+static void* getOpaqueValue(TypelibHandles& typelib_handles, std::string const& expected_type, Typelib::Value value)
+{
+    orogen_transports::TypelibMarshallerBase* typelib_marshaller =
+        orogen_transports::getMarshallerFor(expected_type);
+
+    orogen_transports::TypelibMarshallerBase::Handle* handle =
+        typelib_marshaller->createHandle();
+    typelib_marshaller->setTypelibSample(handle, reinterpret_cast<uint8_t*>(value.getData()), true);
+
+    void* cxx_data = typelib_marshaller->getOrocosSample(handle);
+    typelib_handles.push_back( std::make_pair(typelib_marshaller, handle) );
+    return cxx_data;
+}
+
+bool TypelibQtAdapter::callQtMethodWithSignature(QObject* obj, const std::string& signature, const std::vector< TypelibQtAdapter::Argument >& arguments, TypelibQtAdapter::Argument returnValue)
 {
     const QMetaObject *metaObj = obj->metaObject();
 
@@ -174,7 +191,7 @@ bool TypelibQtAdapter::callQtMethodWithSignature(QObject* obj, const std::string
     
     QList<QByteArray> parameterTypes = metaMethod.parameterTypes();
 
-    if(arguments.size() != parameterTypes.size())
+    if(arguments.size() != static_cast<unsigned int>(parameterTypes.size()))
     {
 	throw Typelib::DefinitionMismatch("Number of arguments do not match");
     }
@@ -186,26 +203,31 @@ bool TypelibQtAdapter::callQtMethodWithSignature(QObject* obj, const std::string
     
     std::vector<QGenericArgument>::iterator argIt = args.begin();
     std::vector<Argument>::const_iterator ait = arguments.begin();
+    TypelibHandles typelib_handles;
+
     for(QList<QByteArray>::const_iterator qit = parameterTypes.begin(); qit != parameterTypes.end(); qit++)
-    {	
-	void *cxx_data = orogen_transports::getOpaqueValue(ait->opaqueName, (ait)->value);
+    {
+	void *cxx_data = getOpaqueValue(typelib_handles, ait->opaqueName, (ait)->value);
 	*argIt = QGenericArgument(qit->data(), cxx_data);
 
-// 	std::cout << "opaque name " << ait->opaqueName << " typelib name " << ait->value.getType().getName() << std::endl;
-	//TODO delete cxx_data
-	
 	argIt++;
 	ait++;
     }
 
     QGenericReturnArgument retArg;
     
-    if(returnValue.getData())
+    if(returnValue.value.getData())
     {
-	retArg = QGenericReturnArgument(returnValue.getType().getName().c_str(), returnValue.getData());
+        void* cxx_data = getOpaqueValue(typelib_handles, returnValue.opaqueName, returnValue.value);
+	retArg = QGenericReturnArgument(metaMethod.typeName(), cxx_data);
     }
 
-    return metaMethod.invoke(obj, retArg, args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7], args[8], args[9]);
+    bool ret = metaMethod.invoke(obj, retArg, args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7], args[8], args[9]);
+
+    for (unsigned int i = 0; i < typelib_handles.size(); ++i)
+        typelib_handles[i].first->deleteHandle(typelib_handles[i].second);
+
+    return ret;
 }
 
 
@@ -253,7 +275,7 @@ bool TypelibQtAdapter::callQtMethod(QObject* obj, const std::string& methodName,
     
     QList<QByteArray> parameterTypes = metaMethod.parameterTypes();
 
-    if(arguments.size() != parameterTypes.size())
+    if(arguments.size() != static_cast<unsigned int>(parameterTypes.size()))
     {
 	throw Typelib::DefinitionMismatch("Number of arguments do not match");
     }
@@ -371,9 +393,15 @@ Rice::Object TypelibQtAdapter::callQtMethodWithSignatureR(const std::string& sig
 	++opaque_it;
     }
     
-    Typelib::Value ret; 
+    Argument ret; 
     if(!returnValue.is_nil())
-	ret = typelib_get(returnValue.value());
+    {
+	VALUE opaque_name_r = opaque_it->value();
+	ret.opaqueName = StringValuePtr(opaque_name_r);
+	ret.value = typelib_get(returnValue.value());
+
+        ++opaque_it;
+    }
 
     if(!callQtMethodWithSignature(object, signature, args, ret))
 	return Rice::Nil;

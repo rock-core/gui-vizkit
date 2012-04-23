@@ -68,7 +68,7 @@ Vizkit3DWidget::Vizkit3DWidget( QWidget* parent, Qt::WindowFlags f )
     
     pluginNames = new QStringList;
     
-    changeCameraView(osg::Vec3d(0,0,0), osg::Vec3d(0,-5,5));
+    changeCameraView(osg::Vec3d(0,0,0), osg::Vec3d(-5,0,5));
     
     // add some properties of this widget as global properties
     QStringList property_names("show_grid");
@@ -94,7 +94,7 @@ osg::ref_ptr<osg::Group> Vizkit3DWidget::getRootNode() const
 
 void Vizkit3DWidget::setTrackedNode( VizPluginBase* plugin )
 {
-    view->setTrackedNode(plugin->getVizNode());
+    view->setTrackedNode(plugin->getRootNode());
 }
 
 void Vizkit3DWidget::createSceneGraph() 
@@ -143,12 +143,12 @@ void Vizkit3DWidget::createSceneGraph()
 
 void Vizkit3DWidget::addDataHandler(VizPluginBase *viz)
 {
-    root->addChild( viz->getVizNode() );
+    root->addChild( viz->getRootNode() );
 }
 
 void Vizkit3DWidget::removeDataHandler(VizPluginBase *viz)
 {
-    root->removeChild( viz->getVizNode() );
+    root->removeChild( viz->getRootNode() );
 }
 
 void Vizkit3DWidget::changeCameraView(const osg::Vec3& lookAtPos)
@@ -323,7 +323,7 @@ void Vizkit3DWidget::setVizualisationFrame(const QString& frame)
             it->second = data;
         }
     }
-    
+    updateTransformations();
 }
 
 void Vizkit3DWidget::pushDynamicTransformation(const base::samples::RigidBodyState& tr)
@@ -336,20 +336,23 @@ void Vizkit3DWidget::pushDynamicTransformation(const base::samples::RigidBodySta
     {
 	;
     }
+    updateTransformations();
+}
 
+void Vizkit3DWidget::updateTransformations()
+{
     for(std::map<vizkit::VizPluginBase *, TransformationData>::iterator it = pluginToTransformData.begin(); it != pluginToTransformData.end(); it++)
     {
         TransformationData &data(it->second);
 	if(data.transformation)
 	{
 	    Eigen::Affine3d pose;
-	    if(data.transformation->get(tr.time, pose, false))
+	    if(data.transformation->get(base::Time(), pose, false))
 	    {
 		it->first->setPose(pose.translation(), Eigen::Quaterniond(pose.rotation()));
 	    }
 	}
     }
-
 }
 
 void Vizkit3DWidget::pushStaticTransformation(const base::samples::RigidBodyState& tr)
@@ -395,7 +398,7 @@ void Vizkit3DWidget::pluginActivityChanged(bool enabled)
     {
         // check if root node has plugin as child
         bool has_child_plugin = false;
-        if(root->getChildIndex(viz_plugin->getVizNode()) < root->getNumChildren())
+        if(root->getChildIndex(viz_plugin->getRootNode()) < root->getNumChildren())
             has_child_plugin = true;
         
         // add or remove plugin from root node
