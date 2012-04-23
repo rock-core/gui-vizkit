@@ -4,7 +4,7 @@ module VizkitPluginExtension
 
     def load_adapters
         # code for backward compatibility
-        # this is for backward compatibility, to support the depricated call Vizkit.default_loader._Viz.plugins['_Viz']
+        # this is for backward compatibility, to support the deprecated call Vizkit.default_loader._Viz.plugins['_Viz']
         if !Orocos.master_project # Check if Orocos has been initialized
    	    raise RuntimeError, 'you need to call Orocos.initialize before using the Ruby bindings for Vizkit3D'
 	end
@@ -90,9 +90,9 @@ module VizkitPluginExtension
         @plugins.each_pair do |key,plugin|
             if plugin != self
                 pp.breakable
-                pp.text "    " + "depricated: #{key} (#{plugin.expected_ruby_type})" 
+                pp.text "    " + "deprecated: #{key} (#{plugin.expected_ruby_type})" 
                 pp.breakable
-                pp.text "    " + "depricated: updateData (#{plugin.expected_ruby_type})" 
+                pp.text "    " + "deprecated: updateData (#{plugin.expected_ruby_type})" 
             end
         end
         #end
