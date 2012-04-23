@@ -70,11 +70,7 @@ module Vizkit
                 #try to find callback_fct for port this is not working if no port is given
                 if !@callback_fct && @widget.respond_to?(:loader)
                     @type_name = @port.type_name if !@type_name
-                    @callback_fct = @widget.loader.callback_fct @widget.class_name,@type_name
-                    # compatibility for vizkit 3d plugins, they are stored without the namespace
-                    if !@callback_fct && @widget.class_name.start_with?("vizkit::")
-                        @callback_fct = @widget.loader.callback_fct @widget.class_name[8..@widget.class_name.size],@type_name
-                    end
+                    @callback_fct = @widget.loader.callback_fct @widget,@type_name
                 end
 
                 #use default callback_fct
