@@ -26,6 +26,16 @@ class ExportToYaml
         :do_not_connect
     end
 
+    def pretty_print(pp) 
+        pp.text "=========================================================="
+        pp.breakable
+        pp.text "Vizkit Export Widget: #{self.class.name}"
+        pp.breakable
+
+        pp.text "call config(sample) or config(port) to save the current sample to an YAML file."
+        pp.breakable 
+    end
+
     @@file_path ||= ENV["HOME"]
 end
 

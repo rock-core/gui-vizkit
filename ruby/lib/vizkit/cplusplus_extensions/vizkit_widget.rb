@@ -87,12 +87,24 @@ module VizkitPluginExtension
         end
         #begin
         #backward compatibility
+        if @plugins.size > 1
+            pp.breakable
+            pp.breakable
+            pp.text "!!! The vizkit3d plugin is using an old mechanism to update the data" 
+            pp.breakable
+            pp.text "!!! Please update to the new mechanism see" 
+            pp.breakable
+                pp.text "!!! http://www.rock-robotics.org/documentation/graphical_user_interface/450_vizkit3d.html"
+            pp.breakable
+            pp.text "  Bridge Methods:"
+        end
+            
         @plugins.each_pair do |key,plugin|
             if plugin != self
                 pp.breakable
-                pp.text "    " + "deprecated: #{key} (#{plugin.expected_ruby_type})" 
+                pp.text "    " + "#{key} (#{plugin.expected_ruby_type})" 
                 pp.breakable
-                pp.text "    " + "deprecated: updateData (#{plugin.expected_ruby_type})" 
+                pp.text "    " + "updateData (#{plugin.expected_ruby_type})" 
             end
         end
         #end
