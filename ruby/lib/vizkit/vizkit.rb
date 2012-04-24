@@ -48,12 +48,26 @@ module Vizkit
   def self.setup_widget(widget,value=nil,options = Hash.new,type = :display,&block)
     return nil if !widget
     if type == :control
+      if widget.respond_to?(:config)
+        widget.config(value,options,&block)
+      end
+      if widget.respond_to?(:loader) && callback_fct = widget.loader.control_callback_fct(widget,value)
+        callback_fct.call(widget, value, options, &block) if !callback_fct.respond_to?(:to_sym) || callback_fct.to_sym != :config 
+      end
       if widget.respond_to?(:loader) && callback_fct = widget.loader.control_callback_fct(widget,value)
         callback_fct.call(widget, value, options, &block)
       end
     else
       if type == :display && value.respond_to?(:connect_to)
         value.connect_to widget,options ,&block
+      else
+        #there is not port to connect to therefore we have to call the callback by our self
+        if widget.respond_to?(:config)
+          widget.config(value,options,&block)
+        end
+        if widget.respond_to?(:loader) && callback_fct = widget.loader.callback_fct(widget,value)
+          callback_fct.call(widget, value, options, &block) if !callback_fct.respond_to?(:to_sym) || callback_fct.to_sym != :config 
+        end
       end
     end
     widget.show if widget.is_a? Qt::Widget #respond_to is not working because qt is using method_missing
