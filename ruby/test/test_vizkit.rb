@@ -1,22 +1,26 @@
-
-#!/usr/bin/env ruby
+require File.join(File.dirname(__FILE__),"test_helper")
+start_simple_cov("test_vizkit")
 
 require 'vizkit'
 require 'test/unit'
 Orocos.initialize
+Orocos.load_typekit "base"
 
 Vizkit.logger.level = Logger::INFO
 
-class TestWidget < Qt::Object
-    attr_accessor :sample
-
-    def update(data,port_name)
-        @sample = data        
-    end
-end
     
-class LoaderUiTest < Test::Unit::TestCase
+class VizkitTest < Test::Unit::TestCase
+    class TestWidget < Qt::Object
+        attr_accessor :sample
+
+        def update(data,port_name)
+            @sample = data        
+        end
+    end
     def setup
+        if !Vizkit.default_loader.plugin? "StructViewer"
+            Vizkit.instance_variable_set(:@default_loader,Vizkit::UiLoader.new)
+        end
         Vizkit::ReaderWriterProxy.default_policy[:port_proxy] = Vizkit::TaskProxy.new("port_proxy")
         Vizkit.use_tasks([])
         #generate log file 
@@ -95,7 +99,9 @@ class LoaderUiTest < Test::Unit::TestCase
 
             assert(task.createProxyConnection("test","/base/Time",0.01,true))
             assert(task.has_port? "out_test")
-            
+
+            pp Vizkit.default_loader.find_all_plugin_specs(:argument => task.out_test,:default => false)
+
             widget = Vizkit.display task.out_test
             assert(widget)
             widget.close
@@ -122,7 +128,7 @@ class LoaderUiTest < Test::Unit::TestCase
 
             assert(task.createProxyConnection("test","/base/Angle",0.01,true))
             assert(task.has_port? "in_test")
-            
+
             widget = Vizkit.control task.out_test
             assert(widget)
             widget.close
@@ -143,14 +149,13 @@ class LoaderUiTest < Test::Unit::TestCase
     end
 
     def test_vizkit_connect_port_to
-        puts "###########################"
         log = Orocos::Log::Replay.open(@log_path+".0.log")
         Vizkit.use_tasks log.tasks
         assert(log)
         time = nil
         Vizkit.connect_port_to("test_task","time") do |sample, _|
             time = sample
-            puts 123
+            123
         end
         log.step
         sleep(0.5)
@@ -159,6 +164,18 @@ class LoaderUiTest < Test::Unit::TestCase
         end
         assert(time)
         #test connect_port_to with an orocos task
+    end
+
+    def test_vizkit_run
+        Vizkit.ensure_orocos_initialized
+        assert Vizkit.vizkit3d_widget
+
+        timer = Qt::Timer.new
+        timer.connect SIGNAL("timeout()") do 
+            $qApp.exit
+        end
+        timer.start(6000)
+        Vizkit.exec
     end
 
     def test_vizkit_disconnect

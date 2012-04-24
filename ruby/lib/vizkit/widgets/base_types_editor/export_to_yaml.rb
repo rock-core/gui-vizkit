@@ -40,4 +40,4 @@ class ExportToYaml
 end
 
 Vizkit::UiLoader.register_ruby_widget "ExportToYaml", ExportToYaml.method(:new)
-Vizkit::UiLoader.register_widget_for "ExportToYaml", Typelib::Type, nil
+Vizkit::UiLoader.register_widget_for("ExportToYaml", Typelib::Type) { }

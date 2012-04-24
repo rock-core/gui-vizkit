@@ -68,9 +68,9 @@ module Vizkit
             return @callback_fct if @callback_fct
             if @widget && @port 
                 #try to find callback_fct for port this is not working if no port is given
-                if !@callback_fct && @widget.respond_to?(:loader)
+                if !@callback_fct && @widget.respond_to?(:plugin_spec)
                     @type_name = @port.type_name if !@type_name
-                    @callback_fct = @widget.loader.callback_fct @widget,@type_name
+                    @callback_fct = @widget.plugin_spec.find_callback!  :argument => @type_name, :callback_type => :display
                 end
 
                 #use default callback_fct
@@ -79,7 +79,13 @@ module Vizkit
                 elsif @widget.respond_to?(:update)
                     @callback_fct = @widget.method(:update)
                 end
-                raise "Widget #{@widget} has no callback function "if !@callback_fct
+
+                if !@callback_fct
+                    name = @widget.respond_to?(:plugin_spec) ? @widget.plugin_spec.plugin_name : "nil"
+                    raise "Plugin #{name ? name : widget} " + 
+                        "has no callback function for displaying samples of type #{@type_name}." + 
+                        "\nUse 'rock-inspect #{name ? name : "plugin_name"}' from the command line to get informations about the plugin.'"
+                end
                 Vizkit.info "Found callback_fct #{@callback_fct} for OQConnection connected to port #{@port.full_name}"
                 @callback_fct
             else

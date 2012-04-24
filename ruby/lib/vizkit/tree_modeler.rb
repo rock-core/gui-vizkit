@@ -9,8 +9,7 @@ module Vizkit
             menu = Qt::Menu.new(parent)
 
             # Determine applicable widgets for the output port
-            widgets = Vizkit.default_loader.widget_names_for_value(type_name)
-            widgets = widgets + Vizkit.default_loader.widget_names_for_value(Typelib::CompoundType)
+            widgets = Vizkit.default_loader.find_all_plugin_names(:argument=>type_name, :callback_type => :display)
             widgets.uniq!
             widgets.each do |w|
                 menu.add_action(Qt::Action.new(w, parent))

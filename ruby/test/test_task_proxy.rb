@@ -1,14 +1,14 @@
+require File.join(File.dirname(__FILE__),"test_helper")
+start_simple_cov("test_task_proxy")
 
-#!/usr/bin/env ruby
-
-require 'vizkit'
 require 'test/unit'
-Orocos.initialize
+require 'vizkit'
 
+Orocos.initialize
 Vizkit.logger.level = Logger::INFO
 Orocos.logger.level = Logger::INFO
     
-class LoaderUiTest < Test::Unit::TestCase
+class TaskProxyTest < Test::Unit::TestCase
     def setup
         Vizkit::ReaderWriterProxy.default_policy = {:port_proxy => Vizkit::TaskProxy.new("port_proxy"),:init => true}
         Vizkit::OQConnection::max_reconnect_frequency = 1
@@ -46,10 +46,15 @@ class LoaderUiTest < Test::Unit::TestCase
 
     def test_orogen_port_proxy
         task = Vizkit::ReaderWriterProxy.default_policy[:port_proxy]
+        assert task.state
+        assert_raise NoMethodError do 
+            task.ports
+        end
         port = task.port("out_test")
 
         Orocos.run "rock_port_proxy" do 
             task.start
+            assert task.state
             assert(task.load_plugins_for_type("/base/Time"))
             assert(task.createProxyConnection("test","/base/Time",0.01,true))
             assert(task.has_port? "in_test")
@@ -64,7 +69,7 @@ class LoaderUiTest < Test::Unit::TestCase
             reader = proxy_port.reader
             writer = task.in_test.writer
             writer.write Time.new
-            sleep(0.2)
+            sleep(1)
             assert(reader.read)
         end
     end
@@ -190,7 +195,7 @@ class LoaderUiTest < Test::Unit::TestCase
 
             writer.write sample 
             sleep(2.0)
-            assert(reader.read.time == time_first) 
+            assert_equal(reader.read.time.to_s, time_first.to_s) 
             assert(reader2.read) 
         end
     end

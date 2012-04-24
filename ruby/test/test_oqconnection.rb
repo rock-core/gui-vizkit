@@ -1,13 +1,12 @@
+require File.join(File.dirname(__FILE__),"test_helper")
+start_simple_cov("test_oqconnection")
 
-#!/usr/bin/env ruby
-
-require 'vizkit'
 require 'test/unit'
+require 'vizkit'
 Orocos.initialize
-
 Vizkit.logger.level = Logger::INFO
 
-class TestWidget < Qt::Object
+class TestWidget < Qt::Widget
     attr_accessor :sample
 
     def update(data,port_name)
@@ -15,7 +14,7 @@ class TestWidget < Qt::Object
     end
 end
     
-class LoaderUiTest < Test::Unit::TestCase
+class OQConnectionTest < Test::Unit::TestCase
     def setup
         Vizkit::OQConnection::max_reconnect_frequency = 1
         Vizkit::ReaderWriterProxy.default_policy = {:port_proxy => Vizkit::TaskProxy.new("port_proxy"),:init => true}
@@ -104,6 +103,8 @@ class LoaderUiTest < Test::Unit::TestCase
             sleep(1.0)
             assert(reader.read)
             sleep(1.0)
+            widget.hide 
+            sleep(0.2)
             while $qApp.hasPendingEvents
                 $qApp.processEvents
             end
@@ -112,6 +113,8 @@ class LoaderUiTest < Test::Unit::TestCase
             assert(@sample2)
             #test if sample was received
             assert(widget.sample)
+            Vizkit.disconnect_all
+            task.out_test.disconnect_from widget
         end
     end
 end

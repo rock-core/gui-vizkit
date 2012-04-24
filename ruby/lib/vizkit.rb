@@ -3,6 +3,8 @@
 require 'orocos'
 require 'orocos/log'
 require File.join('vizkit','typelib_qt_adapter')
+require File.join('vizkit','plugin')
+require File.join('vizkit','plugin_extensions')
 require File.join('vizkit','uiloader')
 require File.join('vizkit','task_proxy')
 require File.join('vizkit','oqconnection')
