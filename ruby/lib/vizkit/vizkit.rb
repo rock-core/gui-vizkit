@@ -54,9 +54,6 @@ module Vizkit
       if widget.respond_to?(:loader) && callback_fct = widget.loader.control_callback_fct(widget,value)
         callback_fct.call(widget, value, options, &block) if !callback_fct.respond_to?(:to_sym) || callback_fct.to_sym != :config 
       end
-      if widget.respond_to?(:loader) && callback_fct = widget.loader.control_callback_fct(widget,value)
-        callback_fct.call(widget, value, options, &block)
-      end
     else
       if type == :display && value.respond_to?(:connect_to)
         value.connect_to widget,options ,&block
