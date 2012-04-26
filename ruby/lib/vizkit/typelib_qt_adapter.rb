@@ -8,6 +8,9 @@ rescue Exception => e
 end
 
 module Vizkit
+    class TypelibQtCallError < RuntimeError
+    end
+
     class TypelibQtAdapter
         attr_reader :adapter
         attr_reader :qt_object
@@ -96,7 +99,11 @@ module Vizkit
 		    #fetch it from qt, as we allready verified that out
 		    #parameters are correct.
 		    signature = adapter.getMethodSignatureFromNumber(method_name, params_idx)
-		    return adapter.callQtMethodWithSignature(signature, parameters_cxx, param_list_typelib, return_value)
+                    begin
+                        return adapter.callQtMethodWithSignature(signature, parameters_cxx, param_list_typelib, return_value)
+                    rescue Exception => e
+                        raise TypelibQtCallError, e, e.backtrace
+                    end
 		end
 	    end
             false
@@ -104,20 +111,28 @@ module Vizkit
 	
     end  
 
-end
-module QtTypelibExtension
-    def method_list
-        @qt_object_adapter ||= Vizkit::TypelibQtAdapter.new(self) 
-        @qt_object_adapter.method_list
-    end
+    module QtTypelibExtension
+        def method_list
+            @qt_object_adapter ||= Vizkit::TypelibQtAdapter.new(self) 
+            @qt_object_adapter.method_list
+        end
 
-    def method_missing(m, *args, &block)
-        @qt_object_adapter ||= Vizkit::TypelibQtAdapter.new(self) 
-        if(!@qt_object_adapter.call_qt_method(m.to_s, args, nil))
-            "calling super"
-            super
+        def method_missing(m, *args, &block)
+            @qt_object_adapter ||= Vizkit::TypelibQtAdapter.new(self) 
+            result =
+                begin @qt_object_adapter.call_qt_method(m.to_s, args, nil)
+                rescue TypelibQtCallError => e
+                    backtrace = caller
+                    backtrace = ["#{backtrace[0].gsub(/in `\w+'/, "exception from C++ method #{name}::#{m.to_s}")}"] + backtrace[1..-1]
+                    raise e, e.message, backtrace
+                end
+
+            if result
+                # Should be the return value
+                nil
+            else
+                super
+            end
         end
     end
 end
-
-

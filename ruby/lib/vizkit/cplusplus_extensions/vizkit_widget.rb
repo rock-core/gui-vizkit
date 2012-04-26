@@ -1,4 +1,5 @@
 require 'vizkittypelib'
+module Vizkit
 module VizkitPluginExtension
     attr_reader :plugins 
 
@@ -386,19 +387,22 @@ module VizkitPluginLoaderExtension
     end
 end
 
-Vizkit::UiLoader.extend_cplusplus_widget_class "vizkit::Vizkit3DWidget" do
+UiLoader.extend_cplusplus_widget_class "vizkit::Vizkit3DWidget" do
     include VizkitPluginLoaderExtension
     include QtTypelibExtension
 end
 
-Vizkit::UiLoader.extend_cplusplus_widget_class "vizkit::QVizkitMainWindow" do
+UiLoader.extend_cplusplus_widget_class "vizkit::QVizkitMainWindow" do
     include VizkitPluginLoaderExtension
 end
 
-Vizkit::UiLoader.register_3d_plugin('TrajectoryVisualization', 'TrajectoryVisualization', nil)
-Vizkit::UiLoader.register_3d_plugin_for('TrajectoryVisualization', "/base/Vector3d", :updateTrajectory)
-Vizkit::UiLoader.register_3d_plugin_for('TrajectoryVisualization', "Eigen::Vector3", :updateTrajectory)
-Vizkit::UiLoader.register_3d_plugin('RigidBodyStateVisualization', 'RigidBodyStateVisualization', nil)
-Vizkit::UiLoader.register_3d_plugin_for('RigidBodyStateVisualization', "/base/samples/RigidBodyState", :updateRigidBodyState)
-Vizkit::UiLoader.register_3d_plugin('LaserScanVisualization', 'LaserScanVisualization', nil)
-Vizkit::UiLoader.register_3d_plugin_for('LaserScanVisualization', "/base/samples/LaserScan", :updateLaserScan)
+UiLoader.register_3d_plugin('TrajectoryVisualization', 'TrajectoryVisualization', nil)
+UiLoader.register_3d_plugin_for('TrajectoryVisualization', "/base/Vector3d", :updateTrajectory)
+UiLoader.register_3d_plugin_for('TrajectoryVisualization', "Eigen::Vector3", :updateTrajectory)
+UiLoader.register_3d_plugin_for('TrajectoryVisualization', "Types::Base::Geometry::Spline3", :updateSpline)
+UiLoader.register_3d_plugin('RigidBodyStateVisualization', 'RigidBodyStateVisualization', nil)
+UiLoader.register_3d_plugin_for('RigidBodyStateVisualization', "/base/samples/RigidBodyState", :updateRigidBodyState)
+UiLoader.register_3d_plugin('LaserScanVisualization', 'LaserScanVisualization', nil)
+UiLoader.register_3d_plugin_for('LaserScanVisualization', "/base/samples/LaserScan", :updateLaserScan)
+end
+
