@@ -71,29 +71,25 @@ module Vizkit
 		
 		parameters_cxx = []
 		params.each_with_index do |param, i|
-		    begin
-			# the plugin reports a C++ type name, convert from Ruby
-			typename = Typelib::GCCXMLLoader.cxx_to_typelib(param)
-			if !Orocos.registered_type?(param)
-			    Orocos.load_typekit_for(typename, true) 
-			end
+                    # the plugin reports a C++ type name, convert from Ruby
+                    typename = Typelib::GCCXMLLoader.cxx_to_typelib(param)
+                    if !Orocos.registered_type?(param)
+                        begin
+                            Orocos.load_typekit_for(typename, true) 
+                        rescue Orocos::TypekitTypeNotFound
+                            matches = false
+                            break
+                        end
+                    end
 			
-			ruby_typelib_name = Orocos.typelib_type_for(typename)
-			ruby_typelib_names << ruby_typelib_name
+                    ruby_typelib_name = Orocos.typelib_type_for(typename)
+                    ruby_typelib_names << ruby_typelib_name
 
-			parameters_cxx << Typelib.from_ruby(parameters[i], ruby_typelib_name)
-                    rescue Interrupt
-                        raise
-		    rescue Exception => e  
-			matches = false
-                        Vizkit.info e
-			break;
-		    end
-		    
+                    parameters_cxx << Typelib.from_ruby(parameters[i], ruby_typelib_name)
 		    param_list_typelib << typename
 		end
 		
-		if(matches)
+		if matches
 		    #get the correct method signature for qt
 		    #as it would be very complex to build it from the parameters, we just
 		    #fetch it from qt, as we allready verified that out
