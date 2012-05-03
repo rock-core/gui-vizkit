@@ -278,6 +278,10 @@ module Vizkit
                 end
             end
 
+            def bind(object)
+                self
+            end
+
             # Name of the code block which is used for pretty_print of 
             # the PluginSpec
             # @return [Symbol] the name
@@ -418,6 +422,14 @@ module Vizkit
         def creation_method(method=nil,&block)
             if(method || block)
                 @creation_method = (method || block)
+                if @creation_method.respond_to? :to_sym
+                    klass = PluginHelper.class_from_string plugin_name
+                    raise "Cannot create class #{plugin_name} to look for creation method #{method}" unless klass
+                    if method.to_sym != :new && !klass.method_defined?(method)
+                        raise "Class #{plugin_name} has no method called #{method} which is specified as creation method"
+                    end
+                    @creation_method = klass.method(method)
+                end
                 self
             else
                 @creation_method
@@ -496,7 +508,12 @@ module Vizkit
 
         def create_plugin(parent=nil)
             raise "Plugin #{plugin_name} cannot be created: No creation method was specified" unless @creation_method 
-            plugin = extend_plugin(@creation_method.call(parent))
+            plugin = if @creation_method.arity == 1
+                         @creation_method.call(parent)
+                     else
+                         @creation_method.call()
+                     end
+            extend_plugin(plugin)
             if @on_create_hook
                 @on_create_hook.call(plugin)
             end
@@ -509,9 +526,14 @@ module Vizkit
 
         def extend_plugin(plugin)
             return unless plugin
-            plugin.instance_variable_set(:@__plugin_spec__,self)
-            def plugin.plugin_spec
-                @__plugin_spec__
+            if !plugin.respond_to?:plugin_spec
+                if plugin.instance_variable_defined?:@__plugin_spec
+                    raise "Cannot add instance variable @__plugin_spec to plugin #{plugin_name} because it is already defined!"
+                end
+                plugin.instance_variable_set(:@__plugin_spec__,self)
+                def plugin.plugin_spec
+                    @__plugin_spec__
+                end
             end
             @extensions.each do |extension|
                 plugin.extend extension

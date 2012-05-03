@@ -30,6 +30,7 @@ module Vizkit
             def register_ruby_widget(widget_name,create_method,&block)
                 current_loader_instance.register_plugin(widget_name,:ruby_plugin,create_method,&block)
             end
+
             def register_3d_plugin(ruby_name,lib_name=nil,plugin_name=nil)
                 lib_name = lib_name || ruby_name
                 plugin_name = plugin_name || ruby_name

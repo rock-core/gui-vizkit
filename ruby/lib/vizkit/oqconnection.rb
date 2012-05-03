@@ -76,8 +76,6 @@ module Vizkit
                 #use default callback_fct
                 if @callback_fct
                     @callback_fct = @callback_fct.bind(@widget)
-                elsif @widget.respond_to?(:update)
-                    @callback_fct = @widget.method(:update)
                 end
 
                 if !@callback_fct
@@ -86,6 +84,7 @@ module Vizkit
                         "has no callback function for displaying samples of type #{@type_name}." + 
                         "\nUse 'rock-inspect #{name ? name : "plugin_name"}' from the command line to get informations about the plugin.'"
                 end
+
                 Vizkit.info "Found callback_fct #{@callback_fct} for OQConnection connected to port #{@port.full_name}"
                 @callback_fct
             else
@@ -212,11 +211,13 @@ module Vizkit
                 options = widget
                 widget = nil
             end
-            if widget.is_a?(Qt::Object) || (block_given? && !self.to_orocos_port.is_a?(Orocos::Log::OutputPort)) || widget.is_a?(Method) ||
-                (widget.respond_to?(:ruby_widget?)&&widget.ruby_widget?)
+            if (block_given? && !self.to_orocos_port.is_a?(Orocos::Log::OutputPort)) || 
+                widget.is_a?(Method) || widget.respond_to?(:plugin_spec)
                 return connect_to_widget(widget,options,&block)
-            else
+            elsif !widget || widget.respond_to?(:to_orocos_port)
                 return org_connect_to widget,options,&block
+            else
+                raise "Cannot connect #{widget} to #{full_name}. Call 'connect_to plugin.method(:name)' or register the plugin."
             end
             self
         end
