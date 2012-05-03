@@ -60,7 +60,7 @@ class LoaderUiTest < Test::Unit::TestCase
 
     def test_classes
         _,v2,_ = RUBY_VERSION.split('.')
-        if v2 == 8
+        if v2 == "8"
             assert_equal ["Float","Numeric","Object"],Vizkit::PluginHelper.classes(Float)
         else
             assert_equal ["Float","Numeric","Object","BasicObject"],Vizkit::PluginHelper.classes(Float)

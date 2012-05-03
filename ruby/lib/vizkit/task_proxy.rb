@@ -162,7 +162,7 @@ module Vizkit
             reader_writer = __reader_writer
             if reader_writer
                 reader_writer.send(m, *args, &block)
-            elsif Orocos::OutputReader.public_instance_methods.include?(m) || Orocos::InputWriter.public_instance_methods.include?(m)
+            elsif Orocos::OutputReader.public_method_defined?(m) || Orocos::InputWriter.public_method_defined?(m)
                 Vizkit.warn "ReaderWriterProxy for port #{port.full_name}: ignoring method #{m} because port is not reachable."
                 @__reader_writer = nil
             else
@@ -437,7 +437,7 @@ module Vizkit
         def method_missing(m, *args, &block)
             if __port
                 @__port.send(m, *args, &block)
-            elsif Orocos::OutputPort.public_instance_methods.include?(m.to_s) || Orocos::InputPort.public_instance_methods.include?(m.to_s)
+            elsif Orocos::OutputPort.public_method_defined?(m) || Orocos::InputPort.public_method_defined?(m)
                 Vizkit.warn "PortProxy #{full_name}: ignoring method #{m} because port is not reachable."
                 @__port = nil
             else
@@ -549,7 +549,7 @@ module Vizkit
         end
 
         def respond_to?(method)
-            return true if super || Orocos::TaskContext.public_instance_methods.include?(method.to_s) ||__task.respond_to?(method)
+            return true if super || Orocos::TaskContext.public_method_defined?(method) ||__task.respond_to?(method)
             false
         end
 
@@ -579,7 +579,7 @@ module Vizkit
 
         def method_missing(m, *args, &block)
             if !ping
-                if Orocos::TaskContext.public_instance_methods.include?(m.to_sym)
+                if Orocos::TaskContext.public_method_defined?(m)
                     Vizkit.warn "TaskProxy #{name}: ignoring method #{m} because task is not reachable."
                     @__task = nil
                 else
