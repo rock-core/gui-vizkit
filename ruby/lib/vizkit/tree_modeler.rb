@@ -741,7 +741,6 @@ module Vizkit
                             end
                     item2.set_text "#{object.size} fields ..."
                 elsif object.size > 0
-                    row = 0
                     object.each_with_index do |val,row|
                         item,item2 = child_items(parent_item,row)
                         item2.set_text val.class.name
@@ -753,8 +752,7 @@ module Vizkit
                         end
                     end
                     #delete all other rows
-                    row += 1
-                    parent_item.remove_rows(row,parent_item.row_count-row) if row < parent_item.row_count
+                    parent_item.remove_rows(row,parent_item.row_count-object.size) if row < parent_item.row_count
                 elsif read_from_model
                     a = (update_object(object.to_ruby,parent_item,read_from_model,0))
                     if a.kind_of? String
