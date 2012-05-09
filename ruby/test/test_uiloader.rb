@@ -441,6 +441,15 @@ class LoaderUiTest < Test::Unit::TestCase
         assert widget
         assert widget.textEdit
         assert_equal widget.textEdit.class_name, "Qt::TextEdit"
+
+        assert widget.plot2d
+        assert_equal widget.plot2d.class_name, "Plot2d"
+
+        #test that the spec was attaced
+        assert widget.plot2d.plugin_spec
+
+        #test that initialize_vizkit_extension was called
+        assert_equal widget.plot2d.instance_variable_get(:@graphs).class,Hash
     end
 
     def test_loader_available_plugins

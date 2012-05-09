@@ -519,9 +519,6 @@ module Vizkit
                          @creation_method.call()
                      end
             extend_plugin(plugin)
-            if @on_create_hook
-                @on_create_hook.call(plugin)
-            end
             plugin
         end
 
@@ -545,6 +542,9 @@ module Vizkit
             end
             @extensions.each do |extension|
                 plugin.extend extension
+            end
+            if @on_create_hook
+                @on_create_hook.call(plugin)
             end
             @created_plugins << plugin 
             plugin
