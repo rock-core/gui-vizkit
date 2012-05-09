@@ -263,7 +263,7 @@ module Vizkit
                                 end
                     widget_name = Vizkit::ContextMenu.control_widget_for(type_name,tree_view,pos)
                     if widget_name
-                        widget = Vizkit.control nil, :widget => widget_name ,:type_name => type_name do |sample| 
+                        widget = Vizkit.control nil, :widget => widget_name do |sample| 
                             update_object(sample,item)
                             @dirty_items << item unless @dirty_items.include? item
                             widget.close

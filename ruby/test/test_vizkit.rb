@@ -111,8 +111,10 @@ class VizkitTest < Test::Unit::TestCase
             widget.close
 
             task2 = Vizkit::TaskProxy.new("test_task")
-            widget = Vizkit.display task2.port("time")
-            assert(!widget)
+            #task does not exist 
+            assert_raise RuntimeError do 
+                widget = Vizkit.display task2.port("time")
+            end
             Vizkit.use_tasks log.tasks
             widget = Vizkit.display task2.time
             assert(widget)

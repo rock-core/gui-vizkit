@@ -90,13 +90,17 @@ class TaskProxyTest < Test::Unit::TestCase
         assert(writer)
         assert(reader)
         assert(proxy_reader)
-        assert(!writer.type_name)
+        assert_raise RuntimeError do 
+            writer.type_name
+        end
         assert(writer.port)
         assert(writer.port.task)
         assert(!writer.port.task.__task)
         assert(!task.ping)
         assert(!task.has_port?("bla"))
-        assert(!port.type_name)
+        assert_raise RuntimeError do 
+            assert(!port.type_name)
+        end
 
         Orocos.run "rock_port_proxy" do 
             assert (task.ping)
@@ -173,30 +177,72 @@ class TaskProxyTest < Test::Unit::TestCase
             sample.first.received_time = Time.now
             sample.first.frame_mode = :MODE_UNDEFINED
             sample.first.frame_status = :STATUS_EMPTY
+            sample.first.size.width = 100
+            element = sample.first.raw_get_field("attributes").element_t.new
+            element.data_ = "payload"
+            element.name_ = "first"
+            sample.first.attributes <<  element.dup
+            element.name_ = "second"
+            sample.first.attributes <<  element
+            pp sample.first.attributes
+
             sample.second.time = Time.now
             sample.second.received_time = Time.now
             sample.second.frame_mode = :MODE_UNDEFINED
             sample.second.frame_status = :STATUS_EMPTY
             sample.second.data_depth = 1
+
             writer.write sample 
             sleep(2.0)
             assert(reader.read)
 
             #create a subfield reader
-            subfield_port = task.out_test(:subfield => "first",:type_name =>"/base/samples/frame/Frame")
+            subfield_port = task.out_test(:subfield => "first")
             assert(subfield_port)
             assert(subfield_port.type_name == "/base/samples/frame/Frame")
             reader = subfield_port.reader
             
-            subfield_port2 = task.out_test(:subfield => ["first","size"],:type_name =>"/base/samples/frame/frame_size_t")
+            subfield_port2 = task.out_test(:subfield => ["first","size"],:type => Orocos.registry.get("/base/samples/frame/frame_size_t"))
             assert(subfield_port2)
             assert(subfield_port2.type_name == "/base/samples/frame/frame_size_t")
             reader2 = subfield_port2.reader
+
+            subfield_port3 = task.out_test(:subfield => ["first","size","width"])
+            assert(subfield_port3)
+            assert_equal("/uint16_t",subfield_port3.type_name)
+            reader3 = subfield_port3.reader
+
+            subfield_port4 = task.out_test(:subfield => ["first","attributes",1,"name_"])
+            assert(subfield_port4)
+            assert_equal("/std/string",subfield_port4.type_name)
+            reader4 = subfield_port4.reader
+
+            subfield_port5 = task.out_test(:subfield => ["first","attributes",10,"name_"])
+            assert(subfield_port5)
+            assert_equal("/std/string",subfield_port5.type_name)
+            reader5 = subfield_port5.reader
+
+            subfield_port6 = task.out_test(:subfield => ["first","attributess"])
+            assert(subfield_port6)
+            assert_raise ArgumentError do
+                subfield_port6.type_name
+            end
+            reader6 = subfield_port6.reader
 
             writer.write sample 
             sleep(2.0)
             assert_equal(reader.read.time.to_s, time_first.to_s) 
             assert(reader2.read) 
+            assert_equal reader3.read,100
+            assert_equal reader4.read,"second"
+
+            #subfield does not exist
+            #out of index
+            assert_equal reader5.read,nil 
+            #wrong spelling
+            assert_raise ArgumentError do
+                reader6.read
+            end
         end
     end
 end

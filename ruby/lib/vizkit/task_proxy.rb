@@ -82,7 +82,6 @@ module Vizkit
         #returns a valid reader which can be used for reading or nil if the Task cannot be contacted 
         def __reader_writer(disable_proxy_on_error=true)
             return @__reader_writer if __valid?
-            return nil if !type_name
 
             if  !@__port.task.reachable? 
                 Vizkit.info "Port #{@__port.full_name} is not reachable"
@@ -154,6 +153,10 @@ module Vizkit
             @__port.type_name
         end
 
+        def type
+            @__port.type
+        end
+
         def new_sample
             @__port.new_sample
         end
@@ -175,7 +178,7 @@ module Vizkit
 
     class ReaderProxy < ReaderWriterProxy
         def initialize(task,port,options = Hash.new)
-            temp_options, options = Kernel.filter_options options,:subfield => Array.new ,:type_name => nil
+            temp_options, options = Kernel.filter_options options,:subfield => Array.new ,:type => nil
             super
             @local_options.merge! temp_options
             @local_options[:subfield] = Array(@local_options[:subfield])
@@ -220,7 +223,7 @@ module Vizkit
 
     class WriterProxy < ReaderWriterProxy
         def initialize(task,port,options = Hash.new)
-            temp_options, options = Kernel.filter_options options,:subfield => Array.new ,:type_name => nil
+            temp_options, options = Kernel.filter_options options,:subfield => Array.new ,:type => nil
             raise "Subfields are not supported for WriterProxy #{port.full_name}" if options.has_key?(:subfield) && !options[:subfield].empty?
             super(task,port,options)
             Vizkit.info "Create WriterProxy for #{port.full_name}"
@@ -231,12 +234,12 @@ module Vizkit
     class PortProxy
         #task = name of the task or its TaskContext
         #port = name of the port or its Orocos::Port
-        #options = {:subfield => Array,:type_name => type_name of the subfield}
+        #options = {:subfield => Array,:type => type of the subfield}
         #
         #if the PortProxy is used for a subfield reader the type_name of the subfield must be given
         #because otherwise the type_name would only be known after the first sample was received 
         def initialize(task, port,options = Hash.new)
-            @local_options, options = Kernel::filter_options options,{:subfield => Array.new,:type_name => nil,:port_proxy => nil}
+            @local_options, options = Kernel::filter_options options,{:subfield => Array.new,:type => nil,:port_proxy => nil}
             @local_options[:subfield] = Array(@local_options[:subfield])
 
             @__task = TaskProxy.new(task)
@@ -289,36 +292,31 @@ module Vizkit
             @__port_name
         end
 
-        def type_name
-            @type_name ||= if(type = @local_options[:type_name]) != nil
-                               type
-                           elsif @__port || __port
-                               if !@local_options[:subfield].empty?
-                                   @new_sample ||= @__port.new_sample.zero!
-                                   sample = @new_sample
-                                   @local_options[:subfield].each do |f|
-                                       sample = if f.is_a? Fixnum 
-                                                    sample.element_t
-                                                elsif sample.respond_to? :raw_get_field
-                                                    sample.class[f]
+        def type
+            @type ||= if(type = @local_options[:type]) != nil
+                          type
+                      elsif @__port || __port
+                          if !@local_options[:subfield].empty?
+                              @type ||= @__port.type
+                              @local_options[:subfield].each do |f|
+                                  @type = if f.is_a? Fixnum 
+                                                    @type.deference
                                                 else
-                                                    sample[f]
+                                                    @type[f]
                                                 end
-                                   end
-                                   if sample.respond_to? :name
-                                       sample.name
-                                   elsif sample.class.respond_to? :name
-                                       sample.class.name
-                                   else
-                                       sample.class
-                                   end
-                               else
-                                   @__port.type_name
-                               end
-                           elsif
-                               nil
-                           end
-            @type_name
+                              end
+                              @type
+                          else
+                              @__port.type
+                          end
+                      elsif
+                          raise RuntimeError, "Cannot discover type for PortProxy #{full_name} because the port is not reachable and the option hint ':type' is not given."
+                      end
+            @type
+        end
+
+        def type_name
+            type.name
         end
 
         def task
@@ -391,41 +389,18 @@ module Vizkit
         end
 
         def new_sample
-            if type_name.respond_to?(:new)
-		#the type is a class
-                return nil
-            elsif type_name.respond_to? :to_str
-                if @__port && @__port.type_name == type_name
-                    @__port.new_sample
-                else
-                    if @new_sample
-                        if @new_sample.class.registry.include? type_name
-                            @new_sample.class.registry.get(type_name).new
-                        else
-                            nil
-                        end
-                    else
-                        if !Orocos.registry.include? type_name
-                            Vizkit.info "load typekit for #{type_name}"
-                            Orocos.load_typekit_for type_name
-                        end
-                        Orocos.registry.get(type_name).new
-                    end
-                end
-            else
-                nil
-            end
+            type.new
         end
 
         def __subfield(sample,field=Array.new)
             return sample if(field.empty? || !sample)
-            begin
-                field.each do |f| 
-                    sample = sample[f]
+            field.each do |f| 
+                sample = sample[f]
+                if !sample
+                    #if the field name is wrong typelib will raise an ArgumentError
+                    Vizkit.warn "Cannot extract subfield for port #{full_name}: Subfield #{f} does not exist (out of index)!"
+                    break
                 end
-            rescue ArgumentError => e
-                Vizkit.info "Cannot extract subfield for port #{port.full_name}: Subfield does not exist!"
-                sample = nil
             end
             #check if the type is right
             if(sample.respond_to?(:type_name) && sample.type_name != type_name )
