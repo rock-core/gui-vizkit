@@ -519,7 +519,6 @@ module Vizkit
                          @creation_method.call()
                      end
             extend_plugin(plugin)
-            plugin
         end
 
         def created_plugins
@@ -539,6 +538,10 @@ module Vizkit
                 def plugin.pretty_print(pp)
                     pp plugin_spec
                 end
+            else
+                #we have to overwrite it if the widget was created via ui -file
+                #because the ui loader will add a plugin spec
+                plugin.instance_variable_set(:@__plugin_spec__,self)
             end
             @extensions.each do |extension|
                 plugin.extend extension

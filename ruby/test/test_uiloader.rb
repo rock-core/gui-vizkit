@@ -450,6 +450,10 @@ class LoaderUiTest < Test::Unit::TestCase
 
         #test that initialize_vizkit_extension was called
         assert_equal widget.plot2d.instance_variable_get(:@graphs).class,Hash
+
+        #test that the spec was set corretly for plugins created via ui loader
+        plugin = @loader.StructViewer
+        assert_equal "StructViewer",plugin.plugin_spec.plugin_name
     end
 
     def test_loader_available_plugins
