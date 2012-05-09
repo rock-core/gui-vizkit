@@ -415,6 +415,17 @@ class LoaderUiTest < Test::Unit::TestCase
         assert plugin
         assert plugin.is_a? Qt::Widget
 
+        #test multi value registration 
+        specs = Vizkit::UiLoader.register_plugin_for("QLabel",["String","Array","Hash"],:display) do 
+            888
+        end
+        assert_equal specs.size,3
+        plugin = @loader.create_plugin_for(Hash,:display)
+        assert plugin
+        assert plugin.is_a? Qt::Label
+        callback = plugin.plugin_spec.find_callback!(:argument => "Hash",:callback_type => :display)
+        assert callback
+        assert_equal 888,callback.call
     end
 
     def test_loader_register_widget_for

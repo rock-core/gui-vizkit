@@ -166,27 +166,33 @@ module Vizkit
             spec
         end
 
-        def register_plugin_for(plugin_name,value,callback_type,default=nil,callback_fct=nil,&block)
+        def register_plugin_for(plugin_name,values,callback_type,default=nil,callback_fct=nil,&block)
             if !callback_fct && !block
-                raise ArgumentError, "#register_plugin_for(#{plugin_name}, #{value}, #{callback_type}) with neither a callback method name nor a block"
-            end
-            spec2 = find_plugin_spec!(:callback_type => callback_type,:argument => value)
-            #delete old default
-            if spec2 
-                if default 
-                    spec2 = spec2.find_callback_spec!(:callback_type => callback_type,:argument=> value)
-                    spec2.default(false)
-                end
-            else
-                default = true
+                raise ArgumentError, "#register_plugin_for(#{plugin_name}, #{values}, #{callback_type}) with neither a callback method name nor a block"
             end
 
             spec = find_plugin_spec!({:plugin_name => plugin_name})
             if !spec
                 raise "Cannot register #{callback_fct||block} for #{plugin_name}. #{plugin_name} is not a registered plugin."
             end
-            spec.callback_spec(value,callback_type,default,callback_fct,&block).file_name(UiLoader.current_file_path)
-            spec.callback_specs.last
+            
+            values = Array(values)
+            specs = Array.new
+            values.each do |value|
+                spec2 = find_plugin_spec!(:callback_type => callback_type,:argument => value)
+                #delete old default
+                if spec2 
+                    if default 
+                        spec2 = spec2.find_callback_spec!(:callback_type => callback_type,:argument=> value)
+                        spec2.default(false)
+                    end
+                else
+                    default = true
+                end
+                spec.callback_spec(value,callback_type,default,callback_fct,&block).file_name(UiLoader.current_file_path)
+                specs << spec.callback_specs.last
+            end
+            values.size == 1 ? specs.first : specs
         end
 
         #adds instance methods for the available plugins to the uiloader 
