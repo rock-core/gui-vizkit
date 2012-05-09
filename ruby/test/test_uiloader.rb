@@ -258,6 +258,13 @@ class LoaderUiTest < Test::Unit::TestCase
         spec.callback_spec(Vizkit::CallbackSpec.new("test_name1",:display,true,:test2))
         assert_equal :test2, spec.find_callback!(:argument => 123.2,:callback_type => :display).to_sym
         assert_equal 123, spec.find_callback!(:argument => 12,:callback_type => :display,:default=>nil).call(123,Hash.new)
+
+        #test that double registration is not allowed
+        spec.callback_spec("/base/samples/RigidBodyState_m",:display,true,:test2)
+        assert_equal spec.callback_specs.last, spec.find_callback_spec!(:argument => "/base/samples/RigidBodyState_m",:callback_type => :display)
+        size = spec.callback_specs.size
+        spec.callback_spec("/base/samples/RigidBodyState_m",:display,false,:test2)
+        assert_equal size,spec.callback_specs.size
     end
 
     module Test 

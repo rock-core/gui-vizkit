@@ -98,7 +98,7 @@ module Vizkit
         # @return [Array<String>] an array of the class and all superclass names
         def self.classes(klass,include_super=true)
             return Array.new unless klass
-            raise ArgumentError.new "#{klass} is not a class" unless klass.respond_to? :name
+            raise ArgumentError, "#{klass} is not a class" unless klass.respond_to? :name
             if include_super && klass.respond_to?(:superclass) && klass.superclass && klass != klass.superclass
                 Array(klass.name) + classes(klass.superclass)
             else
@@ -205,7 +205,7 @@ module Vizkit
             attr_reader :sym
 
             def initialize(sym)
-                raise ArgumentError.new "Cannot initialize MethodNameAdapter: No method is given" unless sym
+                raise ArgumentError, "Cannot initialize MethodNameAdapter: No method is given" unless sym
                 @sym = sym
             end
 
@@ -357,7 +357,7 @@ module Vizkit
             return true if pattern.empty?
             pattern = pattern.first
             pattern, options = Kernel.filter_options(pattern,:callback_type => nil,:argument => nil,:default => nil,:exact => nil)
-            raise ArgumentError.new "Wrong options #{options}" unless options.empty? 
+            raise ArgumentError, "Wrong options #{options}" unless options.empty? 
 
             if pattern[:callback_type]
                 return if pattern[:callback_type] != @callback_type
@@ -444,7 +444,11 @@ module Vizkit
                    end
             spec2 = find_callback_spec!({:argument => spec.argument ,:callback_type => spec.callback_type})
             if spec2
-                ArgumentError.new "Cannot add CallbackSpec to PluginSpec #{plugin_name}. There is already a callback registered for #{spec.argument} and type #{spec.callback_type}"
+                Vizkit.warn "#{plugin_name}: Ignoring callback for #{spec.argument} and callback type #{spec.callback_type}"
+                Vizkit.warn "because only one callback per value and callback type is allowed."
+                Vizkit.warn "Please remove the register_widget_for #{plugin_name},#{spec.argument} statement from"
+                Vizkit.warn file_names
+                return self
             end
             @callback_specs << spec
             self
@@ -490,7 +494,8 @@ module Vizkit
                 end
             end
             if specs.size > 1
-                raise ArgumentError, "found more than on CallbackSpec for #{pattern.inspect}"
+                raise ArgumentError, "Vizkit faild to find the right plugin callback for plugin #{plugin_name} and search pattern #{pattern.inspect}." + 
+                                     " #{specs.size} callbacks were found and vizkit cannot decide which one is right."
             end
             specs.first
         end
@@ -533,6 +538,9 @@ module Vizkit
                 plugin.instance_variable_set(:@__plugin_spec__,self)
                 def plugin.plugin_spec
                     @__plugin_spec__
+                end
+                def plugin.pretty_print(pp)
+                    pp plugin_spec
                 end
             end
             @extensions.each do |extension|

@@ -48,7 +48,7 @@ module Vizkit
             def extend_cplusplus_widget_class(class_name,&block)
                 spec = current_loader_instance.register_plugin(class_name,:cplusplus_widget) do |parent|
                     widget = current_loader_instance.create_widget(class_name,parent,true,true)
-                    UiLoader.redefine_widget_class_names(widget,class_name)
+                    UiLoader.redefine_widget_class_name(widget,class_name)
                     widget
                 end
                 spec.extension(VizkitCXXExtension)
@@ -81,23 +81,14 @@ module Vizkit
                 register_plugin_for(widget_name,type_name,:display,nil,display_method,&block)
             end
 
-            #redefines the widget class name of a widget and its children
+            #redefines the widget class name of a widget 
             #this is needed because the qt loader does not set it right
             #after the widget was loaded
-            def redefine_widget_class_names(widget,mapping)
-                mapping = {widget.objectName => mapping} if mapping.respond_to? :to_str
-                class_name = mapping[widget.objectName]
+            def redefine_widget_class_name(widget,class_name)
                 if class_name && (widget.class_name == "Qt::Widget" || widget.class_name == "Qt::MainWindow")
                     widget.instance_variable_set(:@real_class_name,class_name)
                     def widget.class_name;@real_class_name;end
                     def widget.className;@real_class_name;end
-                end
-                children = widget.findChildren(Qt::Object)
-                children.each do |child|
-                    if child.objectName && child.objectName.size > 0
-                        redefine_widget_class_names child, mapping
-                        (class << widget; self;end).send(:define_method,child.objectName){child}
-                    end
                 end
             end
         end
@@ -142,7 +133,7 @@ module Vizkit
                         Vizkit.warn "Cannot load vizkit extension #{path}"
                         Vizkit.warn e.message
                         e.backtrace.each do |line|
-                            Vizkit.warn "  #{line}"
+
                         end
                     end
                 elsif ::File.directory?(path)
@@ -218,16 +209,14 @@ module Vizkit
             file = Qt::File.new(ui_file)
             file.open(Qt::File::ReadOnly)
 
-            #for getting relative images 
             form = nil
             Dir.chdir File.dirname(ui_file) do 
                 form = __getobj__.load(file,parent)
             end
+            return unless form 
+
             mapping = map_objectName_className(ui_file)
-            if form
-                UiLoader.redefine_widget_class_names(form,mapping)
-                extend_widgets form 
-            end
+            extend_widgets form, mapping
 
             #check that all widgets are available 
             mapping.each_key do |k|
@@ -254,9 +243,13 @@ module Vizkit
         #extends the widget and all its children 
         #this is needed for cases where the widget was loaded via 
         #an ui file
-        def extend_widgets(widget,children=true)
-            spec = find_plugin_spec!({:plugin_name => widget})
-            spec.extend_plugin(widget) if spec 
+        def extend_widgets(widget,mapping,children=true)
+            class_name = mapping[widget.objectName]
+            if class_name
+                UiLoader.redefine_widget_class_name widget,class_name
+                spec = find_plugin_spec!({:plugin_name => class_name})
+                spec.extend_plugin(widget) if spec
+            end
 
             #extend childs and add accessor for QObject
             #find will find children recursive 
@@ -266,7 +259,7 @@ module Vizkit
             children = widget.findChildren(Qt::Object)
             children.each do |child|
                 if child.objectName && child.objectName.size > 0
-                    extend_widgets child, false 
+                    extend_widgets child, mapping,false
                     (class << widget; self;end).send(:define_method,child.objectName){child}
                 end
             end
