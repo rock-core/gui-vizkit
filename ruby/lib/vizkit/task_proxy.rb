@@ -399,7 +399,11 @@ module Vizkit
                     @__port.new_sample
                 else
                     if @new_sample
-                        @new_sample.class.registry.get(type_name).new
+                        if @new_sample.class.registry.include? type_name
+                            @new_sample.class.registry.get(type_name).new
+                        else
+                            nil
+                        end
                     else
                         if !Orocos.registry.include? type_name
                             Vizkit.info "load typekit for #{type_name}"
