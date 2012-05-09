@@ -80,7 +80,7 @@ module Vizkit
 
                 if !@callback_fct
                     name = @widget.respond_to?(:plugin_spec) ? @widget.plugin_spec.plugin_name : "nil"
-                    raise "Plugin #{name ? name : widget} " + 
+                    raise "Plugin #{name ? name : widget} " +
                         "has no callback function for displaying samples of type #{@type_name}." + 
                         "\nUse 'rock-inspect #{name ? name : "plugin_name"}' from the command line to get informations about the plugin.'"
                 end
@@ -108,9 +108,9 @@ module Vizkit
             #call disconnect if widget is no longer visible
             #this could lead to some problems if the widget wants to
             #log the data 
-            if @widget && @widget.respond_to?(:visible) && !@widget.visible
+            if (@widget.is_a?(Qt::Widget) || @widget.respond_to?(:visible)) && !@widget.visible
                 Vizkit.info "OQConnection for #{@port.name} and widget #{widget.objectName}. Widget is not visible!" 
-                disconnect
+                Vizkit.disconnect_from @widget
                 return
             end
 

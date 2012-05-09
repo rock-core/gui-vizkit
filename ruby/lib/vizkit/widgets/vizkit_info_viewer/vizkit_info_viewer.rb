@@ -16,6 +16,13 @@ class VizkitInfoViewer
             oqconnections.each_with_index do |connection,i|
                 @tree_view.update(connection,nil,@tree_view.root,false,i)
             end
+            if @tree_view.root.rowCount > oqconnections.size
+                if oqconnections.empty?
+                    @tree_view.root.removeRows(0,@tree_view.root.rowCount)
+                else
+                    @tree_view.root.removeRows(oqconnections.size,@tree_view.root.rowCount-oqconnections.size)
+                end
+            end
             @tree_view.set_all_children_editable(@tree_view.model.invisible_root_item, false)
             treeView.resizeColumnToContents(0)
         end
