@@ -200,17 +200,15 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "Plot2d" do
         update sample.rad,name
     end
 end
-
-Vizkit::UiLoader.register_widget_for("Plot2d","Fixnum",:update)
-Vizkit::UiLoader.register_widget_for("Plot2d","Float",:update)
+vector_types = ["/std/vector</uint8_t>","/std/vector</uint16_t>","/std/vector</uint32_t>",
+                "/std/vector</uint64_t>","/std/vector</int8_t>","/std/vector</int16_t>",
+                "/std/vector</int32_t>","/std/vector</int64_t>","/std/vector</float>",
+                "/std/vector</double>"]
+Vizkit::UiLoader.register_widget_for("Plot2d","Typelib::NumericType",:update)
 Vizkit::UiLoader.register_widget_for("Plot2d","/base/Quaterniond",:update_orientation)
 Vizkit::UiLoader.register_widget_for("Plot2d","/base/samples/SonarBeam",:update_sonar_beam)
 Vizkit::UiLoader.register_widget_for("Plot2d","/base/samples/LaserScan",:update_laser_scan)
-Vizkit::UiLoader.register_widget_for("Plot2d","/std/vector</uint8_t>",:update_vector)
-Vizkit::UiLoader.register_widget_for("Plot2d","/std/vector</uint16_t>",:update_vector)
-Vizkit::UiLoader.register_widget_for("Plot2d","/std/vector</uint32_t>",:update_vector)
-Vizkit::UiLoader.register_widget_for("Plot2d","/std/vector</double>",:update_vector)
-Vizkit::UiLoader.register_widget_for("Plot2d","/std/vector</float>",:update_vector)
+Vizkit::UiLoader.register_widget_for("Plot2d",vector_types,:update_vector)
 Vizkit::UiLoader.register_widget_for("Plot2d","/base/Angle",:update_angle)
 Vizkit::UiLoader.register_widget_for("Plot2d","/base/Vector3d",:update_vector3d)
 

@@ -300,7 +300,7 @@ module Vizkit
                                        sample = if f.is_a? Fixnum 
                                                     sample.element_t
                                                 elsif sample.respond_to? :raw_get_field
-                                                    sample.raw_get_field(f)
+                                                    sample.class[f]
                                                 else
                                                     sample[f]
                                                 end
