@@ -42,6 +42,7 @@ class OQConnectionTest < Test::Unit::TestCase
 
         #Use OQConnection via PortProxy.connect_to
         widget = TestWidget.new
+        widget.show
         Vizkit::TaskProxy.new("port_proxy").port("out_test").connect_to widget.method(:update)
 
         #Use OQConnection via Vizkit.connect_port_to
@@ -118,8 +119,8 @@ class OQConnectionTest < Test::Unit::TestCase
 
             assert(@sample)
             assert(@sample2)
-            #test if sample was received
-            assert(widget.sample)
+            #test if sample was not received because it is hidden
+            assert(!widget.sample)
             Vizkit.disconnect_all
             task.out_test.disconnect_from widget
         end
@@ -146,6 +147,7 @@ class OQConnectionTest < Test::Unit::TestCase
         Vizkit::UiLoader::register_widget_for("TestWidget2","/base/Time",:update)
 
         widget = TestWidget.new
+        widget.show
         widget2 = TestWidget2.new
         spec1.extend_plugin(widget)
         widget2 = spec2.create_plugin
