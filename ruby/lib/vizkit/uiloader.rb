@@ -197,22 +197,22 @@ module Vizkit
             spec_new = spec.dup
             spec_new.instance_variable_set(:@plugin_name, new_name)
             @plugin_specs[spec_new.plugin_name] = spec_new
-            #add a deprecate block
             if(block||message)
                 spec.instance_variable_set(:@plugin_name, old_name)
                 spec.instance_eval do 
                     alias :old_create_plugin :create_plugin
                 end
-                spec.instance_variable_set :@__deprecate_message,message
-                spec.instance_variable_set :@__deprecate_block,block
+                spec.instance_variable_set :@__depricate_message,message
+                spec.instance_variable_set :@__depricate_block,block
                 def spec.create_plugin(parent=nil)
-                    Vizkit.warn @__deprecate_message if @__deprecate_message
-                    @__deprecate_block.call if @__deprecate_block
+                    Vizkit.warn @__depricate_message if @__depricate_message
+                    @__depricate_block.call if @__depricate_block
                     old_create_plugin(parent)
                 end
                 spec.callback_specs.each do|calls|
                     calls.default(false)
                 end
+                spec.flags(spec.flags.merge({:depricated => true,:renamed_to => new_name}))
                 @plugin_specs[old_name] = spec
             end
             add_plugin_accessors
@@ -355,7 +355,7 @@ module Vizkit
         # compatibility method
         def create_widget(name,parent=nil,reuse=true,internal=false)
             unless internal
-                Vizkit.warn "[DEPRECATATION] 'create_widget' is deprecated use 'create_plugin' instead."
+                Vizkit.warn "[DEPRECATATION] 'create_widget' is depricated use 'create_plugin' instead."
                 create_plugin(name,parent,reuse)
             else
                 super(name,parent)

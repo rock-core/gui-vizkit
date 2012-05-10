@@ -372,6 +372,19 @@ module Vizkit
             end
             return true
         end
+
+        def pretty_print(pp)
+            pp.text "argument: #{argument}"
+            pp.nest(2) do 
+                pp.breakable
+                pp.text "callback method: #{callback.block_name}"
+                pp.breakable
+                pp.text "type: #{callback_type}"
+                pp.breakable
+                pp.text "default: #{default ? true : false}"
+            end
+            pp.breakable
+        end
     end
 
     class PluginSpec
@@ -384,6 +397,13 @@ module Vizkit
                 @file_names
             end
         end
+
+        dsl_attribute :flags do |*val|
+            val = val.first
+            raise ArgumentError,"Wrong flag type. Hash was expected but got #{val.class.name}" unless val.is_a?(Hash)
+            val
+        end
+
         dsl_attribute :extensions do |*blocks|
             blocks.flatten!
             blocks.each do |block|
@@ -401,6 +421,7 @@ module Vizkit
             @created_plugins = Array.new
             @extensions = Array.new
             @file_names = Array.new
+            @flags = Hash.new
             @on_create_hook = nil
         end
 
@@ -463,9 +484,10 @@ module Vizkit
         def match?(*pattern)
             return if pattern.empty?
             pattern = pattern.first
-            pattern, subpattern= Kernel.filter_options pattern,:plugin_name=> nil,:cplusplus_name => nil
+            pattern, subpattern= Kernel.filter_options pattern,:plugin_name=> nil,:cplusplus_name => nil,:flags =>nil
             return if pattern[:plugin_name] && plugin_name != pattern[:plugin_name]
             return if pattern[:cplusplus_name] && cplusplus_name !=  pattern[:cplusplus_name]
+            return if pattern[:flags] && flags.merge(pattern[:flags]) != flags
             return if !subpattern.empty? && find_all_callback_specs(subpattern).empty?
             true
         end
@@ -570,6 +592,16 @@ module Vizkit
                 pp.text @doc
                 pp.breakable
             end
+            if !flags.empty?
+                pp.text "Flags:"
+                pp.nest(2) do 
+                    flags.each_pair do |key,val|
+                        pp.breakable
+                        pp.text "#{key} => #{val}"
+                    end
+                end
+                pp.breakable
+            end
             pp.text "Extensions: "
             pp.breakable
             @extensions.each do |ext|
@@ -583,11 +615,10 @@ module Vizkit
                 end
             end
             pp.text "Registered for: "
-            pp.breakable
-            @callback_specs.each do |spec|
-                if spec.argument
-                    pp.text "  #{spec.callback.block_name}(#{spec.argument}) #{spec.default ? "-> default" :""}"
-                    pp.breakable
+            pp.nest(2) do
+                pp.breakable
+                @callback_specs.each do |spec|
+                    spec.pretty_print(pp)
                 end
             end
         end

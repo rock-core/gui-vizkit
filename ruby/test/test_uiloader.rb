@@ -263,6 +263,7 @@ class LoaderUiTest < Test::Unit::TestCase
         size = spec.callback_specs.size
         spec.callback_spec("/base/samples/RigidBodyState_m",:display,false,:test2)
         assert_equal size,spec.callback_specs.size
+
     end
 
     module Test 
@@ -330,6 +331,17 @@ class LoaderUiTest < Test::Unit::TestCase
         assert !spec.match?(:plugin_name => "MyPlugin",:argument => Float,:callback_type => :display,:default => false)
         assert spec.match?(:plugin_name => "MyPlugin",:argument => String,:callback_type => :display,:default => false)
         assert !spec.match?(:plugin_name => "MyPlugin",:argument => String,:callback_type => :display,:default => true)
+
+        #test additional flags
+        spec.flags :depricated => true
+        assert spec.match?(:plugin_name => "MyPlugin",:flags =>{:depricated => true})
+        assert !spec.match?(:plugin_name => "MyPlugin",:flags =>{:depricated => false})
+        assert !spec.match?(:plugin_name => "MyPlugin",:flags =>{:depricated1 => true})
+        spec.flags :depricated1 => true
+        assert spec.match?(:plugin_name => "MyPlugin",:flags =>{:depricated1 => true})
+        assert !spec.match?(:plugin_name => "MyPlugin",:flags =>{:depricated1 => true,:depricated => true})
+        spec.flags :depricated => true, :depricated1 => true
+        assert spec.match?(:plugin_name => "MyPlugin",:flags =>{:depricated1 => true,:depricated => true})
     end
 
     def test_plugin_pretty_print
@@ -346,6 +358,7 @@ class LoaderUiTest < Test::Unit::TestCase
         end
         spec.extension(mod)
         pp2 = PrettyPrint.new
+        spec.flags :test => 123
         spec.pretty_print(pp2)
     end
 
