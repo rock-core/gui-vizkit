@@ -25,7 +25,11 @@ module Vizkit
     end
 
     def self.default_loader
-        @default_loader ||= UiLoader.new
+        if(!@default_loader)
+            @default_loader ||= UiLoader.new
+            @default_loader.depricate_all_lower_case_plugins
+        end
+        @default_loader
     end
 
     def self.setup_widget(widget,value=nil,options = Hash.new,type = :display,&block)

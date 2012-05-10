@@ -19,7 +19,7 @@ class VizkitTest < Test::Unit::TestCase
     end
     def setup
         if !Vizkit.default_loader.plugin? "StructViewer"
-            Vizkit.instance_variable_set(:@default_loader,Vizkit::UiLoader.new)
+            Vizkit.instance_variable_set(:@default_loader,nil)
         end
         Vizkit::ReaderWriterProxy.default_policy[:port_proxy] = Vizkit::TaskProxy.new("port_proxy")
         Vizkit.use_tasks([])
@@ -166,18 +166,6 @@ class VizkitTest < Test::Unit::TestCase
         end
         assert(time)
         #test connect_port_to with an orocos task
-    end
-
-    def test_vizkit_run
-        Vizkit.ensure_orocos_initialized
-        assert Vizkit.vizkit3d_widget
-
-        timer = Qt::Timer.new
-        timer.connect SIGNAL("timeout()") do 
-            $qApp.exit
-        end
-        timer.start(6000)
-        Vizkit.exec
     end
 
     def test_vizkit_disconnect

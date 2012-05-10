@@ -12,8 +12,6 @@ class LoaderUiTest < Test::Unit::TestCase
     def setup
         @loader = Vizkit.default_loader
         Vizkit::UiLoader.current_loader_instance = @loader
-        #delete mapping because it is global 
-        #Vizkit::PluginHelper.instance_variable_set(:@map_obj,Hash.new)
         Vizkit::UiLoader.current_loader_instance.plugin_specs.delete("QWidget")
     end
 

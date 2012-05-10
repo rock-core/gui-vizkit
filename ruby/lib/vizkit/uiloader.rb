@@ -27,7 +27,7 @@ module Vizkit
                 @current_loader_instance
             end
 
-            def register_ruby_widget(widget_name,create_method,&block)
+            def register_ruby_widget(widget_name,create_method=nil,&block)
                 current_loader_instance.register_plugin(widget_name,:ruby_plugin,create_method,&block)
             end
 
@@ -90,6 +90,10 @@ module Vizkit
                     def widget.class_name;@real_class_name;end
                     def widget.className;@real_class_name;end
                 end
+            end
+
+            def rename_plugin(old_name,new_name,message=nil,&block)
+                current_loader_instance.rename_plugin(old_name,new_name,message,&block)
             end
         end
         
@@ -164,6 +168,55 @@ module Vizkit
             raise "Cannot register plugin. Plugin name is nil" unless spec.plugin_name
             @plugin_specs[spec.plugin_name] = spec
             spec
+        end
+
+        def depricate_all_lower_case_plugins
+            specs = plugin_specs.values.find_all do |spec|
+                (spec.plugin_name =~ /^[a-z].*/) != nil ? true : false
+            end
+            specs.each do |spec|
+                next if((spec.plugin_name =~ /:/) != nil)
+                new_name = spec.plugin_name.capitalize.sub(/(_.)/) do |s|
+                    s[1,1].upcase
+                end
+                rename_plugin(spec.plugin_name,new_name,"[Depricated Plugin Name] #{spec.plugin_name}. Use #{new_name}") do
+                    pp caller
+                end
+            end
+        end
+
+        #block is called if a plugin of the old name is created
+        def rename_plugin(old_name,new_name,message=nil,&block)
+            spec = find_plugin_spec!({:plugin_name => old_name})
+            if !spec
+                raise "Cannot rename plugin #{old_name} to #{new_name}. #{old_name} is not a registered plugin."
+            end
+            if find_plugin_spec!({:plugin_name => new_name})
+                raise "Cannot rename plugin #{old_name} to #{new_name}. #{new_name} is already registered."
+            end
+            spec_new = spec.dup
+            spec_new.instance_variable_set(:@plugin_name, new_name)
+            @plugin_specs[spec_new.plugin_name] = spec_new
+            #add a deprecate block
+            if(block||message)
+                spec.instance_variable_set(:@plugin_name, old_name)
+                spec.instance_eval do 
+                    alias :old_create_plugin :create_plugin
+                end
+                spec.instance_variable_set :@__deprecate_message,message
+                spec.instance_variable_set :@__deprecate_block,block
+                def spec.create_plugin(parent=nil)
+                    Vizkit.warn @__deprecate_message if @__deprecate_message
+                    @__deprecate_block.call if @__deprecate_block
+                    old_create_plugin(parent)
+                end
+                spec.callback_specs.each do|calls|
+                    calls.default(false)
+                end
+                @plugin_specs[old_name] = spec
+            end
+            add_plugin_accessors
+            spec_new
         end
 
         def register_plugin_for(plugin_name,values,callback_type,default=nil,callback_fct=nil,&block)
