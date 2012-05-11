@@ -429,6 +429,17 @@ module Vizkit
             file_names(name)
         end
 
+        def clone
+            obj = PluginSpec.new(@plugin_name)
+            obj.instance_variable_set(:@creation_method, @creation_method)
+            obj.instance_variable_set(:@callback_specs,@callback_specs.map{|element| element.clone})
+            obj.instance_variable_set(:@extensions,@extensions)
+            obj.instance_variable_set(:@file_names,@file_names.clone)
+            obj.instance_variable_set(:@flags,@flags.clone)
+            obj.instance_variable_set(:@on_create_hook, @on_create_hook)
+            obj
+        end
+
         # code block will be called once for each
         # plugin after it was created and extended
         def on_create(&block)

@@ -194,7 +194,7 @@ module Vizkit
             if find_plugin_spec!({:plugin_name => new_name})
                 raise "Cannot rename plugin #{old_name} to #{new_name}. #{new_name} is already registered."
             end
-            spec_new = spec.dup
+            spec_new = spec.clone
             spec_new.instance_variable_set(:@plugin_name, new_name)
             @plugin_specs[spec_new.plugin_name] = spec_new
             if(block||message)
