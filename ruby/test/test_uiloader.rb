@@ -132,7 +132,7 @@ class LoaderUiTest < Test::Unit::TestCase
         assert_equal Vizkit::CallbackSpec::NoCallbackAdapter, spec.callback.class
         assert_equal "String",spec.argument
         assert_equal nil,display,spec.callback_type
-        assert_equal nil,spec.default
+        assert_equal false,spec.default
 
         spec = Vizkit::CallbackSpec.new("String",:display,false) do |sample,port|
             123
@@ -159,7 +159,7 @@ class LoaderUiTest < Test::Unit::TestCase
         assert_equal 123,spec.callback.call("la","la")
         assert_equal "String",spec.argument
         assert_equal nil,spec.callback_type
-        assert_equal nil,spec.default
+        assert_equal false,spec.default
     end
 
     def test_callback_match
