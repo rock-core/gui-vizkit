@@ -37,7 +37,9 @@ Vizkit::ReaderWriterProxy.default_policy[:port_proxy] = nil if !@proxy
 
 if remaining.empty?
   @timer = Qt::Timer.new
-  task_inspector ||= Vizkit.default_loader.task_inspector
+  task_inspector ||= Vizkit.default_loader.TaskInspector
+  raise "Cannot find plugin TaskInspector" unless task_inspector
+
   task_inspector.enable_tooling=@show_all
 
   #check for new tasks every 5 seconds 

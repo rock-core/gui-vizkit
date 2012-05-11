@@ -9,7 +9,7 @@ module Vizkit
             menu = Qt::Menu.new(parent)
 
             # Determine applicable widgets for the output port
-            widgets = Vizkit.default_loader.find_all_plugin_names(:argument=>type_name, :callback_type => :display)
+            widgets = Vizkit.default_loader.find_all_plugin_names(:argument=>type_name, :callback_type => :display,:flags => {:depricated => false})
             widgets.uniq!
             widgets.each do |w|
                 menu.add_action(Qt::Action.new(w, parent))
@@ -49,17 +49,8 @@ module Vizkit
             #check if there are widgets for the task 
             if task.model && task.__task
                 menu.addSeparator
-                Vizkit.default_loader.control_names_for_value(task.__task.class).each do |w|
+                Vizkit.default_loader.find_all_plugin_names(:argument => task,:callback_type => :control,:flags => {:depricated => false}).each do |w|
                     menu.add_action(Qt::Action.new(w, parent))
-                end
-                #show widgets for model and all super models
-                model = task.model
-                while model
-                    widgets = Vizkit.default_loader.control_names_for_value(model.name)
-                    widgets.each do |w|
-                        menu.add_action(Qt::Action.new(w, parent))
-                    end
-                    model = model.superclass
                 end
             end
 

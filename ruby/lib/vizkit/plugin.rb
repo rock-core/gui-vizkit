@@ -421,7 +421,7 @@ module Vizkit
             @created_plugins = Array.new
             @extensions = Array.new
             @file_names = Array.new
-            @flags = Hash.new
+            @flags = {:depricated => false}
             @on_create_hook = nil
         end
 
