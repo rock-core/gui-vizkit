@@ -8,7 +8,7 @@ require 'rock/bundle'
 @show_all = false
 @proxy = true
 parser = OptionParser.new do |opt|
-    opt.banner = "rock-display [--host hostname] task_name[:port_name] [task_name[:port_name]]"
+    opt.banner = "rock-display [--host hostname] task_name[.port_name] [task_name[.port_name]]"
     opt.on('--host=HOSTNAME', String, "the corba nameserver we should contact") do |name|
         Orocos::CORBA.name_service = name
     end
@@ -30,6 +30,7 @@ end
 
 remaining = parser.parse(ARGV)
 task_inspector = nil
+widget = nil
 
 Bundles.public_logs = false
 Bundles.initialize
@@ -61,13 +62,13 @@ if remaining.empty?
   @timer.start(5000)
 else
     remaining.each do |spec|
-        task_name, port_name = spec.split(':')
+        task_name, port_name = spec.split('.')
         task = Vizkit::TaskProxy.new task_name
         if !port_name || !task.ping
-            task_inspector ||= Vizkit.default_loader.task_inspector
+            task_inspector ||= Vizkit.default_loader.TaskInspector
             task_inspector.config(task)
         else
-            widget = Vizkit.default_loader.widget_for task.port(port_name)
+            widget = Vizkit.default_loader.create_plugin_for(task.port(port_name),:display,nil,true)
             if widget
                 Vizkit.connect_port_to task_name,port_name,widget
                 widget.show
@@ -81,7 +82,7 @@ end
 
 if task_inspector
     task_inspector.show
-else
+elsif !widget
     puts parser
     exit 1
 end
