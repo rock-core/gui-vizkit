@@ -7,6 +7,7 @@ require 'rock/bundle'
 
 @show_all = false
 @proxy = true
+@clean = false
 parser = OptionParser.new do |opt|
     opt.banner = "rock-display [--host hostname] task_name[.port_name] [task_name[.port_name]]"
     opt.on('--host=HOSTNAME', String, "the corba nameserver we should contact") do |name|
@@ -21,6 +22,9 @@ parser = OptionParser.new do |opt|
     opt.on('--debug',"Show debug information") do
         Vizkit.logger.level = Logger::INFO
     end
+    opt.on('-c','--clean',"Removes dangling corba tasks from the name service.") do
+        @clean = true
+    end
     opt.on('--help') do
         puts parser
         exit 0
@@ -34,6 +38,7 @@ widget = nil
 
 Bundles.public_logs = false
 Bundles.initialize
+Orocos::CORBA.cleanup if @clean
 Vizkit::ReaderWriterProxy.default_policy[:port_proxy] = nil if !@proxy
 
 if remaining.empty?
