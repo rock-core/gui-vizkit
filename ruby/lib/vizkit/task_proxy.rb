@@ -310,7 +310,9 @@ module Vizkit
                               @__port.type
                           end
                       elsif
-                          raise RuntimeError, "Cannot discover type for PortProxy #{full_name} because the port is not reachable and the option hint ':type' is not given."
+                          raise RuntimeError, "Cannot discover type for PortProxy #{full_name} because the port is not reachable and the option hint ':type' is not given. " +
+                                              "If you are replaying a log file call Vizkit.control before you are using a TaskProxy."
+                                            
                       end
             @type
         end
@@ -432,7 +434,7 @@ module Vizkit
     #and pulls the data from the robot to not block the graphically interfaces.
     class TaskProxy
         #Creates a new TaskProxy for an Orogen Task
-        #automatically uses the tasks from the corba name service or the log file when added to Vizkit (see Vizkit.use_task)
+        #automatically uses the tasks from the corba name service or the log file when added to the local name service
         #task_name = name of the task or its TaskContext
         #code block  = is called every time a TaskContext is created (every connect or reconnect)
         def initialize(task_name,&block)
@@ -449,9 +451,6 @@ module Vizkit
             @__ports = Hash.new
             @__state = :NotReachable
             Vizkit.info "Create TaskProxy for task: #{name}"
-
-            #needed to automatically track log task
-            ping if Vizkit.use_log_task? name
         end
 
         #code block is called every time a new connection is set up
@@ -490,19 +489,16 @@ module Vizkit
                     end
 
                     @__readers.clear
-                    @__task = if Vizkit.use_log_task? name
-                                  Vizkit.info "TaskProxy #{name } is using an Orocos::Log::TaskContext as underlying task"
-                                  Vizkit.log_task name
-                              else
-                                  task = Orocos::TaskContext.get(name)
-                                  Vizkit.info "Create TaskContext for: #{name}"
-                                  task
-                              end
+                    @__task = task = Orocos::TaskContext.get(name)
+                    Vizkit.info "Create TaskContext for: #{name}"
                     @__connection_code_block.call if @__connection_code_block
 
                 rescue Orocos::NotInitialized
                     Vizkit.info "TaskProxy #{name} can not be found (Orocos is not initialized and there is no log task called like this)."
-                    @__task = nil
+                    #Try to get the task from the local name service
+                    if nil != (service = Nameservice.get(:Local))
+                        @__task = service.resolve(name)
+                    end
                 rescue Orocos::NotFound, Orocos::CORBAError
                     @__task = nil
                 rescue Orocos::NoModel

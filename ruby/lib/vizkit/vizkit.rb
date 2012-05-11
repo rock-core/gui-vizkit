@@ -12,8 +12,8 @@ module Vizkit
             a
         end
     end
-    PluginHelper.register_map_obj("Orocos::TaskContext","Orocos::Log::TaskContext","Vizkit::TaskProxy") do |task|
-        task.model.name if task.respond_to? :model
+    PluginHelper.register_map_obj("Orocos::TaskContext","Vizkit::TaskProxy") do |task|
+        task.model.name if task.respond_to?(:model) && task.model
     end
 
     if !ENV['VIZKIT_NO_GUI']
@@ -258,30 +258,6 @@ module Vizkit
         connection.connect
         Vizkit.connections << connection 
         connection 
-    end
-
-    # cal-seq:
-    #   Vizkit.use_tasks(task1,task2,...)
-    #
-    # For all connections which will be created via connect_port_to are the tasks
-    # used as preferred source. If no suitable task is found connect_port_to will fall
-    # back to the corba name server 
-    #
-    # This is use full if someone wants to use tasks which are replayed
-    def self.use_tasks(tasks)
-        @use_tasks = Array(tasks).flatten
-    end
-
-    #returns the task which shall be used by vizkit  
-    #this is usefull for log replay
-    def self.log_task(task_name)
-        task = nil
-        task = @use_tasks.find{|task| task.name==task_name} if @use_tasks
-        task
-    end
-
-    def self.use_log_task?(task_name)
-        log_task(task_name) != nil
     end
 
     @connections = Array.new
