@@ -594,8 +594,10 @@ module Vizkit
 
                 if object.doc?
                     item.set_tool_tip(object.doc)
-                    item2.set_tool_tip(object.doc)
+                else
+                    item.set_tool_tip(object.type.name)
                 end
+                item2.set_tool_tip(object.type.name)
 
                 if update_item?(item) || read_from_model
                     update_object(object.read,item,read_from_model)
@@ -627,12 +629,10 @@ module Vizkit
 
                 if object.doc?
                     item.set_tool_tip(object.doc)
-                    item2.set_tool_tip(object.doc)
                 else
-                    # Set tooltip informing about context menu
-                    item.set_tool_tip(@tooltip)
-                    item2.set_tool_tip(@tooltip)
+                    item.set_tool_tip(object.type_name)
                 end
+                item2.set_tool_tip(object.type_name)
 
                 #do not encode the object because 
                 #the port is only a temporary object!
@@ -647,10 +647,14 @@ module Vizkit
                 end
             elsif object.kind_of?(Orocos::InputPort)
                 item, item2 = child_items(parent_item,row)
+
                 if object.doc?
                     item.set_tool_tip(object.doc)
-                    item2.set_tool_tip(object.doc)
+                else
+                    item.set_tool_tip(object.type_name)
                 end
+                item2.set_tool_tip(object.type_name)
+
                 item.setText(object.name)
                 item2.setText(object.type_name.to_s)
             elsif object.kind_of?(Orocos::Log::OutputPort)
@@ -703,6 +707,10 @@ module Vizkit
                 object.each_field do |name,value|
                     item, item2 = child_items(parent_item,row)
                     item.set_text name
+
+                    item.set_tool_tip(value.class.name)
+                    item2.set_tool_tip(value.class.name)
+
                     #this is a workaround 
                     #if each field is created by its self we cannot write 
                     #the data back to the sample and we do not know its name 
