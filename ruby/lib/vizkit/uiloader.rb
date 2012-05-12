@@ -17,6 +17,8 @@ require 'rexml/xpath'
 module Vizkit
     #because of the shadowed method load we have to use DelegateClass
     class UiLoader < DelegateClass(Qt::UiLoader)
+        include PluginAccessorCommon
+        attr_accessor :plugin_specs
 
         class << self
             attr_accessor :current_loader_instance
@@ -97,7 +99,6 @@ module Vizkit
             end
         end
         
-        attr_accessor :plugin_specs
         def initialize(parent = nil)
             super(Qt::UiLoader.new(parent))
             Orocos.load
@@ -115,14 +116,12 @@ module Vizkit
                     Vizkit.info "No Directory! Cannot load extensions from #{path}."
                 end
             end
-            add_plugin_accessors
         end
 
         def add_plugin_path(path)
             return if plugin_paths.include? path
             super
             load_extensions(path)
-            add_plugin_accessors
         end
 
         def load_extensions(*paths)
@@ -137,7 +136,7 @@ module Vizkit
                         Vizkit.warn "Cannot load vizkit extension #{path}"
                         Vizkit.warn e.message
                         e.backtrace.each do |line|
-
+                            Vizkit.warn line
                         end
                     end
                 elsif ::File.directory?(path)
@@ -166,8 +165,7 @@ module Vizkit
             end
             spec = PluginSpec.new(plugin_name).creation_method(creation_method,&block).plugin_type(plugin_type)
             raise "Cannot register plugin. Plugin name is nil" unless spec.plugin_name
-            @plugin_specs[spec.plugin_name] = spec
-            spec
+            add_plugin_spec(spec)
         end
 
         def depricate_all_lower_case_plugins
@@ -248,21 +246,6 @@ module Vizkit
             values.size == 1 ? specs.first : specs
         end
 
-        #adds instance methods for the available plugins to the uiloader 
-        def add_plugin_accessors
-            @plugin_specs.each_value do |spec|
-                next if self.respond_to? spec.plugin_name
-                (class << self;self;end).send(:define_method,spec.plugin_name) do |*parent|
-                    reuse = if parent.size >= 2
-                                parent[1]
-                            else
-                                false
-                            end
-                    create_plugin(spec.plugin_name,parent.first,reuse)
-                end
-            end
-        end
-
         #creates a widget and all its children from an ui file
         def load(ui_file,parent=nil)
             file = Qt::File.new(ui_file)
@@ -323,15 +306,6 @@ module Vizkit
                 end
             end
             widget
-        end
-
-        def available_plugins
-            @plugin_specs.keys
-        end
-
-        def plugin?(class_name)
-            class_name = PluginHelper.normalize_obj(class_name,false).first
-            available_plugins.include?(class_name)
         end
 
         def widget?(name)
@@ -395,7 +369,6 @@ module Vizkit
                 #and register it 
                 if widget?(pattern[:plugin_name])
                     result = Array(UiLoader.extend_cplusplus_widget_class(pattern[:plugin_name]))
-                    add_plugin_accessors
                     return result
                 end
             end

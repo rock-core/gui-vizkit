@@ -370,9 +370,17 @@ class LoaderUiTest < Test::Unit::TestCase
         assert @loader.available_plugins.find{|p| p == "object"}
         assert @loader.plugin?("object")
         assert !@loader.widget?("object")
+
+        #test name spaces
+        spec = Vizkit::UiLoader.register_ruby_widget("vizkit::object1",Qt::Object.method(:new))
+        spec = Vizkit::UiLoader.register_ruby_widget("envire.object2",Qt::Object.method(:new))
+        assert(spec)
+        assert @loader.vizkit.object1
+        assert @loader.envire.object2
+        assert @loader.object
     end
 
-    def test_loader_register_3d_plguin 
+    def test_loader_register_3d_plugin 
         spec = Vizkit::UiLoader.register_3d_plugin("RigidBodyStateVis","vizkit-base","RigidBodyStateVisualization")
         assert(spec)
         assert_equal(spec.plugin_type,:vizkit3d_plugin)
