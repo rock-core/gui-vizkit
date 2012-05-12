@@ -241,5 +241,7 @@ class LogControl
   
 end
 
-Vizkit::UiLoader.register_ruby_widget('log_control',LogControl.method(:create_widget))
-Vizkit::UiLoader.register_control_for('log_control',Orocos::Log::Replay, :config)
+Vizkit::UiLoader.register_ruby_widget('LogControl',LogControl.method(:create_widget))
+Vizkit::UiLoader.register_control_for('LogControl',Orocos::Log::Replay, :config)
+Vizkit::UiLoader.register_deprecate_plugin_clone("log_control","LogControl")
+

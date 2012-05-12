@@ -377,6 +377,9 @@ class LoaderUiTest < Test::Unit::TestCase
         assert(spec)
         assert @loader.vizkit.object1
         assert @loader.envire.object2
+        assert_raise NoMethodError do 
+            @loader.vizkit.obj
+        end
         assert @loader.object
     end
 

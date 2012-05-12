@@ -25,10 +25,7 @@ module Vizkit
     end
 
     def self.default_loader
-        if(!@default_loader)
-            @default_loader ||= UiLoader.new
-            @default_loader.depricate_all_lower_case_plugins
-        end
+        @default_loader ||= UiLoader.new
         @default_loader
     end
 

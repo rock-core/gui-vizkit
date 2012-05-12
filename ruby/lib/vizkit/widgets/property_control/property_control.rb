@@ -117,4 +117,5 @@ class PropertyControl < Qt::Widget
   
 end
 
-Vizkit::UiLoader.register_ruby_widget("property_control",PropertyControl.method(:new))
+Vizkit::UiLoader.register_ruby_widget("PropertyControl",PropertyControl.method(:new))
+Vizkit::UiLoader.register_deprecate_plugin_clone("property_control","PropertyControl")
