@@ -19,6 +19,10 @@ module Vizkit
             @console.close
         end
 
+        def quit
+            $qApp.exit
+        end
+
         def text(val)
             @console.insert_text(val)
         end
@@ -33,7 +37,6 @@ module Vizkit
 
         alias :reset :clear
         alias :exit :close
-        alias :quit :close
     end
 
     class Console < Qt::TextEdit
