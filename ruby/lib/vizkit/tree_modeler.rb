@@ -549,14 +549,17 @@ module Vizkit
 
                     irow = 0
                     orow = 0
-                    object.__task.each_port do |port|
-                        if port.is_a?(Orocos::InputPort)
-                            update_object(port,item3,read_from_model,irow)
-                            irow += 1
-                        else
-                            next if !enable_tooling && port.name == "state"
-                            update_object(port,item5,read_from_model,orow)
-                            orow +=1
+                    task = object.__task
+                    if task
+                        task.each_port do |port|
+                            if port.is_a?(Orocos::InputPort)
+                                update_object(port,item3,read_from_model,irow)
+                                irow += 1
+                            else
+                                next if !enable_tooling && port.name == "state"
+                                update_object(port,item5,read_from_model,orow)
+                                orow +=1
+                            end
                         end
                     end
                     item3.remove_rows(irow,item3.row_count-irow) if irow < item3.row_count
