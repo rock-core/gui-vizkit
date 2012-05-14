@@ -119,5 +119,7 @@ class CameraControlWidget < Qt::Widget
   end
 end
 
-Vizkit::UiLoader.register_ruby_widget "camera_control", CameraControlWidget.method(:new)
-Vizkit::UiLoader.register_control_for "camera_control", "camera_base::Task", :config
+Vizkit::UiLoader.register_ruby_widget "CameraControl", CameraControlWidget.method(:new)
+Vizkit::UiLoader.register_control_for "CameraControl", "camera_base::Task", :config
+Vizkit::UiLoader.register_deprecate_plugin_clone("camera_control","CameraControl")
+

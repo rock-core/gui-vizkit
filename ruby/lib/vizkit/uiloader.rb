@@ -17,6 +17,8 @@ require 'rexml/xpath'
 module Vizkit
     #because of the shadowed method load we have to use DelegateClass
     class UiLoader < DelegateClass(Qt::UiLoader)
+        include PluginAccessorCommon
+        attr_accessor :plugin_specs
 
         class << self
             attr_accessor :current_loader_instance
@@ -92,12 +94,15 @@ module Vizkit
                 end
             end
 
-            def rename_plugin(old_name,new_name,message=nil,&block)
-                current_loader_instance.rename_plugin(old_name,new_name,message,&block)
+            def register_deprecate_plugin_clone(clone_name,name,message="[Depricated Plugin Name] #{clone_name}. Use #{name}",&block)
+                current_loader_instance.register_deprecate_plugin_clone(clone_name,name,message,&block)
+            end
+            
+            def deprecate_plugin_spec(spec,message=nil,&block)
+                current_loader_instance.deprecate_plugin_spec(spec,message,&block)
             end
         end
         
-        attr_accessor :plugin_specs
         def initialize(parent = nil)
             super(Qt::UiLoader.new(parent))
             Orocos.load
@@ -115,14 +120,12 @@ module Vizkit
                     Vizkit.info "No Directory! Cannot load extensions from #{path}."
                 end
             end
-            add_plugin_accessors
         end
 
         def add_plugin_path(path)
             return if plugin_paths.include? path
             super
             load_extensions(path)
-            add_plugin_accessors
         end
 
         def load_extensions(*paths)
@@ -137,7 +140,7 @@ module Vizkit
                         Vizkit.warn "Cannot load vizkit extension #{path}"
                         Vizkit.warn e.message
                         e.backtrace.each do |line|
-
+                            Vizkit.warn line
                         end
                     end
                 elsif ::File.directory?(path)
@@ -166,57 +169,45 @@ module Vizkit
             end
             spec = PluginSpec.new(plugin_name).creation_method(creation_method,&block).plugin_type(plugin_type)
             raise "Cannot register plugin. Plugin name is nil" unless spec.plugin_name
-            @plugin_specs[spec.plugin_name] = spec
-            spec
+            add_plugin_spec(spec)
         end
 
-        def depricate_all_lower_case_plugins
-            specs = plugin_specs.values.find_all do |spec|
-                (spec.plugin_name =~ /^[a-z].*/) != nil ? true : false
-            end
-            specs.each do |spec|
-                next if((spec.plugin_name =~ /:/) != nil)
-                new_name = spec.plugin_name.capitalize.sub(/(_.)/) do |s|
-                    s[1,1].upcase
-                end
-                rename_plugin(spec.plugin_name,new_name,"[Depricated Plugin Name] #{spec.plugin_name}. Use #{new_name}") do
-                    pp caller
-                end
-            end
-        end
-
-        #block is called if a plugin of the old name is created
-        def rename_plugin(old_name,new_name,message=nil,&block)
-            spec = find_plugin_spec!({:plugin_name => old_name})
-            if !spec
-                raise "Cannot rename plugin #{old_name} to #{new_name}. #{old_name} is not a registered plugin."
-            end
-            if find_plugin_spec!({:plugin_name => new_name})
-                raise "Cannot rename plugin #{old_name} to #{new_name}. #{new_name} is already registered."
-            end
-            spec_new = spec.clone
-            spec_new.instance_variable_set(:@plugin_name, new_name)
-            @plugin_specs[spec_new.plugin_name] = spec_new
+        def deprecate_plugin_spec(spec,message=nil,&block)
             if(block||message)
-                spec.instance_variable_set(:@plugin_name, old_name)
                 spec.instance_eval do 
                     alias :old_create_plugin :create_plugin
                 end
-                spec.instance_variable_set :@__depricate_message,message
-                spec.instance_variable_set :@__depricate_block,block
+                spec.instance_variable_set :@__deprecate_message,message
+                spec.instance_variable_set :@__deprecate_block,block
                 def spec.create_plugin(parent=nil)
-                    Vizkit.warn @__depricate_message if @__depricate_message
-                    @__depricate_block.call if @__depricate_block
+                    Vizkit.warn @__deprecate_message if @__deprecate_message
+                    @__deprecate_block.call if @__deprecate_block
                     old_create_plugin(parent)
                 end
+                #set all callbacks to false
                 spec.callback_specs.each do|calls|
                     calls.default(false)
                 end
-                spec.flags(spec.flags.merge({:depricated => true,:renamed_to => new_name}))
-                @plugin_specs[old_name] = spec
+                #add deprecate flag
+                spec.flags(spec.flags.merge({:deprecated => true}))
+                add_plugin_spec spec
             end
-            add_plugin_accessors
-            spec_new
+            spec
+        end
+
+        def register_deprecate_plugin_clone(clone_name,name,message=nil,&block)
+            spec = find_plugin_spec!({:plugin_name => name})
+            if !spec
+                raise "Cannot register deprecate plugin clone #{clone_name} for #{name}. #{name} is not a registered plugin."
+            end
+            if find_plugin_spec!({:plugin_name => clone_name})
+                raise "Cannot register deprecate plugin clone #{clone_name} for #{name}. #{clone_name} is already registered."
+            end
+            clone_spec = spec.clone
+            clone_spec.instance_variable_set(:@plugin_name, clone_name)
+            clone_spec.flags(clone_spec.flags.merge({:clone_of => name}))
+            deprecate_plugin_spec(clone_spec,message,&block)
+            add_plugin_spec clone_spec
         end
 
         def register_plugin_for(plugin_name,values,callback_type,default=nil,callback_fct=nil,&block)
@@ -246,21 +237,6 @@ module Vizkit
                 specs << spec.callback_specs.last
             end
             values.size == 1 ? specs.first : specs
-        end
-
-        #adds instance methods for the available plugins to the uiloader 
-        def add_plugin_accessors
-            @plugin_specs.each_value do |spec|
-                next if self.respond_to? spec.plugin_name
-                (class << self;self;end).send(:define_method,spec.plugin_name) do |*parent|
-                    reuse = if parent.size >= 2
-                                parent[1]
-                            else
-                                false
-                            end
-                    create_plugin(spec.plugin_name,parent.first,reuse)
-                end
-            end
         end
 
         #creates a widget and all its children from an ui file
@@ -325,15 +301,6 @@ module Vizkit
             widget
         end
 
-        def available_plugins
-            @plugin_specs.keys
-        end
-
-        def plugin?(class_name)
-            class_name = PluginHelper.normalize_obj(class_name,false).first
-            available_plugins.include?(class_name)
-        end
-
         def widget?(name)
             return unless name
             availableWidgets.include? name
@@ -355,7 +322,7 @@ module Vizkit
         # compatibility method
         def create_widget(name,parent=nil,reuse=true,internal=false)
             unless internal
-                Vizkit.warn "[DEPRECATATION] 'create_widget' is depricated use 'create_plugin' instead."
+                Vizkit.warn "[DEPRECATATION] 'create_widget' is deprecated use 'create_plugin' instead."
                 create_plugin(name,parent,reuse)
             else
                 super(name,parent)
@@ -395,7 +362,6 @@ module Vizkit
                 #and register it 
                 if widget?(pattern[:plugin_name])
                     result = Array(UiLoader.extend_cplusplus_widget_class(pattern[:plugin_name]))
-                    add_plugin_accessors
                     return result
                 end
             end

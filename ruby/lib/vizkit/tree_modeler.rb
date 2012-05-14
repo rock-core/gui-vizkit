@@ -9,7 +9,7 @@ module Vizkit
             menu = Qt::Menu.new(parent)
 
             # Determine applicable widgets for the output port
-            widgets = Vizkit.default_loader.find_all_plugin_names(:argument=>type_name, :callback_type => :display,:flags => {:depricated => false})
+            widgets = Vizkit.default_loader.find_all_plugin_names(:argument=>type_name, :callback_type => :display,:flags => {:deprecated => false})
             widgets.uniq!
             widgets.each do |w|
                 menu.add_action(Qt::Action.new(w, parent))
@@ -49,7 +49,7 @@ module Vizkit
             #check if there are widgets for the task 
             if task.model && task.__task
                 menu.addSeparator
-                Vizkit.default_loader.find_all_plugin_names(:argument => task,:callback_type => :control,:flags => {:depricated => false}).each do |w|
+                Vizkit.default_loader.find_all_plugin_names(:argument => task,:callback_type => :control,:flags => {:deprecated => false}).each do |w|
                     menu.add_action(Qt::Action.new(w, parent))
                 end
             end
@@ -81,7 +81,7 @@ module Vizkit
                         File.delete file_name if File.exist? file_name
                         task.save_conf(file_name) if file_name
                     elsif
-                        Vizkit.control task.__task,:widget => action.text
+                        Vizkit.control task.__task,:widget => action.text,:parent => parent
                     end
                 rescue RuntimeError => e 
                     puts e
@@ -216,7 +216,7 @@ module Vizkit
             elsif object.is_a? Orocos::Log::Annotations
                     widget_name = Vizkit::ContextMenu.widget_for(Orocos::Log::Annotations,tree_view,pos)
                     if widget_name
-                        widget = Vizkit.display object, :widget => widget_name
+                        widget = Vizkit.display object, :widget => widget_name ,:parent => tree_view
                         widget.setAttribute(Qt::WA_QuitOnClose, false) if widget
                     end
             #if object is a port or part of a port
@@ -224,7 +224,7 @@ module Vizkit
                 if auto && !subfield
                     #check if there is a default widget 
                     begin 
-                        widget = Vizkit.display port,:subfield => subfield
+                        widget = Vizkit.display port,:subfield => subfield,:parent => tree_view
                         widget.setAttribute(Qt::WA_QuitOnClose, false) if widget
                     rescue RuntimeError 
                         auto = false
@@ -240,7 +240,7 @@ module Vizkit
                                 end
                     widget_name = Vizkit::ContextMenu.widget_for(port_temp.type_name,tree_view,pos)
                     if widget_name
-                        widget = Vizkit.display(port_temp, :widget => widget_name)
+                        widget = Vizkit.display(port_temp, :widget => widget_name,:parent => tree_view)
                         widget.setAttribute(Qt::WA_QuitOnClose, false) if widget.is_a? Qt::Widget
                     end
                 end
@@ -254,7 +254,7 @@ module Vizkit
                                 end
                     widget_name = Vizkit::ContextMenu.control_widget_for(type_name,tree_view,pos)
                     if widget_name
-                        widget = Vizkit.control nil, :widget => widget_name do |sample| 
+                        widget = Vizkit.control nil, :widget => widget_name,:parent => tree_view do |sample| 
                             update_object(sample,item)
                             @dirty_items << item unless @dirty_items.include? item
                             widget.close

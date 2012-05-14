@@ -102,9 +102,11 @@ class TaskInspector
     end
 end
 
-Vizkit::UiLoader.register_ruby_widget("task_inspector",TaskInspector.method(:create_widget))
-Vizkit::UiLoader.register_widget_for("task_inspector",Orocos::TaskContext,:config)
-Vizkit::UiLoader.register_widget_for("task_inspector",Vizkit::TaskProxy,:config)
-Vizkit::UiLoader.register_widget_for("task_inspector",Orocos::Log::TaskContext,:config)
-Vizkit::UiLoader.register_control_for("task_inspector",Orocos::TaskContext,:config)
-Vizkit::UiLoader.register_control_for("task_inspector",Vizkit::TaskProxy,:config)
+Vizkit::UiLoader.register_ruby_widget("TaskInspector",TaskInspector.method(:create_widget))
+Vizkit::UiLoader.register_widget_for("TaskInspector",Orocos::TaskContext,:config)
+Vizkit::UiLoader.register_widget_for("TaskInspector",Vizkit::TaskProxy,:config)
+Vizkit::UiLoader.register_widget_for("TaskInspector",Orocos::Log::TaskContext,:config)
+Vizkit::UiLoader.register_control_for("TaskInspector",Orocos::TaskContext,:config)
+Vizkit::UiLoader.register_control_for("TaskInspector",Vizkit::TaskProxy,:config)
+
+Vizkit::UiLoader.register_deprecate_plugin_clone("task_inspector","TaskInspector")
