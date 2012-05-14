@@ -26,6 +26,14 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "Plot2d" do
         end
     end
 
+    def setXTitle(value)
+        getXAxis.setLabel(value.to_s)
+    end
+
+    def setYTitle(value)
+        getYAxis.setLabel(value.to_s)
+    end
+
     def initialize_vizkit_extension
         @options = default_options
         @graphs = Hash.new
