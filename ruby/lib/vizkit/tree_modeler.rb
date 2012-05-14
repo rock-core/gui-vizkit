@@ -81,7 +81,7 @@ module Vizkit
                         File.delete file_name if File.exist? file_name
                         task.save_conf(file_name) if file_name
                     elsif
-                        Vizkit.control task.__task,:widget => action.text,:parent => parent
+                        Vizkit.control task.__task,:widget => action.text
                     end
                 rescue RuntimeError => e 
                     puts e
@@ -216,7 +216,7 @@ module Vizkit
             elsif object.is_a? Orocos::Log::Annotations
                     widget_name = Vizkit::ContextMenu.widget_for(Orocos::Log::Annotations,tree_view,pos)
                     if widget_name
-                        widget = Vizkit.display object, :widget => widget_name ,:parent => tree_view
+                        widget = Vizkit.display object, :widget => widget_name 
                         widget.setAttribute(Qt::WA_QuitOnClose, false) if widget
                     end
             #if object is a port or part of a port
@@ -224,7 +224,7 @@ module Vizkit
                 if auto && !subfield
                     #check if there is a default widget 
                     begin 
-                        widget = Vizkit.display port,:subfield => subfield,:parent => tree_view
+                        widget = Vizkit.display port,:subfield => subfield
                         widget.setAttribute(Qt::WA_QuitOnClose, false) if widget
                     rescue RuntimeError 
                         auto = false
@@ -240,7 +240,7 @@ module Vizkit
                                 end
                     widget_name = Vizkit::ContextMenu.widget_for(port_temp.type_name,tree_view,pos)
                     if widget_name
-                        widget = Vizkit.display(port_temp, :widget => widget_name,:parent => tree_view)
+                        widget = Vizkit.display(port_temp, :widget => widget_name)
                         widget.setAttribute(Qt::WA_QuitOnClose, false) if widget.is_a? Qt::Widget
                     end
                 end
@@ -254,7 +254,7 @@ module Vizkit
                                 end
                     widget_name = Vizkit::ContextMenu.control_widget_for(type_name,tree_view,pos)
                     if widget_name
-                        widget = Vizkit.control nil, :widget => widget_name,:parent => tree_view do |sample| 
+                        widget = Vizkit.control nil, :widget => widget_name do |sample| 
                             update_object(sample,item)
                             @dirty_items << item unless @dirty_items.include? item
                             widget.close
