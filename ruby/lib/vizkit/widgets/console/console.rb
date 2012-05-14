@@ -234,6 +234,18 @@ module Vizkit
             replace_current_command(cmd)
         end
 
+        def mouseReleaseEvent(event) 
+            if event.button == Qt::MidButton
+                if textCursor.hasSelection
+                    copy
+                end
+                deselect
+                paste
+            else
+                super
+            end
+        end
+
         def keyPressEvent(event)
             #block paste outside the last line
             if event.modifiers == Qt::ControlModifier
