@@ -109,11 +109,16 @@ module Vizkit
             end
         end
 
-        def add_dynamic_obj(obj,options)
-            name = obj.name.downcase
+        def add_dynamic_obj(obj,port_name)
+            port_name =~ /.*\.(\w*)$/
+            name = if $1
+                       $1
+                   else
+                       port_name
+                   end
             if !@console_context.respond_to? name
-                insert_text "Added #{name}(#{obj.class.name}). You can access it via #{name}.\n"+
-                            "The object will be updated automatically.",:blue
+                insert_text "Added #{name}(#{obj.class.name}). You can access it via '#{name}'.\n"+
+                            "This object will automatically be updated.",:blue
                 @console_context.instance_eval("class << self;self;end").send(:define_method,name) do 
                     instance_variable_get("@#{name}")
                 end
