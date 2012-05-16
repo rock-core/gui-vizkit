@@ -50,6 +50,14 @@ module Vizkit
         def __valid?
             return false if !@__reader_writer
 
+            #Workaround for bug #168: orocos.rb: TaskContext.reachable? is incorrectly returning true
+            begin 
+                @__reader_writer.port.task.state
+            rescue Exception
+                @__reader_writer = nil
+                return false
+            end
+
             if !@__reader_writer.port.task.reachable?
                if @__reader_writer.is_a? Orocos::OutputReader
                    Vizkit.info "Port reader for #{@__port.full_name} is no longer valid."
