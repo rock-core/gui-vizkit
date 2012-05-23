@@ -91,11 +91,7 @@ module Vizkit
 
         def self.control_widget_for(type_name,parent,pos)
             menu = Qt::Menu.new(parent)
-
-            # Determine applicable widgets for the output port
-            widgets = Vizkit.default_loader.control_names_for_value(type_name)
-            return nil if widgets.empty?
-            widgets.each do |w|
+            Vizkit.default_loader.find_all_plugin_names(:argument => type_name,:callback_type => :control,:flags => {:deprecated => false}).each do |w|
                 menu.add_action(Qt::Action.new(w, parent))
             end
             # Display context menu at cursor position.
@@ -392,6 +388,7 @@ module Vizkit
             return port if port
 
             port_item,port = find_parent(item,Orocos::OutputPort)if !port
+            port_item,port = find_parent(item,Orocos::InputPort)if !port
             return nil if !port
             _,task = find_parent(item,Vizkit::TaskProxy)
             _,task = find_parent(item,Orocos::Log::TaskContext) if !task 
@@ -657,6 +654,11 @@ module Vizkit
                     item.set_tool_tip(object.type_name)
                 end
                 item2.set_tool_tip(object.type_name)
+
+                #do not encode the object because 
+                #the port is only a temporary object!
+                encode_data(item,object.class)
+                encode_data(item2,object.class)
 
                 item.setText(object.name)
                 item2.setText(object.type_name.to_s)
