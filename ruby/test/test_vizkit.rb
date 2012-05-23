@@ -22,7 +22,6 @@ class VizkitTest < Test::Unit::TestCase
             Vizkit.instance_variable_set(:@default_loader,nil)
         end
         Vizkit::ReaderWriterProxy.default_policy[:port_proxy] = Vizkit::TaskProxy.new("port_proxy")
-        Vizkit.use_tasks([])
         #generate log file 
         @log_path = File.join(File.dirname(__FILE__),"test_log")
         if !File.exist?(@log_path+".0.log")
@@ -59,9 +58,8 @@ class VizkitTest < Test::Unit::TestCase
         assert(!reader.read)
         assert(!reader.__valid?)
         assert(!task.reachable?)
-
-        #Register task
-        Vizkit.use_tasks log.tasks
+        log.track(true)
+        log.align
 
         #test type of the underlying objects
         assert(task.__task.is_a?(Orocos::Log::TaskContext))
@@ -113,9 +111,8 @@ class VizkitTest < Test::Unit::TestCase
             task2 = Vizkit::TaskProxy.new("test_task")
             #task does not exist 
             assert_raise RuntimeError do 
-                widget = Vizkit.display task2.port("time")
+                widget = Vizkit.display task2.port("time22")
             end
-            Vizkit.use_tasks log.tasks
             widget = Vizkit.display task2.time
             assert(widget)
             widget.close
@@ -152,7 +149,8 @@ class VizkitTest < Test::Unit::TestCase
 
     def test_vizkit_connect_port_to
         log = Orocos::Log::Replay.open(@log_path+".0.log")
-        Vizkit.use_tasks log.tasks
+        log.track(true)
+        log.align
         assert(log)
         time = nil
         Vizkit.connect_port_to("test_task","time") do |sample, _|
