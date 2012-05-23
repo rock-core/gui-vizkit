@@ -307,7 +307,7 @@ module Vizkit
                           if !@local_options[:subfield].empty?
                               @type ||= @__port.type
                               @local_options[:subfield].each do |f|
-                                  @type = if f.is_a? Fixnum 
+                                  @type = if @type.respond_to? :deference
                                                     @type.deference
                                                 else
                                                     @type[f]
