@@ -216,28 +216,35 @@ module Vizkit
                         widget.setAttribute(Qt::WA_QuitOnClose, false) if widget
                     end
             #if object is a port or part of a port
-            elsif(port) 
-                if auto && !subfield
-                    #check if there is a default widget 
-                    begin 
-                        widget = Vizkit.display port,:subfield => subfield
-                        widget.setAttribute(Qt::WA_QuitOnClose, false) if widget
-                    rescue RuntimeError 
-                        auto = false
-                    end
-                end
-                #auto can be modified in the other if block
-                if !auto 
-                    #create a sub port
-                    port_temp = if !subfield.empty?
-                                    Vizkit::PortProxy.new(port.task,port,:subfield => subfield)
-                                else
-                                    port
-                                end
-                    widget_name = Vizkit::ContextMenu.widget_for(port_temp.type_name,tree_view,pos)
+            elsif(port)
+                if port.is_a?(Orocos::InputPort)|| (port.respond_to?(:input?) && port.input?)
+                    widget_name = Vizkit::ContextMenu.control_widget_for(port.type_name,tree_view,pos)
                     if widget_name
-                        widget = Vizkit.display(port_temp, :widget => widget_name)
-                        widget.setAttribute(Qt::WA_QuitOnClose, false) if widget.is_a? Qt::Widget
+                        widget = Vizkit.control port, :widget => widget_name 
+                    end
+                else
+                    if auto && !subfield
+                        #check if there is a default widget 
+                        begin 
+                            widget = Vizkit.display port,:subfield => subfield
+                            widget.setAttribute(Qt::WA_QuitOnClose, false) if widget
+                        rescue RuntimeError 
+                            auto = false
+                        end
+                    end
+                    #auto can be modified in the other if block
+                    if !auto 
+                        #create a sub port
+                        port_temp = if !subfield.empty?
+                                        Vizkit::PortProxy.new(port.task,port,:subfield => subfield)
+                                    else
+                                        port
+                                    end
+                        widget_name = Vizkit::ContextMenu.widget_for(port_temp.type_name,tree_view,pos)
+                        if widget_name
+                            widget = Vizkit.display(port_temp, :widget => widget_name)
+                            widget.setAttribute(Qt::WA_QuitOnClose, false) if widget.is_a? Qt::Widget
+                        end
                     end
                 end
             #if object is a property or part of the property
