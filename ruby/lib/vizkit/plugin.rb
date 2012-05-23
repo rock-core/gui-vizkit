@@ -279,6 +279,7 @@ module Vizkit
             end
 
             def bind(object)
+                @object = object
                 self
             end
 
