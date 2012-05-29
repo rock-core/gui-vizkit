@@ -34,6 +34,12 @@ module Vizkit
         if type == :control || !value.respond_to?(:connect_to)
             widget.config(value,options,&block) if widget.respond_to?(:config)
             if widget.respond_to?(:plugin_spec)
+                block = if block || !value.respond_to?(:writer)
+                            block
+                        else
+                            writer = value.writer
+                            Proc.new {|val|writer.write(val)}
+                        end
                 callback_fct = widget.plugin_spec.find_callback!(:argument => value,:callback_type => type)
                 if callback_fct && (!callback_fct.respond_to?(:to_sym) || callback_fct.to_sym != :config)
                     callback_fct = callback_fct.bind(widget) 
