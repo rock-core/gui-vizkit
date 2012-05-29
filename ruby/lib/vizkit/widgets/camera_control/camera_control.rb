@@ -6,6 +6,7 @@ class CameraControlWidget < Qt::Widget
     @gainMap = Hash.new
     @exposureMap = Hash.new
     @whitebalanceMap = Hash.new
+    @triggerMap = Hash.new
     @gainMap['Manual'] = :GainModeToManual
     @gainMap['Auto'] = :GainModeToAuto
     @exposureMap['Manual'] = :ExposureModeToManual
@@ -15,25 +16,37 @@ class CameraControlWidget < Qt::Widget
     @whitebalanceMap['Manual'] = :WhitebalModeToManual
     @whitebalanceMap['Auto'] = :WhitebalModeToAuto
     @whitebalanceMap['Auto once'] = :WhitebalModeToAutoOnce
+    @triggerMap['Fixed'] = :FrameStartTriggerModeToFixedRate
+    @triggerMap['FreeRun'] = :FrameStartTriggerModeToFreerun
+    @triggerMap['SyncIn1'] =  :FrameStartTriggerModeToSyncIn1
 
     @layout = Qt::GridLayout.new
     @widget = Vizkit.load File.join(File.dirname(__FILE__),'camera_control.ui'), self
     @layout.addWidget(@widget,0,0)
     self.setLayout @layout
 
-    @widget.slider_fps.connect(SIGNAL('valueChanged(int)')) do |val|
-        @widget.spinbox_gain.setValue int
-    end
-       
     @widget.update_image.connect(SIGNAL('clicked()')) do
         frame = @reader.read
         @widget.image_view.display(frame,"") if frame
     end
 
     @widget.update_parameter.connect(SIGNAL('clicked()')) do
-        @camera.setDoubleAttrib(:FrameRate, @widget.spinbox_fps.value())
-        @camera.setIntAttrib(:ExposureValue, @widget.spinbox_exposure.value())
-        @camera.setIntAttrib(:GainValue, @widget.spinbox_gain.value())
+        #if the frame rate was changed we have to stop the camera
+        if @camera.getDoubleRangeMin(:FrameRate) != @widget.spinbox_fps.value().to_f
+            @camera.stop
+            #this is a workaround as long the configure part of camera_base is still
+            #in the startHook
+            @camera.fps = @widget.spinbox_fps.value().to_f
+            @camera.exposure = @widget.spinbox_exposure.value()
+            @camera.gain = @widget.spinbox_gain.value()
+            @camera.setDoubleAttrib(:FrameRate, @widget.spinbox_fps.value().to_f)
+            @camera.start
+        else
+            @camera.setIntAttrib(:ExposureValue, @widget.spinbox_exposure.value())
+            @camera.setIntAttrib(:GainValue, @widget.spinbox_gain.value())
+        end
+
+        @camera.setEnumAttrib(@triggerMap[@widget.combobox_trigger_mode.currentText])
         @camera.setEnumAttrib(@gainMap[@widget.combobox_gain_mode.currentText])
         @camera.setEnumAttrib(@exposureMap[@widget.combobox_exposure_mode.currentText])
         @camera.setEnumAttrib(@whitebalanceMap[@widget.combobox_whitebalance_mode.currentText])
@@ -46,9 +59,6 @@ class CameraControlWidget < Qt::Widget
     # texts
     @widget.label_camera_name.setText(@camera.getStringAttrib(:ModelName))
     @widget.statusLabel.setText(task.state.to_s)
-    fillComboBox(@widget.combobox_gain_mode, @gainMap)
-    fillComboBox(@widget.combobox_exposure_mode, @exposureMap)
-    fillComboBox(@widget.combobox_whitebalance_mode, @whitebalanceMap)
     setComboBoxValues()
 
     # setting min max values for sliders
@@ -73,48 +83,21 @@ class CameraControlWidget < Qt::Widget
   end
 
   def setComboBoxValues()
-      index = 0
-      if(@camera.isEnumAttribSet(:GainModeToManual))
-          index = getMapIndex(@gainMap, :GainModeToManual)
-      else
-          index = getMapIndex(@gainMap, :GainModeToAuto)
-      end
-      @widget.combobox_gain_mode.setCurrentIndex(index)
-      index = 0
-      if(@camera.isEnumAttribSet(:WhitebalModeToManual))
-          index = getMapIndex(@whitebalanceMap, :WhitebalModeToManual)
-      elsif(@camera.isEnumAttribSet(:WhitebalModeToAuto))
-          index = getMapIndex(@whitebalanceMap, :WhitebalModeToAuto)
-      else
-          index = getMapIndex(@whitebalanceMap, :WhitebalModeToAutoOnce)
-      end
-      @widget.combobox_whitebalance_mode.setCurrentIndex(index)
-      index = 0
-      if(@camera.isEnumAttribSet(:ExposureModeToManual))
-          index = getMapIndex(@exposureMap, :ExposureModeToManual)
-      elsif(@camera.isEnumAttribSet(:ExposureModeToAuto))
-          index = getMapIndex(@exposureMap, :ExposureModeToAuto)
-      elsif(@camera.isEnumAttribSet(:ExposureModeToAutoOnce))
-          index = getMapIndex(@exposureMap, :ExposureModeToAutoOnce)
-      else
-          index = getMapIndex(@exposureMap, :ExposureModeToExternal)
-      end
-      @widget.combobox_exposure_mode.setCurrentIndex(index)
+      setComboBoxValue(@widget.combobox_gain_mode,@gainMap)
+      setComboBoxValue(@widget.combobox_whitebalance_mode,@whitebalanceMap)
+      setComboBoxValue(@widget.combobox_exposure_mode,@exposureMap)
+      setComboBoxValue(@widget.combobox_trigger_mode,@triggerMap)
   end
 
-  def getMapIndex(hash, searchValue)
-      index = 0
-      hash.each_value do |value|
-          if(value == searchValue)
-              return index;
-          end
-          index = index + 1
-      end
-  end
-
-  def fillComboBox(combobox, hash)
-      hash.each_pair do |key, value|
+  def setComboBoxValue(combobox,value_map)
+      value_map.each_pair do |key, value|
           combobox.addItem(key)
+      end
+      value_map.each_with_index do |pair,index|
+          if @camera.isEnumAttribSet(pair[1])
+              combobox.setCurrentIndex(index)
+              break
+          end
       end
   end
 end
