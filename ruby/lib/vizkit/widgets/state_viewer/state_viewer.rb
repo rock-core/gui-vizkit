@@ -60,7 +60,7 @@ class StateViewer < Qt::Widget
                       Vizkit::TaskProxy.new(task)
                   end
         if !@timer.active
-            @timer.start(1/@options[:update_frequency])
+            @timer.start(1000/@options[:update_frequency])
         end
     end
 
