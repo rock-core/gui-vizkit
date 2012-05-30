@@ -55,9 +55,14 @@ if remaining.empty?
           task_inspector.config(name)
       end
       rescue Orocos::CORBAError => e
-          Vizkit.warn "Corba error. Maybe Orocos is not initialized."
-          Vizkit.warn e
-          Vizkit.warn e.backtrace
+          Vizkit.error "Corba error. Maybe Orocos is not initialized"
+          Vizkit.error "or the corba name service is answering on a wrong network interface."
+          Vizkit.error "Try to reset the nameserver and to disable all virtual network interfaces."
+          Vizkit.error "Example for omniorb: "
+          Vizkit.error " sudo /etc/inti.d/omniorb4-nameserver stop"
+          Vizkit.error " rm -f /var/lib/omniorb/*"
+          Vizkit.error " sudo /etc/inti.d/omniorb4-nameserver start"
+          raise e
       end
   end
   @timer.connect SIGNAL('timeout()') do 
