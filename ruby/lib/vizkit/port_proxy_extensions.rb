@@ -137,12 +137,9 @@ module Orocos
         def proxy_port?(port)
             return false if !reachable? 
             full_name = port_full_name(port)
-            return false if !has_port?("in_#{full_name}")
-            if !proxied_ports.has_key?(full_name)
-                Vizkit.warn "Task #{self.name} is managed by an other ruby instance!"
-                proxied_ports[full_name] = port
-            end
+            return false if !proxied_ports.has_key?(full_name)
             return false if !proxied_ports[full_name].task.reachable?
+            return false if !has_port?("in_#{full_name}")
             true
         end
     end
