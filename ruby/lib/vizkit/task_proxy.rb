@@ -186,7 +186,7 @@ module Vizkit
 
     class ReaderProxy < ReaderWriterProxy
         def initialize(task,port,options = Hash.new)
-            temp_options, options = Kernel.filter_options options,:subfield => Array.new ,:type => nil
+            temp_options, options = Kernel.filter_options options,:subfield => Array.new,:typelib_type => nil
             super
             @local_options.merge! temp_options
             @local_options[:subfield] = Array(@local_options[:subfield])
@@ -231,7 +231,7 @@ module Vizkit
 
     class WriterProxy < ReaderWriterProxy
         def initialize(task,port,options = Hash.new)
-            temp_options, options = Kernel.filter_options options,:subfield => Array.new ,:type => nil
+            temp_options, options = Kernel.filter_options options,:subfield => Array.new ,:typelib_type => nil
             raise "Subfields are not supported for WriterProxy #{port.full_name}" if options.has_key?(:subfield) && !options[:subfield].empty?
             super(task,port,options)
             Vizkit.info "Create WriterProxy for #{port.full_name}"
@@ -242,12 +242,12 @@ module Vizkit
     class PortProxy
         #task = name of the task or its TaskContext
         #port = name of the port or its Orocos::Port
-        #options = {:subfield => Array,:type => type of the subfield}
+        #options = {:subfield => Array,:typelib_type => type of the subfield}
         #
         #if the PortProxy is used for a subfield reader the type_name of the subfield must be given
         #because otherwise the type_name would only be known after the first sample was received 
         def initialize(task, port,options = Hash.new)
-            @local_options, options = Kernel::filter_options options,{:subfield => Array.new,:type => nil,:port_proxy => nil}
+            @local_options, options = Kernel::filter_options options,{:subfield => Array.new,:typelib_type => nil,:port_proxy => nil}
             @local_options[:subfield] = Array(@local_options[:subfield])
 
             @__task = TaskProxy.new(task)
@@ -301,7 +301,7 @@ module Vizkit
         end
 
         def type
-            @type ||= if(type = @local_options[:type]) != nil
+            @type ||= if(type = @local_options[:typelib_type]) != nil
                           type
                       elsif @__port || __port
                           if !@local_options[:subfield].empty?
@@ -318,7 +318,7 @@ module Vizkit
                               @__port.type
                           end
                       elsif
-                          raise RuntimeError, "Cannot discover type for PortProxy #{full_name} because the port is not reachable and the option hint ':type' is not given. " +
+                          raise RuntimeError, "Cannot discover type for PortProxy #{full_name} because the port is not reachable and the option hint ':typelib_type' is not given. " +
                                               "If you are replaying a log file call Vizkit.control before you are using a TaskProxy."
                                             
                       end

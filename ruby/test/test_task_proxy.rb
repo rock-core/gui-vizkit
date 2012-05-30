@@ -60,7 +60,7 @@ class TaskProxyTest < Test::Unit::TestCase
             assert(task.has_port? "in_test")
             assert(task.has_port? "out_test")
             assert(!task.proxy_port?(port))
-            proxy_port = task.proxy_port(port,{:periodicity => 0.2})
+            proxy_port = task.proxy_port(port,{:periodicity => 0.2,:type => :buffer,:size=>10})
             assert(proxy_port)
             assert(task.has_port? "in_port_proxy_out_test")
             assert(task.has_port? "out_port_proxy_out_test")
@@ -202,7 +202,7 @@ class TaskProxyTest < Test::Unit::TestCase
             assert(subfield_port.type_name == "/base/samples/frame/Frame")
             reader = subfield_port.reader
             
-            subfield_port2 = task.out_test(:subfield => ["first","size"],:type => Orocos.registry.get("/base/samples/frame/frame_size_t"))
+            subfield_port2 = task.out_test(:subfield => ["first","size"],:typelib_type => Orocos.registry.get("/base/samples/frame/frame_size_t"))
             assert(subfield_port2)
             assert(subfield_port2.type_name == "/base/samples/frame/frame_size_t")
             reader2 = subfield_port2.reader
