@@ -80,7 +80,7 @@ module Vizkit
 
         def disconnect
             return if !@__port
-            if @__orogen_port_proxy && !@__port
+            if @__orogen_port_proxy && @__port
                 Vizkit.info "Calling disconnect_proxy_port for #{@__port.full_name}."
                 @__orogen_port_proxy.delete_proxy_port(@__port)
             end
@@ -364,7 +364,6 @@ module Vizkit
         def disconnect_from(port,policy = Hash.new)
             raise "Cannot disconnect port #{full_name} from #{full_name} because task #{task.name} is not reachable!" if !task.ping
             raise "Cannot disconnect port #{full_name} from #{full_name} because task #{port.task.name} is not reachable!" if !port.task.reachable?
-            pp port
             __port.disconnect_from(port)
         end
 
@@ -522,7 +521,9 @@ module Vizkit
                     if nil != (service = Nameservice.get(:Local))
                         @__task = service.resolve(name)
                     end
-                rescue Orocos::NotFound, Orocos::CORBAError
+                rescue Orocos::NotFound
+                    @__task = nil
+                rescue Orocos::CORBAError
                     @__task = nil
                 rescue Orocos::NoModel
                     @__task = nil 

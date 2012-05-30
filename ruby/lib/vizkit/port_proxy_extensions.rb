@@ -57,12 +57,14 @@ module Orocos
 
         def delete_proxy_port(port)
             full_name = port_full_name(port)
+            return unless proxied_ports.has_key? full_name
             port = port("in_" + full_name)
             port.disconnect_all if port 
             port = port("out_" + full_name)
             port.disconnect_all if port 
             if closeProxyConnection("in_"+ full_name)
                 Vizkit.info "Delete connection #{full_name}"
+                proxied_ports.delete full_name
             else
                 Vizkit.warn "Cannot delete connection #{full_name}"
             end

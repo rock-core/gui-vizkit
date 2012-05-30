@@ -154,6 +154,7 @@ module Vizkit
                 @timer_id = nil
                 # @reader.disconnect this leads to some problems with the timerEvent: reason unknown
                 @widget.disconnected(@port.full_name) if @widget.respond_to?:disconnected
+                @reader.disconnect if @reader
                 Vizkit.info "Disconnect OQConnection connected to port #{@port.full_name}"
             end
         end
