@@ -2,17 +2,15 @@
 
 class StateViewer < Qt::Widget
     def initialize(parent=nil)
-        @TaskNamePair = Struct.new :name, :task
-
         super
         #add layout to the widget
         @layout = Qt::GridLayout.new
         self.setLayout @layout
 
-        @task_inspector = Vizkit.default_loader.task_inspector 
+        @task_inspector = Vizkit.default_loader.TaskInspector 
 
         @hash_labels = Hash.new
-        @hash_tasks = Hash.new
+        @tasks = Array.new
         @options = default_options
         @row = 0
         @col = 0
@@ -29,22 +27,15 @@ class StateViewer < Qt::Widget
 
         @timer = Qt::Timer.new
         @timer.connect(SIGNAL('timeout()')) do 
-            @hash_tasks.each_value do |pair|
-                begin 
-                    if !pair.task || !pair.task.reachable?
-                        pair.task = Orocos::TaskContext.get pair.name unless pair.task
-                    end
-                rescue Orocos::NotFound,Orocos::CORBAError
-                    pair.task = nil
-                end
-                if pair.task
-                    if pair.task.running?
-                        update(pair.task.state ,pair.name,@green)
+            @tasks.each do |task|
+                if task.reachable?
+                    if task.running?
+                        update(task.state ,task.name,@green)
                     else
-                        update(pair.task.state ,pair.name,@blue)
+                        update(task.state ,task.name,@blue)
                     end
                 else
-                    update("not reachable",pair.name,@red)
+                    update("not reachable",task.name,@red)
                 end
             end
         end
@@ -62,18 +53,12 @@ class StateViewer < Qt::Widget
         @options.merge!(hash)
     end
 
-    def add(task)
-        pair = @TaskNamePair.new
-        if task.is_a?(Orocos::TaskContext)
-            pair.name = task.name
-            pair.task = task
-        else 
-            pair.name = task.to_s
-        end
-
-        if !@hash_tasks.has_key? pair.name
-                @hash_tasks[pair.name] = pair
-        end
+    def add(task,options=Hash.new)
+        @tasks << if task.is_a?(Vizkit::TaskProxy)
+                    task
+                  else
+                      Vizkit::TaskProxy.new(task)
+                  end
         if !@timer.active
             @timer.start(1/@options[:update_frequency])
         end
@@ -112,3 +97,5 @@ class StateViewer < Qt::Widget
 end
 
 Vizkit::UiLoader.register_ruby_widget("StateViewer",StateViewer.method(:new))
+Vizkit::UiLoader.register_control_for("StateViewer",Orocos::TaskContext,:add)
+Vizkit::UiLoader.register_control_for("StateViewer",Vizkit::TaskProxy,:add)
