@@ -441,6 +441,11 @@ module Vizkit
     #It can also be used to automatically set up a orogen port proxy task which is a orocos Task normally running on the same machine
     #and pulls the data from the robot to not block the graphically interfaces.
     class TaskProxy
+        class << self
+            attr_accessor :tasks 
+        end
+        @tasks = Array.new
+
         #Creates a new TaskProxy for an Orogen Task
         #automatically uses the tasks from the corba name service or the log file when added to the local name service
         #task_name = name of the task or its TaskContext
@@ -458,6 +463,7 @@ module Vizkit
             @__readers = Hash.new
             @__ports = Hash.new
             @__state = :NotReachable
+            TaskProxy.tasks << self
             Vizkit.info "Create TaskProxy for task: #{name}"
         end
 
@@ -487,15 +493,24 @@ module Vizkit
             end
         end
 
-        def ping
+        def ping()
             if !@__task || !@__task.reachable?
                 begin 
                     if @__task
-                        Vizkit.info "Task #{name} is no longer reachable."
-                        proxy = ReaderWriterProxy.default_policy[:port_proxy]
-                        proxy.delete_proxy_ports_for_task(name) if proxy && self != proxy && proxy.reachable?
+                        #use the name server to determine if all task are still reachable
+                        #this speeds up the invalidation of tasks if a huge number of tasks are shut down 
+                        TaskProxy.tasks.each do |task|
+                            begin 
+                                task = TaskContext.get(task.name)
+                            rescue 
+                                Vizkit.info "Task #{task.name} is no longer reachable."
+                                task.instance_variable_set :@__task, nil
+                                task.instance_variable_get(:@__readers).clear
+                                proxy = ReaderWriterProxy.default_policy[:port_proxy]
+                                proxy.delete_proxy_ports_for_task(task.name) if proxy && self != proxy && proxy.reachable?
+                            end
+                        end
                     end
-
                     @__readers.clear
                     @__task = task = Orocos::TaskContext.get(name)
                     Vizkit.info "Create TaskContext for: #{name}"
