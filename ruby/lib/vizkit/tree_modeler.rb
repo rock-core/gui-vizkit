@@ -512,14 +512,36 @@ module Vizkit
             elsif object.kind_of?(Vizkit::OQConnection)
                 item, item2 = child_items(parent_item,row)
                 item.setText(object.port.full_name)
+                connected = false
                 if object.alive?
                     item2.setText("connected")
+                    connected = true
                 else
                     item2.setText("not connected")
                 end
                 item2, item3 = child_items(item,0)
                 item2.setText("update_frequency")
                 item3.setText(object.update_frequency.to_s)
+
+                item2, item3 = child_items(item,1)
+                if object.widget.is_a? Qt::Object
+                    item2.setText("receiver widget")
+                    if connected
+                        item3.setText("#{object.widget.objectName}.#{object.callback_fct.name}")
+                    else
+                        item3.setText("#{object.widget.objectName}")
+                    end
+                else
+                    item2.setText("receiver")
+                    item3.setText("ruby proc")
+                end
+                item2, item3 = child_items(item,2)
+                item2.setText("policy")
+                policy = Array.new
+                object.policy.each_pair do |key,val|
+                    policy << "#{key} => #{val}"
+                end
+                item3.setText(policy.join("; "))
 
             elsif object.kind_of?(Vizkit::TaskProxy)
                 item, item2 = child_items(parent_item,row)
