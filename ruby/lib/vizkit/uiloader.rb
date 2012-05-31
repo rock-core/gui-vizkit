@@ -316,7 +316,9 @@ module Vizkit
                     return plugin if(plugin.respond_to?(:multi_value?) && plugin.multi_value?)
                 end
             end
-            spec.create_plugin(parent)
+            plugin = spec.create_plugin(parent)
+            plugin.setObjectName class_name if plugin.is_a?(Qt::Object) && !plugin.objectName
+            plugin
         end
 
         # compatibility method
