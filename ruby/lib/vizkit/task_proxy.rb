@@ -476,8 +476,16 @@ module Vizkit
         end
 
         def __reconnect()
-            @task = nil
+            __disconnect
             ping
+        end
+
+        def __disconnect()
+            return unless @__task
+            proxy = ReaderWriterProxy.default_policy[:port_proxy]
+            proxy.delete_proxy_ports_for_task(name) if proxy && self != proxy && proxy.reachable?
+            @__readers.clear
+            @__task = nil
         end
 
         def __task
@@ -498,20 +506,24 @@ module Vizkit
                     if @__task
                         #use the name server to determine if all task are still reachable
                         #this speeds up the invalidation of tasks if a huge number of tasks are shut down 
-                        TaskProxy.tasks.each do |task|
-                            begin 
-                                task = TaskContext.get(task.name)
-                            rescue 
-                                Vizkit.info "Task #{task.name} is no longer reachable."
-                                task.instance_variable_set :@__task, nil
-                                task.instance_variable_get(:@__readers).clear
-                                proxy = ReaderWriterProxy.default_policy[:port_proxy]
-                                proxy.delete_proxy_ports_for_task(task.name) if proxy && self != proxy && proxy.reachable?
+                        if self != ReaderWriterProxy.default_policy[:port_proxy]
+                            TaskProxy.tasks.each do |task|
+                                begin 
+                                    task = TaskContext.get(task.name)
+                                rescue 
+                                    Vizkit.info "Task #{task.name} is no longer reachable."
+                                    task.__disconnect
+                                end
                             end
+                        else
+                            Vizkit.info "Proxy Task #{name} is no longer reachable."
+                            __disconnect
                         end
                     end
                     @__readers.clear
                     @__task = task = Orocos::TaskContext.get(name)
+
+                    #this is not reached if TaskContext.get is not successfully 
                     Vizkit.info "Create TaskContext for: #{name}"
                     @__connection_code_block.call if @__connection_code_block
 
