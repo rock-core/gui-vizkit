@@ -13,7 +13,7 @@ module Vizkit
         end
     end
     PluginHelper.register_map_obj("Orocos::TaskContext","Vizkit::TaskProxy") do |task|
-        task.model.name if task.respond_to?(:model) && task.model
+        PluginHelper.classes(task.model) if task.respond_to?(:model) && task.model
     end
 
     if !ENV['VIZKIT_NO_GUI']
