@@ -525,7 +525,7 @@ module Vizkit
 
                     #this is not reached if TaskContext.get is not successfully 
                     Vizkit.info "Create TaskContext for: #{name}"
-                    @__connection_code_block.call if @__connection_code_block
+                    @__connection_code_block.call(self) if @__connection_code_block
 
                 rescue Orocos::NotInitialized
                     Vizkit.info "TaskProxy #{name} can not be found (Orocos is not initialized and there is no log task called like this)."
