@@ -53,6 +53,8 @@ class VizkitTest < Test::Unit::TestCase
         port = task.port("time")
         assert(port)
         reader = port.reader
+        #check disconnect for log reader which is not initialized
+        reader.disconnect
         assert(reader)
 
         assert(!reader.read)
@@ -84,6 +86,8 @@ class VizkitTest < Test::Unit::TestCase
         while $qApp.hasPendingEvents
             $qApp.processEvents
         end
+        #check disconnect on a log reader 
+        reader.disconnect
         assert(@sample)
     end
 

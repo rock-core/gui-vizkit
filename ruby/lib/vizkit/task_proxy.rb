@@ -80,11 +80,11 @@ module Vizkit
 
         def disconnect
             return if !@__port
-            if @__orogen_port_proxy && @__port
+            if @__orogen_port_proxy && @__orogen_port_proxy.reachable?
                 Vizkit.info "Calling disconnect_proxy_port for #{@__port.full_name}."
                 @__orogen_port_proxy.delete_proxy_port(@__port)
             end
-            @__reader_writer.disconnect if @__reader_writer
+            @__reader_writer.disconnect if @__reader_writer && @__reader_writer.respond_to?(:disconnect)
         end
 
         #returns a valid reader which can be used for reading or nil if the Task cannot be contacted 
