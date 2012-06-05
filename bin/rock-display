@@ -7,7 +7,7 @@ require 'rock/bundle'
 
 @show_all = false
 @proxy = true
-@clean = false
+@clean = true
 Bundles.public_logs = false 
 
 parser = OptionParser.new do |opt|
@@ -25,8 +25,8 @@ parser = OptionParser.new do |opt|
         Vizkit.logger.level = Logger::INFO
         Bundles.public_logs = true
     end
-    opt.on('-c','--clean',"Removes dangling corba tasks from the name service.") do
-        @clean = true
+    opt.on('-c','--noclean',"Does not removes dangling corba tasks from the name service.") do
+        @clean = false
     end
     opt.on('--help') do
         puts parser
@@ -34,13 +34,26 @@ parser = OptionParser.new do |opt|
     end
 end
 
+def corba_error
+    Vizkit.error "Corba error. Maybe Orocos is not initialized"
+    Vizkit.error "or the corba name service is answering on a wrong network interface."
+    Vizkit.error "Try to reset the nameserver and to disable all virtual network interfaces."
+end
+
 
 remaining = parser.parse(ARGV)
 task_inspector = nil
 widget = nil
 
-Bundles.initialize
-Orocos::CORBA.cleanup if @clean
+begin
+    Bundles.initialize
+    Orocos::CORBA.cleanup if @clean
+rescue Orocos::CORBAError => e
+    Vizkit.error "Corba name service is not answering. Cannot start rock-display."
+    Vizkit.error ""
+    corba_error
+    exit 1
+end
 Vizkit::ReaderWriterProxy.default_policy[:port_proxy] = nil if !@proxy
 
 if remaining.empty?
@@ -53,18 +66,13 @@ if remaining.empty?
   #check for new tasks every 5 seconds 
   refresh = Proc.new do 
       begin
-      Orocos.task_names.each do |name|
-          task_inspector.config(name)
+      Orocos.task_names.dup.each do |name|
+          task_inspector.config(name,:cleanup_nameservice =>@clean)
       end
       rescue Orocos::CORBAError => e
-          Vizkit.error "Corba error. Maybe Orocos is not initialized"
-          Vizkit.error "or the corba name service is answering on a wrong network interface."
-          Vizkit.error "Try to reset the nameserver and to disable all virtual network interfaces."
-          Vizkit.error "Example for omniorb: "
-          Vizkit.error " sudo /etc/inti.d/omniorb4-nameserver stop"
-          Vizkit.error " rm -f /var/lib/omniorb/*"
-          Vizkit.error " sudo /etc/inti.d/omniorb4-nameserver start"
-          raise e
+          Vizkit.error "Corba name service is not answering. Cannot update display. ... keep on trying "
+          Vizkit.error ""
+          corba_error
       end
   end
   @timer.connect SIGNAL('timeout()') do 
