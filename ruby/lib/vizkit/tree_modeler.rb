@@ -551,7 +551,7 @@ module Vizkit
                 encode_data(item2,object)
                 item2.setText(object.state.to_s) 
 
-                if !object.ping
+                if !object.__last_ping
                     item.removeRows(0,item.rowCount)
                 else
                     if object.doc?
