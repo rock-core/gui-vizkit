@@ -358,4 +358,6 @@ UiLoader.register_3d_plugin('RigidBodyStateVisualization',"vizkit-base", 'RigidB
 UiLoader.register_3d_plugin_for('RigidBodyStateVisualization', "/base/samples/RigidBodyState", :updateRigidBodyState)
 UiLoader.register_3d_plugin('LaserScanVisualization',"vizkit-base", 'LaserScanVisualization')
 UiLoader.register_3d_plugin_for('LaserScanVisualization', "/base/samples/LaserScan", :updateLaserScan)
+UiLoader.register_3d_plugin('MotionCommandVisualization',"vizkit-base", 'MotionCommandVisualization')
+UiLoader.register_3d_plugin_for('MotionCommandVisualization', "/base/MotionCommand2D", :updateMotionCommand)
 end
