@@ -140,10 +140,16 @@ module Vizkit
             Orocos.run "port_proxy::Task" => proxy.name, :output => output do
                 proxy.start
                 #wait unti the proxy is running 
-                while !proxy.running?
+                1.upto(100) do 
+		    break if proxy.running?
                     sleep(0.01)
                 end
-                $qApp.exec
+                if proxy.running?
+                    $qApp.exec
+                else
+                    Vizkit.error "Cannot communicate with task #{proxy.name}"
+                    Vizkit.error "... I give up"
+                end
             end
         else
             $qApp.exec
