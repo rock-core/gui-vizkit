@@ -61,7 +61,10 @@ module Vizkit
                 else
                     Vizkit.info "Port writer for #{@__port.full_name} is no longer valid."
                 end
-                @__reader_writer = nil
+                invalidate
+                #check if the task is still reachable
+                #if there is a problem with the name service this will disable all reader
+                port.task.ping
             else
                 #check if the proxy is connected 
                 #we do not have to do this every time because the proxy is disconnecting
@@ -142,14 +145,14 @@ module Vizkit
                     nil
                 end
             else
-                @__reader_writer = nil
+                invalidate
             end
         rescue Orocos::NotFound, Orocos::CORBAError => e
             Vizkit.warn "ReaderWriterProxy: error while proxing the port: #{e}"
             e.backtrace.each do |line|
                 Vizkit.warn "  #{line}"
             end
-            @__reader_writer = nil
+            invalidate
             #it seems that there is something wrong with the port 
             #this happens if port is an old object 
             @__port.invalidate
@@ -169,6 +172,12 @@ module Vizkit
 
         def new_sample
             @__port.new_sample
+        end
+        
+        def invalidate
+            # for now we can not disconnect the reader writer 
+            # beacause orcos.rb does not support this 
+            @__reader_writer = nil
         end
 
         def method_missing(m, *args, &block)
@@ -276,7 +285,8 @@ module Vizkit
             else
                 Vizkit.info "Create PortProxy for: #{full_name}"
             end
-            __port
+            @__reader_writer = Array.new
+            self
         end
 
         #returns the Orocos::InputPort or Orocos::OutputPort object
@@ -370,6 +380,13 @@ module Vizkit
 
         def invalidate
             @__port = nil
+            @__reader_writer.each do |reader_writer|
+                reader_writer.invalidate
+            end
+        end
+
+	def valid?
+	    @__port != nil
         end
 
         def __port
@@ -396,11 +413,13 @@ module Vizkit
         end
 
         def writer(policy = Hash.new)
-            WriterProxy.new(@__task_proxy,self,@local_options.merge(policy))
+            @__reader_writer << WriterProxy.new(@__task_proxy,self,@local_options.merge(policy))
+            @__reader_writer.last
         end
 
         def reader(policy = Hash.new)
-            ReaderProxy.new(@__task_proxy,self,@local_options.merge(policy))
+            @__reader_writer << ReaderProxy.new(@__task_proxy,self,@local_options.merge(policy))
+            @__reader_writer.last
         end
 
         def new_sample
@@ -451,9 +470,17 @@ module Vizkit
             attr_accessor  :nameservive_down
             attr_accessor  :do_not_connect_for
             attr_accessor  :last_nameservice_connection
+            attr_accessor  :tasks
+ 
+	    def disconnect_all(state = :NotReachable)
+		tasks.each do |task|
+		    task.__disconnect(state)
+                end
+	    end
         end
         TaskProxy.nameservive_down = false
-        TaskProxy.do_not_connect_for = 5
+        TaskProxy.do_not_connect_for = 40
+	TaskProxy.tasks = Array.new
 
         attr_reader :__last_ping
         #Creates a new TaskProxy for an Orogen Task
@@ -477,6 +504,7 @@ module Vizkit
             if !options.empty?
                 raise "invalid options #{options} for TaskProxy"
             end
+	    TaskProxy.tasks << self
             Vizkit.info "Create TaskProxy for task: #{name}"
         end
 
@@ -494,8 +522,8 @@ module Vizkit
             ping
         end
 
-        def __disconnect
-            @__state = :NotReachable
+        def __disconnect(state = :NotReachable)
+            @__state = state
             @__readers.clear
             @__task = nil
             #invalidate all ports
@@ -521,7 +549,7 @@ module Vizkit
         # after it went down.
         # to check if a running task is no longer reachable the state_reader of the task is used
         def ping()
-            return false if @__state == :NoModel #prevents pinging if no model is present
+            return false if @__state == :NoModel || @__state == :ComError #prevents pinging
             reader = @__task.instance_variable_get(:@state_reader)
             if !@__task || (reader && !reader.connected?) || (!reader && !@__task.reachable?)
                 begin 
@@ -531,7 +559,7 @@ module Vizkit
                     end
                     if !TaskProxy.nameservive_down || (Time.now - TaskProxy.last_nameservice_connection).to_f >= TaskProxy.do_not_connect_for
                         TaskProxy.nameservive_down = false
-                        TaskProxy.last_nameservice_connection = Time.now
+                        Vizkit.info "Tying to access name service to create TaskContext for: #{name}"
                         @__task = Orocos::TaskContext.get(name)
                         #this is not reached if TaskContext.get is not successfully 
                         Vizkit.info "Create TaskContext for: #{name}"
@@ -548,25 +576,34 @@ module Vizkit
                 rescue Orocos::NotFound
                     #check if the corba name service is still publishing its name and remove it
                     #this prevents blocking of the ruby script
-                    if @__options[:cleanup_nameservice] && Orocos.task_names.include?(name)
-                        Orocos::CORBA.unregister(name)
-                        Vizkit.warn "unregistered dangling CORBA name #{name}"
-                        @__state = :TaskCrashed
-                    elsif @__state != :TaskCrashed
-                        @__state = :NotReachable
-                    end
+		    begin 
+			if @__options[:cleanup_nameservice] && Orocos.task_names.include?(name)
+			    Orocos::CORBA.unregister(name)
+			    Vizkit.warn "unregistered dangling CORBA name #{name}"
+			    @__state = :TaskCrashed
+			elsif @__state != :TaskCrashed
+			    @__state = :NotReachable
+			end
+		    rescue Orocos::CORBA::ComError
+			# there is something wrong this the name server
+			Vizkit.error "ComError while communicating with the nameserver." 			
+                        Vizkit.error "prevent accessing name service for #{TaskProxy::do_not_connect_for} seconds"
+			Vizkit.error "Is the nameserver responding on the wrong network interface?." 			
+                    	TaskProxy.disconnect_all(:ComError)
+                        TaskProxy.nameservive_down = true
+                        TaskProxy.last_nameservice_connection = Time.now
+		    end
                     @__task = nil
                 rescue Orocos::CORBAError => e
                     Vizkit.error "Corba error nameservice down ?"
                     Vizkit.error "prevent accessing name service for #{TaskProxy::do_not_connect_for} seconds"
+                    TaskProxy.last_nameservice_connection = Time.now
                     TaskProxy.nameservive_down = true
-                    @__state = :NameServiceDown
-                    @__task = nil
+                    TaskProxy.disconnect_all(:NameServieDown)
                 rescue Orocos::NoModel
-                    @__task = nil 
                     Vizkit.warn "No TaskModel for task #{name}."
                     Vizkit.warn "You have to build the orogen component on this machine in order to access the task."
-                    @__state = :NoModel 
+                    __disconnect(:NoModel)
                 end
             end
             @__last_ping = @__task != nil
@@ -614,7 +651,7 @@ module Vizkit
         def method_missing(m, *args, &block)
             if !ping
          #       if Orocos::TaskContext.public_method_defined?(m)
-                    Vizkit.warn "TaskProxy #{name}: ignoring method #{m} because task is not reachable."
+                    Vizkit.info "TaskProxy #{name}: ignoring method #{m} because task is not reachable."
                     @__task = nil
          #       else
          #           super
@@ -623,7 +660,15 @@ module Vizkit
                 if @__task && @__task.has_port?(m.to_s)
                     port(m.to_s,*args)
                 else
-                    @__task.send(m, *args, &block)
+                    time = Time.now
+                    result = @__task.send(m, *args, &block)
+                    if (Time.now-time).to_f > 1.0 
+			Vizkit.error "calling method #{m} on task #{name} took #{(Time.now-time).to_f} seconds"
+                        Vizkit.error "disabling communication"
+                        __disconnect
+                       @__state = :ComError
+		    end
+                    result
                 end
             end
         rescue Orocos::NotFound,Orocos::CORBAError

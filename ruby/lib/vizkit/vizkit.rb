@@ -145,6 +145,7 @@ module Vizkit
                     sleep(0.01)
                 end
                 if proxy.running?
+                    set_trace_func proc { |event, file, line, id, binding, classname| printf "%8s %s:%-2d %10s %8s\n", event, file, line, id, classname if file == "/home/aduda/dev/csurvey_master/gui/vizkit/ruby/lib/vizkit/task_proxy.rb" }
                     $qApp.exec
                 else
                     Vizkit.error "Cannot communicate with task #{proxy.name}"
