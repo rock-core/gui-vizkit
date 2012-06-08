@@ -551,8 +551,10 @@ module Vizkit
                     if @__options[:cleanup_nameservice] && Orocos.task_names.include?(name)
                         Orocos::CORBA.unregister(name)
                         Vizkit.warn "unregistered dangling CORBA name #{name}"
+                        @__state = :TaskCrashed
+                    elsif @__state != :TaskCrashed
+                        @__state = :NotReachable
                     end
-                    @__state = :NotReachable
                     @__task = nil
                 rescue Orocos::CORBAError => e
                     Vizkit.error "Corba error nameservice down ?"
@@ -562,6 +564,8 @@ module Vizkit
                     @__task = nil
                 rescue Orocos::NoModel
                     @__task = nil 
+                    Vizkit.warn "No TaskModel for task #{name}."
+                    Vizkit.warn "You have to build the orogen component on this machine in order to access the task."
                     @__state = :NoModel 
                 end
             end
