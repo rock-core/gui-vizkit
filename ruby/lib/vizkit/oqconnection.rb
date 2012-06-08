@@ -34,6 +34,8 @@ module Vizkit
             end
             @widget = widget
 
+            #merge options here to store all informations about the connections in @policy  
+            options = ReaderWriterProxy.default_policy.merge(options)
             @local_options, @policy = Kernel.filter_options(options,:update_frequency => OQConnection::update_frequency)
             @port = if port.is_a? Vizkit::PortProxy
                         port
@@ -154,7 +156,6 @@ module Vizkit
                 @timer_id = nil
                 # @reader.disconnect this leads to some problems with the timerEvent: reason unknown
                 @widget.disconnected(@port.full_name) if @widget.respond_to?:disconnected
-                @reader.disconnect if @reader
                 Vizkit.info "Disconnect OQConnection connected to port #{@port.full_name}"
             end
         end
@@ -184,7 +185,7 @@ module Vizkit
         end
 
         def alive?
-            return @timer_id && @reader.__valid?
+            return @timer_id && @reader.connected?
         end
 
         alias :connected? :alive?

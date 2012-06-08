@@ -18,10 +18,7 @@ class VizkitTest < Test::Unit::TestCase
         end
     end
     def setup
-        if !Vizkit.default_loader.plugin? "StructViewer"
-            Vizkit.instance_variable_set(:@default_loader,nil)
-        end
-        Vizkit::ReaderWriterProxy.default_policy[:port_proxy] = Vizkit::TaskProxy.new("port_proxy")
+        Vizkit.instance_variable_set :@default_loader,nil
         #generate log file 
         @log_path = File.join(File.dirname(__FILE__),"test_log")
         if !File.exist?(@log_path+".0.log")
@@ -58,7 +55,7 @@ class VizkitTest < Test::Unit::TestCase
         assert(reader)
 
         assert(!reader.read)
-        assert(!reader.__valid?)
+        assert(!reader.connected?)
         assert(!task.reachable?)
         log.track(true)
         log.align
@@ -71,9 +68,8 @@ class VizkitTest < Test::Unit::TestCase
 
         assert(task.reachable?)
         assert(port.task.reachable?)
-        assert(!reader.__valid?)
         assert(reader.__reader_writer)
-        assert(reader.__valid?)
+        assert(reader.connected?)
 
         #start replay 
         sleep(0.2)
@@ -86,25 +82,29 @@ class VizkitTest < Test::Unit::TestCase
         while $qApp.hasPendingEvents
             $qApp.processEvents
         end
-        #check disconnect on a log reader 
-        reader.disconnect
         assert(@sample)
     end
 
     def test_vizkit_display
         log = Orocos::Log::Replay.open(@log_path+".0.log")
         assert(log)
-        task = Vizkit::ReaderWriterProxy.default_policy[:port_proxy]
+    task = Vizkit::ReaderWriterProxy.default_policy[:port_proxy]
 
         Orocos.run "rock_port_proxy" do 
             task.start
 
-            assert(task.createProxyConnection("test","/base/Time",0.01,true))
-            assert(task.has_port? "out_test")
+            connection = Types::PortProxy::ProxyConnection.new
+            connection.task_name = "task"
+            connection.port_name = "port"
+            connection.type_name = "/base/Time"
+            connection.periodicity = 0.1
+            connection.check_periodicity = 0.2
+            assert(task.createProxyConnection(connection))
+            assert(task.has_port?("out_task_port"))
 
-            pp Vizkit.default_loader.find_all_plugin_specs(:argument => task.out_test,:default => false)
+            pp Vizkit.default_loader.find_all_plugin_specs(:argument => task.out_task_port,:default => false)
 
-            widget = Vizkit.display task.out_test
+            widget = Vizkit.display task.out_task_port
             assert(widget)
             widget.close
 
@@ -128,19 +128,29 @@ class VizkitTest < Test::Unit::TestCase
 
         Orocos.run "rock_port_proxy" do 
             task.start
+            task.closeAllProxyConnections
+            sleep(1)
+            assert(!task.has_port?("out_task_port2"))
+            connection = Types::PortProxy::ProxyConnection.new
+            connection.task_name = "task"
+            connection.port_name = "port2"
+            connection.type_name = "/base/Angle"
+            connection.periodicity = 0.1
+            connection.check_periodicity = 0.2
+            assert_equal("/base/Angle",connection.type_name)
+            assert(task.createProxyConnection(connection))
+            assert(task.has_port?("out_task_port2"))
+            assert_equal("/base/Angle",task.out_task_port2.type_name)
 
-            assert(task.createProxyConnection("test","/base/Angle",0.01,true))
-            assert(task.has_port? "in_test")
-
-            widget = Vizkit.control task.out_test
+            widget = Vizkit.control task.out_task_port2.type_name
             assert(widget)
             widget.close
 
-            widget = Vizkit.control task.out_test.type_name
+            widget = Vizkit.control task.out_task_port2
             assert(widget)
             widget.close
 
-            widget = Vizkit.control task.out_test.new_sample
+            widget = Vizkit.control task.out_task_port2.new_sample
             assert(widget)
             widget.close
         end

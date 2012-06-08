@@ -44,7 +44,7 @@ class StateViewer < Qt::Widget
     def default_options
         options = Hash.new
         options[:max_rows] = 6
-        options[:update_frequency] = 1
+        options[:update_frequency] = 2
         options
     end
 

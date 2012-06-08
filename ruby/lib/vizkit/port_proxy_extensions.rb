@@ -7,6 +7,8 @@ module Orocos
         #returns the Output-/InputPort of the proxy which writes/reads the data from/to the given port
         #raises an exception if the proxy is unable to proxy the given port 
         def proxy_port(port,options=Hash.new)
+            #a port which is not reachable cannot be proxied 
+            return nil if !port.task.reachable?
             port = port.to_orocos_port
             options, policy = Kernel.filter_options options,
                 :periodicity => nil,
@@ -16,73 +18,45 @@ module Orocos
                 raise "Task #{name}: is not reachable. Cannot proxy connection #{port.full_name}"
             end
 
-            full_name = port_full_name(port)
-            if !has_port?("in_"+full_name)
-                load_plugins_for_type(port.orocos_type_name)
-                if !createProxyConnection(full_name,port.orocos_type_name,options[:periodicity],policy[:init] || options[:keep_last_value])
-                    raise "Task #{name}: Cannot generate proxy ports for #{full_name}"
-                end
-                Orocos.info "Task #{name}: Create port_proxy ports: in_#{full_name} and out_#{full_name}."
+            if !port.respond_to? :reader
+                raise "Port #{port.full_name} cannot be proxied because it is not an OutputPort"
             end
 
-            port_in = self.port("in_"+full_name)
-            port_out = self.port("out_"+full_name)
-            if  port_in.orocos_type_name != port.orocos_type_name
+            if !isProxingPort(port.task.name,port.name)
+                load_plugins_for_type(port.orocos_type_name)
+                con = Types::PortProxy::ProxyConnection.new
+                con.task_name = port.task.name
+                con.port_name = port.name
+                con.type_name = port.orocos_type_name
+                con.periodicity = options[:periodicity]
+                con.keep_last_value = options[:keep_last_value]
+                con.check_periodicity = 1.0
+                if !createProxyConnection(con)
+                    raise "Task #{name}: Cannot generate proxy ports for #{port.full_name}"
+                end
+                Orocos.info "Task #{name}: Create port_proxy port for #{port.full_name}."
+            end
+
+            port_out = self.port(getOutputPortName(port.task.name,port.name))
+            if  port_out.orocos_type_name != port.orocos_type_name
                 raise "Task #{name} cannot proxy port #{name} because the already existing proxy port has a different type!"
             end
-
-            #we do not have to connect the ports if there is already a connection
-            #all instances are using the same hash because only one proxy per ruby instance is allowed
-            @proxy_name ||= self.name
-            raise "Cannot handle multiple PortProxies from the same ruby instance!" if @proxy_name != self.name
-            if proxied_ports.has_key?(full_name) && proxied_ports[full_name].task.reachable?
-                if port.is_a? Orocos::OutputPort
-                    port_out
-                else
-                    port_in
-                end
-            else
-                proxied_ports[full_name] = port
-                if port.respond_to? :reader
-                    port.connect_to port_in, policy
-                    Orocos.info "Task #{full_name}: Connecting #{port.full_name} with #{port_in.full_name}, policy=#{policy}"
-                    port_out
-                else
-                    port_out.connect_to port, policy
-                    Orocos.info "Task #{full_name}: Connecting #{port_out.full_name} with #{port.full_name}, policy=#{policy}"
-                    port_in
-                end
-            end
+            port_out
         end
 
         def delete_proxy_port(port)
-            full_name = port_full_name(port)
-            return unless proxied_ports.has_key? full_name
-            port = port("in_" + full_name)
-            port.disconnect_all if port 
-            port = port("out_" + full_name)
-            port.disconnect_all if port 
-            if closeProxyConnection("in_"+ full_name)
-                Vizkit.info "Delete connection #{full_name}"
-                proxied_ports.delete full_name
+            if closeProxyConnection(port.task.name,port.name)
+                Vizkit.info "Delete connection #{port.full_name}"
             else
-                Vizkit.warn "Cannot delete connection #{full_name}"
+                Vizkit.warn "Cannot delete connection #{port.full_name}"
             end
         end
 
         def delete_proxy_ports_for_task(task)
-            name = if(task.respond_to? :to_str)
-                       task
-                   else
-                       task.name
-                   end
-            if proxied_ports
-              proxied_ports.delete_if do |key,value| 
-                  if(value.task.name == name) 
-                      delete_proxy_port(value)
-                      true
-                  end
-              end
+            if closeProxyConnection(port.task.name,"")
+                Vizkit.info "Delete connection for#{port.task.name}"
+            else
+                Vizkit.warn "Cannot delete connection #{port.task.name}"
             end
         end
 
@@ -100,7 +74,7 @@ module Orocos
         end
 
         def port_full_name(port)
-            #the have to generate the name by our self because subfield name have a different 
+            #we have to generate the name by our self because subfield name have a different 
             #full_name but we want to use the same port of the port proxy
             full_name = "#{port.task.name}_#{port.name}"
         end
@@ -134,14 +108,9 @@ module Orocos
         end
 
         #returns true if the proxy is proxing the given port
-        #returns false if the proxy is not proxing the given port or if the connection
-        #between the proxy and the given port died
+        #returns false if the proxy is not proxing the given port 
         def proxy_port?(port)
-            return false if !reachable? 
-            full_name = port_full_name(port)
-            return false if !proxied_ports.has_key?(full_name)
-            return false if !proxied_ports[full_name].task.reachable?
-            return false if !has_port?("in_#{full_name}")
+            return false if !isProxingPort(port.task.name,port.name)
             true
         end
     end

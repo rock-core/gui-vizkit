@@ -128,7 +128,7 @@ module Vizkit
         if !ReaderWriterProxy.default_policy[:port_proxy]
             $qApp.exec
         elsif Orocos::CORBA.initialized?
-            proxy =  ReaderWriterProxy.default_policy[:port_proxy]
+            proxy = ReaderWriterProxy.default_policy[:port_proxy] 
             proxy.__change_name("port_proxy_#{ENV["USERNAME"]}_#{Process.pid}")
             output = if @port_proxy_log.respond_to?(:to_str)
                          @port_proxy_log
@@ -265,7 +265,6 @@ module Vizkit
 
     @connections = Array.new
     @vizkit_local_options = {:widget => nil,:reuse => true,:parent =>nil,:widget_type => :display}
-    ReaderWriterProxy.default_policy = {:port_proxy => TaskProxy.new("port_proxy"), :init => true}
 
     class << self
         # When using Vizkit3D widgets, this is a [task_name, port_name] pair of a
