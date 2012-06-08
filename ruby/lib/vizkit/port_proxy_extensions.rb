@@ -2,8 +2,6 @@ require 'utilrb/object/attribute'
 
 module Orocos
     extend_task 'port_proxy::Task' do
-        attribute(:proxied_ports) { Hash.new }
-
         #returns the Output-/InputPort of the proxy which writes/reads the data from/to the given port
         #raises an exception if the proxy is unable to proxy the given port 
         def proxy_port(port,options=Hash.new)
