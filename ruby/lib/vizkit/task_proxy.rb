@@ -481,6 +481,7 @@ module Vizkit
 	    end
 
             def check_corba_timeouts
+                return unless Orocos::CORBA.call_timeout && Orocos::CORBA.connect_timeout
                 if Orocos::CORBA.call_timeout > 3000 || Orocos::CORBA.connect_timeout > 3000
                     Vizkit.warn "Corba call timout is set to #{Orocos::CORBA.call_timeout} and connect timeout to #{Orocos::CORBA::connect_timeout}"
                     Vizkit.warn "This might block your script during connection problems."
