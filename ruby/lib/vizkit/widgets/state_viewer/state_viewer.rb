@@ -22,7 +22,7 @@ class StateViewer < Qt::Widget
         @green.setColor(Qt::Palette::Window,Qt::Color.new(0,255,0))
         @blue.setColor(Qt::Palette::Window,Qt::Color.new(0,0,255))
         @font = Qt::Font.new
-        @font.setPointSize(7)
+        @font.setPointSize(9)
         @font.setBold(true)
 
         @timer = Qt::Timer.new
@@ -35,7 +35,7 @@ class StateViewer < Qt::Widget
                         update(task.state ,task.name,@blue)
                     end
                 else
-                    update("not reachable",task.name,@red)
+                    update(task.state,task.name,@red)
                 end
             end
         end
