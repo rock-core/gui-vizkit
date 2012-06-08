@@ -217,7 +217,7 @@ module Vizkit
                     end
             #if object is a port or part of a port
             elsif(port)
-                if port.is_a?(Orocos::InputPort)|| (port.respond_to?(:input?) && port.input?)
+                if port.is_a?(Orocos::InputPort)|| (port.respond_to?(:__input?) && port.__input?)
                     widget_name = Vizkit::ContextMenu.control_widget_for(port.type_name,tree_view,pos)
                     if widget_name
                         widget = Vizkit.control port, :widget => widget_name 

@@ -140,12 +140,11 @@ module Vizkit
             Orocos.run "port_proxy::Task" => proxy.name, :output => output do
                 proxy.start
                 #wait unti the proxy is running 
-                1.upto(100) do 
+                1.upto(3) do 
 		    break if proxy.running?
-                    sleep(0.01)
+                    sleep(0.3333)
                 end
                 if proxy.running?
-                    set_trace_func proc { |event, file, line, id, binding, classname| printf "%8s %s:%-2d %10s %8s\n", event, file, line, id, classname if file == "/home/aduda/dev/csurvey_master/gui/vizkit/ruby/lib/vizkit/task_proxy.rb" }
                     $qApp.exec
                 else
                     Vizkit.error "Cannot communicate with task #{proxy.name}"

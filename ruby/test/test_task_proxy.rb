@@ -142,6 +142,7 @@ class TaskProxyTest < Test::Unit::TestCase
             assert(task.has_port? "in_test_task_out_dummy_port")
             assert(task.has_port? "out_test_task_out_dummy_port")
 
+            task2 = nil
             Orocos.run "port_proxy::Task" => "test_task",:output => "%m2.log" do 
                 #setup source
                 connection.task_name = "dummy"
@@ -174,8 +175,9 @@ class TaskProxyTest < Test::Unit::TestCase
                 assert(proxy_reader.read)
                 assert(!proxy_reader.read_new)
             end
-            #now the source is killed 
-            sleep(1)
+            sleep(2)
+            #now the source is killed
+            assert(!task2.reachable?)
             assert(!proxy_reader.connected?)
             assert(!writer.connected?)
 

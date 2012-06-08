@@ -116,7 +116,7 @@ module Vizkit
                 return
             end
 
-            if @port.input?
+            if @port.__input?
                 Vizkit.warn "Disconnecting OQConnection to InputPort #{@port.full_name}. Only connections to OutputPorts are supported! "
                 disconnect
                 return
