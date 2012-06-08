@@ -55,7 +55,7 @@ rescue Orocos::CORBAError => e
     exit 1
 end
 
-Orocos::CORBA.call_timeout = 1000
+Orocos::CORBA.call_timeout = 3000
 Orocos::CORBA.connect_timeout = 500
 Vizkit::ReaderWriterProxy.default_policy[:port_proxy] = nil if !@proxy
 
