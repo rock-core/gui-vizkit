@@ -88,7 +88,16 @@ void Uncertainty::setCovariance( const Eigen::Matrix3d& cov )
     std::cout << "q scale: " << (q * ev.eigenvalues().cwise().sqrt()).transpose() << std::endl;
     */
 
-    setScale( eigen2osg( Eigen::Vector3d( e_val.array().sqrt() ) ) );
+    Eigen::Vector3d scale( Eigen::Vector3d( e_val.array().sqrt() ) );
+    for( size_t i=0; i<3; ++i )
+    {
+	if( scale[i] != scale[i] ) 
+	{
+	    scale[i] = 0;
+	}
+    }
+
+    setScale( eigen2osg(scale) );
 
     redraw(3);
 }
