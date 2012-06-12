@@ -86,12 +86,12 @@ module Vizkit
         def __reader_writer(disable_proxy_on_error=true)
             return @__reader_writer if connected?
             return nil if @__reader_writer  #just wait for the proxy to reconnect
-
-            proxy = @__orogen_port_proxy && @__orogen_port_proxy.reachable? && @__orogen_port_proxy.isProxingPort(@__port.task.name,@__port.name)
-            port = if proxy || (@__orogen_port_proxy && @__port.__output?)
+            proxy = @__orogen_port_proxy && @__orogen_port_proxy.reachable? 
+            proxing = proxy && @__orogen_port_proxy.isProxingPort(@__port.task.name,@__port.name)
+            port = if proxing || (proxy &&  @__port.__output?)
                        begin 
                            #check if the port_proxy is already proxing the port 
-                           if proxy
+                           if proxing  
                                port_name = @__orogen_port_proxy.getOutputPortName(@__port.task.name,@__port.name)
                                raise 'cannot get proxy port name for task' unless port_name
                                @__orogen_port_proxy.port(port_name)
@@ -127,6 +127,8 @@ module Vizkit
                                return nil
                             end
                        end
+                   elsif @__orogen_port_proxy && @__port.__output?
+                       nil
                    else
                        @__port.__port
                    end
