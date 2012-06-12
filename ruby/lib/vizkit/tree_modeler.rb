@@ -468,6 +468,9 @@ module Vizkit
         # added as well. The original tree structure will be preserved.
         def update_object(object, parent_item, read_from_model=false, row=0)
             if object.kind_of?(Orocos::Log::Replay)
+                #this is a workaround to get access to the object
+                #for displaying inforamtion about a log port 
+                @log_replay = object
                 row = 0
                 if !object.annotations.empty?
                     item, item2 = child_items(parent_item,0)
@@ -717,7 +720,24 @@ module Vizkit
                 encode_data(item2,:NO_SUBFIELD)
                 encode_data(item3,:NO_SUBFIELD)
 
-                item2, item3 = child_items(item,2)
+                index = 2
+                if @log_replay
+                    item2, item3 = child_items(item,index)
+                    item2.setText("First sample index")
+                    encode_data(item2,:NO_SUBFIELD)
+                    encode_data(item3,:NO_SUBFIELD)
+                    item3.setText(@log_replay.first_sample_pos(object.stream).to_s)
+                    index +=1
+
+                    item2, item3 = child_items(item,index)
+                    item2.setText("Last sample index")
+                    encode_data(item2,:NO_SUBFIELD)
+                    encode_data(item3,:NO_SUBFIELD)
+                    item3.setText(@log_replay.last_sample_pos(object.stream).to_s)
+                    index +=1
+                end
+
+                item2, item3 = child_items(item,index)
                 item2.setText("Filter")
                 encode_data(item2,:NO_SUBFIELD)
                 encode_data(item3,:NO_SUBFIELD)
@@ -726,7 +746,7 @@ module Vizkit
                 else
                     item3.setText("no")
                 end
-
+                
             elsif object.kind_of?(Hash)
                 object.each_pair do |key,value|
                     item, item2 = child_items(parent_item,row)
