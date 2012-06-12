@@ -516,6 +516,7 @@ module Vizkit
             if !options.empty?
                 raise "invalid options #{options} for TaskProxy"
             end
+            raise "Cannot create TaskProxy with no name!" if !task_name || task_name.empty? 
             TaskProxy.check_corba_timeouts if TaskProxy.tasks.empty?
 	    TaskProxy.tasks << self
             Vizkit.info "Create TaskProxy for task: #{name}"

@@ -86,6 +86,10 @@ if remaining.empty?
 else
     remaining.each do |spec|
         task_name, port_name = spec.split('.')
+        if !task_name 
+            Vizkit.warn "Wrong parameter. Ignoring empty task name"
+            next 
+        end
         task = Vizkit::TaskProxy.new task_name
         if !port_name || !task.ping
             task_inspector ||= Vizkit.default_loader.TaskInspector
