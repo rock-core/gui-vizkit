@@ -71,7 +71,7 @@ module Vizkit
                         task.cleanup
                     elsif action.text == "Load Configuration"
                         file_name = Qt::FileDialog::getOpenFileName(nil,"Load Config",File.expand_path("."),"Config Files (*.yml)")
-                        task.load_conf(file_name) if file_name
+                        task.apply_conf_file(file_name) if file_name
                     elsif action.text == "Apply Configuration"
                         task.apply_conf
                     elsif action.text == "Save Configuration"
