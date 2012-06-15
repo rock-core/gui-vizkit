@@ -102,6 +102,21 @@ class LogControl
       @brush = Qt::Brush.new(Qt::Color.new(200,200,200))
       @widget_hash = Hash.new
 
+      actionExport.connect(SIGNAL("triggered()")) do 
+        bstop_clicked
+        file = Qt::FileDialog::getSaveFileName(nil,"Export Log File",File.expand_path("."),"Log Files (*.log)")
+        if file
+          progress = Qt::ProgressDialog.new
+          progress.setLabelText "exporting streams"
+          progress.show       
+          @log_replay.export_to_file(file,timeline.getStartMarkerIndex, timeline.getEndMarkerIndex) do |index,max|
+            progress.setMaximum(max)
+            progress.setValue(index)
+            Vizkit.process_events
+            progress.wasCanceled
+          end
+        end
+      end
       display_info
     end
 
