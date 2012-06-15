@@ -200,6 +200,10 @@ module Vizkit
             #this is needed to determine if someone clicked on a subfield
             if !port
                 port = port_from_item(item)
+                #do not display any context menu if the port is a log port which is empty
+                if port.is_a?(Orocos::Log::OutputPort) && port.stream.size == 0
+                    return 
+                end
             end
 
             #check if someone clicked on a property 
@@ -696,7 +700,7 @@ module Vizkit
                 item2.setText(object.type_name.to_s)
             elsif object.kind_of?(Orocos::Log::OutputPort)
                 item, item2 = child_items(parent_item,row)
-                item.setText(object.name)
+                item.setText("#{object.name} (#{object.stream.size})")
                 item2.setText(object.type_name.to_s)
 
                 # Set tooltip informing about context menu
