@@ -115,6 +115,7 @@ class LogControl
             Vizkit.process_events
             progress.wasCanceled
           end
+          progress.close if progress.isVisible
         end
       end
       display_info
