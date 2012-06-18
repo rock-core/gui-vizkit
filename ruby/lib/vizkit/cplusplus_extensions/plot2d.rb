@@ -180,6 +180,13 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "Plot2d" do
         update(sample[1],name+"_y")
         update(sample[2],name+"_z")
     end
+    
+    def update_custom(name,values_x,values_y)
+        graph = graph2(name)
+        graph.addData(values_x,values_y)
+        graph.rescaleValueAxis(true)
+        @needs_update = true
+    end
 
     def update_vector(sample,name)
         if sample.size() > 10000
