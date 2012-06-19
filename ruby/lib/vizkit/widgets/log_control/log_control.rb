@@ -103,9 +103,10 @@ class LogControl
       @widget_hash = Hash.new
 
       actionExport.connect(SIGNAL("triggered()")) do 
-        bstop_clicked
+        setDisabled(true)
         file = Qt::FileDialog::getSaveFileName(nil,"Export Log File",File.expand_path("."),"Log Files (*.log)")
         if file
+          bstop_clicked
           progress = Qt::ProgressDialog.new
           progress.setLabelText "exporting streams"
           progress.show       
@@ -117,6 +118,7 @@ class LogControl
           end
           progress.close if progress.isVisible
         end
+        setEnabled(true)
       end
       display_info
     end
