@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>574</width>
+    <width>561</width>
     <height>318</height>
    </rect>
   </property>
@@ -522,7 +522,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>574</width>
+     <width>561</width>
      <height>25</height>
     </rect>
    </property>
@@ -534,7 +534,16 @@
     <addaction name="separator"/>
     <addaction name="actionQuit"/>
    </widget>
+   <widget class="QMenu" name="menuKey_Stream">
+    <property name="title">
+     <string>Key Stream</string>
+    </property>
+    <addaction name="separator"/>
+    <addaction name="actionNone"/>
+    <addaction name="actionCurrent_Port"/>
+   </widget>
    <addaction name="menuExport"/>
+   <addaction name="menuKey_Stream"/>
   </widget>
   <action name="actionQuit">
    <property name="text">
@@ -552,6 +561,25 @@
    </property>
    <property name="iconVisibleInMenu">
     <bool>false</bool>
+   </property>
+  </action>
+  <action name="actionCurrent_Port">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Current Port</string>
+   </property>
+  </action>
+  <action name="actionNone">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>None</string>
    </property>
   </action>
  </widget>
