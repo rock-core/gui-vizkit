@@ -216,7 +216,7 @@ module Vizkit
             if (block_given? && !self.to_orocos_port.is_a?(Orocos::Log::OutputPort)) || 
                 widget.is_a?(Method) || widget.respond_to?(:plugin_spec)
                 return connect_to_widget(widget,options,&block)
-            elsif !widget || widget.respond_to?(:to_orocos_port)
+            elsif !widget || widget.respond_to?(:to_orocos_port) || widget.respond_to?(:find_port)
                 return org_connect_to widget,options,&block
             else
                 raise "Cannot connect #{widget} to #{full_name}. Call 'connect_to plugin.method(:name)' or register the plugin."
