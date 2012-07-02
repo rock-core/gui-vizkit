@@ -231,6 +231,7 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "Plot2d" do
     end
     
     def update_custom(name,values_x,values_y)
+	graph = graph2(name)
 	graph.addData(values_x,values_y)	
 	if @options[:auto_scrolling]
         	getXAxis.setRange(values_x-@options[:xaxis_window],values_x+@options[:pre_xaxis_window])
