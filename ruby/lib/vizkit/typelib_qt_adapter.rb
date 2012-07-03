@@ -127,7 +127,13 @@ module Vizkit
                 # Should be the return value
                 nil
             else
-                super
+                # check if any parameter is a typelib object because this would cause a segfault if 
+                # the superclass is a Qt::Object
+                if args.any? { |arg| arg.is_a? Typelib::Type}
+                    Kernel.raise NoMethodError.new "undefined method '#{m}' for #{self}"
+                else
+                    super
+                end
             end
         end
     end
