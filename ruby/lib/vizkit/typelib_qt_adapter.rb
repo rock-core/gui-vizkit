@@ -119,7 +119,7 @@ module Vizkit
                 begin @qt_object_adapter.call_qt_method(m.to_s, args, nil)
                 rescue TypelibQtCallError => e
                     backtrace = caller
-                    backtrace = ["#{backtrace[0].gsub(/in `\w+'/, "exception from C++ method #{name}::#{m.to_s}")}"] + backtrace[1..-1]
+                    backtrace = ["#{backtrace[0].gsub(/in `\w+'/, "exception from C++ method #{plugin_spec.plugin_name}::#{m.to_s}")}"] + backtrace[1..-1]
                     raise e, e.message, backtrace
                 end
 
