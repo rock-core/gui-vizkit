@@ -28,6 +28,19 @@ parser = OptionParser.new do |opt|
     opt.on('-c','--noclean',"Does not removes dangling corba tasks from the name service.") do
         @clean = false
     end
+    opt.on('-M', '--maxMessageSize SIZE', 
+           'maximum size of a message transported via corba (e.g. 2145, 3K, 3.5M, 0.1G)') do |size|
+        size_match = /^(\d+(\.\d+)?)([MGK])?$/.match(size)
+        if !size_match
+            Vizkit::warn "cannot parse #{size} for a message size value"
+            return
+        end
+        factors = {'K' => 1024, 'M' => 1024**2, 'G'=> 1024**3}
+        factor = size_match[3] ? factors[size_match[3]] : 1
+        value =  (size_match[1].to_f * factor).to_i
+        Vizkit::info "set corba max message size to #{value}"
+        Orocos::CORBA::max_message_size=value
+    end
     opt.on('--help') do
         puts parser
         exit 0
