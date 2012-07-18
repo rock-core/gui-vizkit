@@ -226,9 +226,14 @@ module Vizkit
                 spec2 = find_plugin_spec!(:callback_type => callback_type,:argument => value)
                 #delete old default
                 if spec2 
-                    if default 
-                        spec2 = spec2.find_callback_spec!(:callback_type => callback_type,:argument=> value)
+                    spec2 = spec2.find_callback_spec!(:callback_type => callback_type,:argument=> value)
+                    if default
                         spec2.default(false)
+                    else
+                        # check if the argument of the found spec is for a parent class type
+                        if spec2.argument != PluginHelper.normalize_obj(value,false).first
+                            default = true
+                        end
                     end
                 else
                     default = true
