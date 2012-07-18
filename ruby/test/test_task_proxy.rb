@@ -164,9 +164,9 @@ class TaskProxyTest < Test::Unit::TestCase
                 assert proxy_reader.__reader_writer
                 assert proxy_reader.connected?
                 assert proxy_reader.port.task.reachable?
-                assert proxy_reader.instance_variable_get(:@__orogen_port_proxy)
+                #assert proxy_reader.instance_variable_get(:@__orogen_port_proxy)
 
-                assert writer.instance_variable_get(:@__orogen_port_proxy)
+                #assert writer.instance_variable_get(:@__orogen_port_proxy)
                 assert writer.__reader_writer
                 assert writer.connected?
 

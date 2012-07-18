@@ -127,9 +127,10 @@ module Vizkit
                                return nil
                             end
                        end
-                   elsif @__orogen_port_proxy && @__port.__output?
-                       nil
+                   elsif @__orogen_port_proxy && @__port.__output? &&
+                         (!@__port.__port.respond_to?(:force_local?) || !@__port.__port.force_local?)
                    else
+                       @__orogen_port_proxy = nil
                        @__port.__port
                    end
             if port
