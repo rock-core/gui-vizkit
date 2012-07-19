@@ -229,7 +229,15 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "Plot2d" do
         update(sample[1],name+"_y")
         update(sample[2],name+"_z")
     end
+   
+    def setXAxsisScale(start,stop)
+        getXAxis.setRange(start,stop)
+    end 
     
+    def setYAxsisScale(start,stop)
+        getYAxis.setRange(start,stop)
+    end 
+
     def update_custom(name,values_x,values_y)
 	graph = graph2(name)
 	graph.addData(values_x,values_y)	
