@@ -238,6 +238,38 @@ module Vizkit
         end
     end
 
+    module OQConnectionTaskContextIntegration
+        def connect_to_widget(widget=nil,options = Hash.new,&block)
+            config_result = if widget.respond_to? :config 
+                                widget.config(self,options,&block)
+                            else
+                                nil
+                            end
+            if widget.respond_to?(:plugin_spec)
+                callback_fct = widget.plugin_spec.find_callback!(:argument => self,:callback_type => :display)
+                if callback_fct && (!callback_fct.respond_to?(:to_sym) || callback_fct.to_sym != :config)
+                    callback_fct = callback_fct.bind(widget)
+                    callback_fct.call(self, options, &block)
+                end
+            end
+        end
+
+        def connect_to(widget=nil, options = Hash.new,&block)
+            if widget.is_a?(Hash)
+                options = widget
+                widget = nil
+            end
+            if block_given? || widget.is_a?(Method) || widget.respond_to?(:plugin_spec)
+                return connect_to_widget(widget,options,&block)
+            elsif !widget || widget.respond_to?(:to_orocos_port) || widget.respond_to?(:find_port) || widget.respond_to?(:has_port?)
+                return org_connect_to widget,options,&block
+            else
+                raise "Cannot connect #{widget} to TaskContext #{name}. Call 'connect_to plugin.method(:name)' or register the plugin."
+            end
+            self
+        end
+    end
+
     class PortProxy
         alias :org_connect_to :connect_to
         alias :org_disconnect_from :disconnect_from
@@ -256,6 +288,12 @@ module Orocos
             remove_method :connect_to
             include Vizkit::OQConnectionIntegration
         end
+
+        class TaskContext
+            alias :org_connect_to :connect_to
+            remove_method :connect_to
+            include Vizkit::OQConnectionTaskContextIntegration
+        end
     end
     class OutputPort
         alias :org_connect_to :connect_to
@@ -263,5 +301,11 @@ module Orocos
         alias :org_disconnect_from :disconnect_from
         remove_method :connect_to,:disconnect_from
         include Vizkit::OQConnectionIntegration
+    end
+
+    class TaskContext
+        alias :org_connect_to :connect_to
+        remove_method :connect_to
+        include Vizkit::OQConnectionTaskContextIntegration
     end
 end

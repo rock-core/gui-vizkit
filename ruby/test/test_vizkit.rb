@@ -71,6 +71,9 @@ class VizkitTest < Test::Unit::TestCase
         assert(reader.__reader_writer)
         assert(reader.connected?)
 
+        assert(Vizkit.display task)
+        assert(Vizkit.control task)
+
         #start replay 
         sleep(0.2)
         while $qApp.hasPendingEvents
@@ -120,6 +123,9 @@ class VizkitTest < Test::Unit::TestCase
             widget = Vizkit.display task2.time
             assert(widget)
             widget.close
+
+            assert(Vizkit.display task)
+            assert(Vizkit.control task)
         end
     end
 
