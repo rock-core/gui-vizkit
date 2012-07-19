@@ -230,11 +230,11 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "Plot2d" do
         update(sample[2],name+"_z")
     end
    
-    def setXAxsisScale(start,stop)
+    def set_x_axis_scale(start,stop)
         getXAxis.setRange(start,stop)
     end 
     
-    def setYAxsisScale(start,stop)
+    def set_y_axis_scale(start,stop)
         getYAxis.setRange(start,stop)
     end 
 
