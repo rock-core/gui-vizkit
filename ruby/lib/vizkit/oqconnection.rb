@@ -37,10 +37,12 @@ module Vizkit
             #merge options here to store all informations about the connections in @policy  
             options = ReaderWriterProxy.default_policy.merge(options)
             @local_options, @policy = Kernel.filter_options(options,:update_frequency => OQConnection::update_frequency)
+            port_options, @policy  = Kernel.filter_options @policy,:subfield => Array.new ,:typelib_type => nil
+
             @port = if port.is_a? Vizkit::PortProxy
                         port
                     else
-                        PortProxy.new task,port,options
+                        PortProxy.new task,port,port_options
                     end
             raise "Cannot create OQConnection because no port is given" if !@port
             #use update_frequency as periodicity for the port proxy
