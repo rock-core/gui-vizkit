@@ -592,10 +592,11 @@ module Vizkit
                                 Vizkit.error "Cannot reset port proxy. It seems that the updateHook is blocked" 
                                 Vizkit.error "Connection might be no longer valid !!!" 
                             end
+                        else
+                            #we can now change to the state port to monitore if the task is still reachable
+                            @__task.state
+                            @__connection_code_block.call(self) if @__connection_code_block
                         end
-                        #we can now change to the state port to monitore if the task is still reachable
-                        @__task.state
-                        @__connection_code_block.call(self) if @__connection_code_block
                     end
                 rescue Orocos::NotInitialized
                     Vizkit.info "TaskProxy #{name} can not be found (Orocos is not initialized and there is no log task called like this)."
