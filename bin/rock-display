@@ -106,6 +106,7 @@ else
         task = Vizkit::TaskProxy.new task_name
         if !port_name || !task.ping
             task_inspector ||= Vizkit.default_loader.TaskInspector
+            task_inspector.enable_tooling= true
             task_inspector.config(task)
         else
             widget = Vizkit.default_loader.create_plugin_for(task.port(port_name),:display,nil,true)
