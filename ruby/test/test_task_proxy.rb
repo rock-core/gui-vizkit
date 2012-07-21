@@ -273,6 +273,10 @@ class TaskProxyTest < Test::Unit::TestCase
             assert(reader.read)
 
             #create a subfield reader
+            #wrong parameter name
+            assert_raise ArgumentError do 
+                task.out_task_port(:subfieldxy => "first")
+            end
             subfield_port = task.out_task_port(:subfield => "first")
             assert(subfield_port)
             assert(subfield_port.type_name == "/base/samples/frame/Frame")

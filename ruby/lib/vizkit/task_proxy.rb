@@ -263,6 +263,9 @@ module Vizkit
         #because otherwise the type_name would only be known after the first sample was received 
         def initialize(task, port,options = Hash.new)
             @local_options, options = Kernel::filter_options options,{:subfield => Array.new,:typelib_type => nil}
+            if !options.empty?
+                raise ArgumentError,"invalid options #{options} for PortProxy"
+            end
             @local_options[:subfield] = Array(@local_options[:subfield])
 
             @__task = if task.is_a? TaskProxy 
@@ -476,7 +479,7 @@ module Vizkit
             attr_accessor  :do_not_connect_for
             attr_accessor  :last_nameservice_connection
             attr_accessor  :tasks
- 
+
 	    def disconnect_all(state = :NotReachable)
 		tasks.each do |task|
 		    task.__disconnect(state)
@@ -659,6 +662,9 @@ module Vizkit
                             name
                         end
             if @__ports.has_key?(full_name)
+                if !options.empty?
+                    raise ArgumentError,"invalid options #{options} for TaskProxy::port"
+                end
                 @__ports[full_name]
             else
                 @__ports[full_name] = PortProxy.new(self,name,options)
