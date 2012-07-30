@@ -352,6 +352,9 @@ end
 
 UiLoader.register_3d_plugin('TrajectoryVisualization',"vizkit-base", 'TrajectoryVisualization')
 UiLoader.register_3d_plugin_for('TrajectoryVisualization', "/base/Vector3d", :updateTrajectory)
+UiLoader.register_3d_plugin_for('TrajectoryVisualization', "/base/samples/RigidBodyState") do |obj,sample,_|
+    obj.updateTrajectory(sample.position)
+end
 UiLoader.register_3d_plugin_for('TrajectoryVisualization', "Eigen::Vector3", :updateTrajectory)
 UiLoader.register_3d_plugin_for('TrajectoryVisualization', "/base/geometry/Spline<3>", :updateSpline)
 UiLoader.register_3d_plugin('RigidBodyStateVisualization',"vizkit-base", 'RigidBodyStateVisualization')
