@@ -3,12 +3,13 @@ start_simple_cov("test_vizkit")
 
 require 'vizkit'
 require 'test/unit'
+
+Orocos::Nameservice.enable(:Local)
+Orocos::Nameservice.enable(:CORBA)
 Orocos.initialize
 Orocos.load_typekit "base"
+#Vizkit.logger.level = Logger::INFO
 
-Vizkit.logger.level = Logger::INFO
-
-    
 class VizkitTest < Test::Unit::TestCase
     class TestWidget < Qt::Object
         attr_accessor :sample
@@ -39,40 +40,33 @@ class VizkitTest < Test::Unit::TestCase
         #open log file
         log = Orocos::Log::Replay.open(@log_path+".0.log")
         assert(log)
+        log.track true
+        log.align
 
         Vizkit.connect_port_to "test_task","time" do |sample,_|
             @sample = sample
         end
 
         #create TaskProxy
-        task = Vizkit::TaskProxy.new("test_task")
+        task = Orocos::Nameservice.resolve_proxy("test_task")
         assert(task)
         port = task.port("time")
         assert(port)
         reader = port.reader
-        #check disconnect for log reader which is not initialized
-        reader.disconnect
         assert(reader)
 
-        assert(!reader.read)
-        assert(!reader.connected?)
-        assert(!task.reachable?)
-        log.track(true)
-        log.align
-
-        #test type of the underlying objects
-        assert(task.__task.is_a?(Orocos::Log::TaskContext))
-        assert(port.task.__task.is_a?(Orocos::Log::TaskContext))
-        assert(port.__port.is_a?(Orocos::Log::OutputPort))
+        #test type
+        assert(task.is_a?(Orocos::Log::TaskContext))
+        assert(port.task.is_a?(Orocos::Log::TaskContext))
+        assert(port.is_a?(Orocos::Log::OutputPort))
         #test if task is reachable now
 
         assert(task.reachable?)
         assert(port.task.reachable?)
-        assert(reader.__reader_writer)
         assert(reader.connected?)
 
         assert(Vizkit.display task)
-        assert(Vizkit.control task)
+        assert(!Vizkit.control(task)) #there is no control for log tasks
 
         #start replay 
         sleep(0.2)
@@ -91,9 +85,12 @@ class VizkitTest < Test::Unit::TestCase
     def test_vizkit_display
         log = Orocos::Log::Replay.open(@log_path+".0.log")
         assert(log)
-    task = Vizkit::ReaderWriterProxy.default_policy[:port_proxy]
+        task = Orocos::Nameservice.resolve_proxy("port_proxy",:raise => false,:period => 0.1)
 
         Orocos.run "rock_port_proxy" do 
+            #the proxy needs some time until it picked up the
+            #remote task
+            sleep 0.2
             task.start
 
             connection = Types::PortProxy::ProxyConnection.new
@@ -103,6 +100,10 @@ class VizkitTest < Test::Unit::TestCase
             connection.periodicity = 0.1
             connection.check_periodicity = 0.2
             assert(task.createProxyConnection(connection))
+
+            #we have to synchronize the task proxy if a new port was added
+            task.synchronize
+            sleep(0.5)
             assert(task.has_port?("out_task_port"))
 
             pp Vizkit.default_loader.find_all_plugin_specs(:argument => task.out_task_port,:default => false)
@@ -115,13 +116,11 @@ class VizkitTest < Test::Unit::TestCase
             assert(widget)
             widget.close
 
-            task2 = Vizkit::TaskProxy.new("test_task")
-            #task does not exist 
+            task2 = Orocos::TaskContextProxy.new("test_task",:raise => false)
+            #port does not exist 
             assert_raise RuntimeError do 
                 widget = Vizkit.display task2.port("time22")
             end
-            widget = Vizkit.display task2.time
-            assert(widget)
             widget.close
 
             assert(Vizkit.display task)
@@ -130,9 +129,9 @@ class VizkitTest < Test::Unit::TestCase
     end
 
     def test_vizkit_control
-        task = Vizkit::ReaderWriterProxy.default_policy[:port_proxy]
+        Orocos.run "rock_port_proxy",:wait => 10.0 do 
+            task = Orocos::Nameservice.resolve "port_proxy"
 
-        Orocos.run "rock_port_proxy" do 
             task.start
             task.closeAllProxyConnections
             sleep(1)
@@ -183,10 +182,10 @@ class VizkitTest < Test::Unit::TestCase
             $qApp.processEvents
         end
         assert(time)
+        puts "shutting down"
         #test connect_port_to with an orocos task
     end
-
-    def test_vizkit_disconnect
-
-    end
+#    def test_vizkit_disconnect
+#
+#    end
 end

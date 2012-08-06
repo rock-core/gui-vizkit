@@ -22,18 +22,17 @@ end
     
 class OQConnectionTest < Test::Unit::TestCase
     def setup
-        Vizkit::OQConnection::max_reconnect_frequency = 1
     end
 
     def test_OQConnection
-        task = Vizkit::TaskProxy.new("port_proxy")
+        task = Orocos::TaskContextProxy.new("port_proxy",:raise => false)
 
         #the reader and writer should automatically connect after the task was started
         writer = task.port("in_task_port").writer
         reader = task.port("out_task_port").reader
 
         #use directly OQConnection
-        connection = Vizkit::OQConnection.new("port_proxy","out_task_port",:port_proxy => nil) do |sample,port_name|
+        connection = Vizkit::OQConnection.new("port_proxy","out_task_port",:raise => false) do |sample,port_name|
             @sample = sample
         end
         connection.connect
@@ -42,10 +41,10 @@ class OQConnectionTest < Test::Unit::TestCase
         #Use OQConnection via PortProxy.connect_to
         widget = TestWidget.new
         widget.show
-        Vizkit::TaskProxy.new("port_proxy").port("out_task_port").connect_to widget.method(:update),:port_proxy => nil
+        task.port("out_task_port").connect_to widget.method(:update)
 
         #Use OQConnection via Vizkit.connect_port_to
-        Vizkit.connect_port_to "port_proxy","out_task_port",:port_proxy => nil do |sample,_|
+        Vizkit.connect_port_to "port_proxy","out_task_port",:raise => false do |sample,_|
             @sample2 = sample
         end
 
@@ -64,21 +63,24 @@ class OQConnectionTest < Test::Unit::TestCase
             connection.port_name = "port"
             connection.type_name = "/base/Time"
             connection.periodicity = 0.1
-            connection.check_periodicity = 0.2
+            connection.check_periodicity = 1.0
+
+            sleep(1.2)
 
             task.start
             assert(task.createProxyConnection(connection))
+            assert(!task.has_port?("out_task_port"))
+            task.synchronize
+            sleep 1.2
             assert(task.has_port?("out_task_port"))
 
             reader.read
-            sleep(2)
             while $qApp.hasPendingEvents
                 $qApp.processEvents
             end
             writer.write Time.now 
-            sleep 2
+            sleep(1)
             assert(reader.read)
-            sleep 2
             while $qApp.hasPendingEvents
                 $qApp.processEvents
             end
@@ -88,7 +90,7 @@ class OQConnectionTest < Test::Unit::TestCase
             assert(widget.sample)
         end
 
-        sleep(1.0)
+        sleep(2.0)
         #shutdown task 
         #and delete all samples
         @sample = nil
@@ -104,9 +106,12 @@ class OQConnectionTest < Test::Unit::TestCase
             connection.type_name = "/base/Time"
             connection.periodicity = 0.1
             connection.check_periodicity = 0.2
+            sleep 1.2
             task.start
-            assert_equal :RUNNING, task.state
             assert(task.createProxyConnection(connection))
+            task.synchronize
+            sleep 1.2
+            assert_equal :RUNNING, task.state
             assert(task.has_port?("out_task_port"))
 
             sleep(1.0)
@@ -144,7 +149,7 @@ class OQConnectionTest < Test::Unit::TestCase
     end
 
     def test_connect_to_widget
-        task = Vizkit::TaskProxy.new("port_proxy")
+        task = Orocos::TaskContextProxy.new("port_proxy",:raise => false)
 
         #widget is not registered and connect_to is called 
         assert_raise RuntimeError do 
@@ -188,8 +193,13 @@ class OQConnectionTest < Test::Unit::TestCase
             connection.type_name = "/base/Time"
             connection.periodicity = 0.1
             connection.check_periodicity = 0.2
+
+            sleep 1.2
+
             task.start
             assert(task.createProxyConnection(connection))
+            task.synchronize
+            sleep 1.2
             assert(task.has_port?("out_task_port"))
 
             reader.read

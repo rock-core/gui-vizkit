@@ -47,7 +47,7 @@ module Vizkit
             end
 
             #check if there are widgets for the task 
-            if task.model && task.__task
+            if task.model
                 menu.addSeparator
                 Vizkit.default_loader.find_all_plugin_names(:argument => task,:callback_type => :control,:flags => {:deprecated => false}).each do |w|
                     menu.add_action(Qt::Action.new(w, parent))
@@ -81,7 +81,7 @@ module Vizkit
                         File.delete file_name if File.exist? file_name
                         task.save_conf(file_name) if file_name
                     elsif
-                        Vizkit.control task.__task,:widget => action.text
+                        Vizkit.control task,:widget => action.text
                     end
                 rescue RuntimeError => e 
                     puts e
@@ -202,7 +202,7 @@ module Vizkit
                 port = port_from_item(item)
                 #do not display any context menu if the port is a log port which is empty
                 if port.is_a?(Orocos::Log::OutputPort) && port.stream.size == 0
-                    return 
+                    return
                 end
             end
 
@@ -211,7 +211,7 @@ module Vizkit
             property = property_from_item(item)
 
             #if object is a task 
-            if object.is_a? Vizkit::TaskProxy
+            if object.is_a? Orocos::TaskContextBase
                 ContextMenu.task_state(object,tree_view,pos)
             elsif object.is_a? Orocos::Log::Annotations
                     widget_name = Vizkit::ContextMenu.widget_for(Orocos::Log::Annotations,tree_view,pos)
@@ -221,7 +221,7 @@ module Vizkit
                     end
             #if object is a port or part of a port
             elsif(port)
-                if port.is_a?(Orocos::InputPort)|| (port.respond_to?(:__input?) && port.__input?)
+                if port.input?
                     widget_name = Vizkit::ContextMenu.control_widget_for(port.type_name,tree_view,pos)
                     if widget_name
                         widget = Vizkit.control port, :widget => widget_name 
@@ -240,10 +240,11 @@ module Vizkit
                     if !auto 
                         #create a sub port
                         port_temp = if !subfield.empty?
-                                        Vizkit::PortProxy.new(port.task,port,:subfield => subfield)
+                                        Orocos::PortProxy.new(port.task,port,:subfield => subfield)
                                     else
                                         port
                                     end
+
                         widget_name = Vizkit::ContextMenu.widget_for(port_temp.type_name,tree_view,pos)
                         if widget_name
                             widget = Vizkit.display(port_temp, :widget => widget_name)
@@ -272,17 +273,34 @@ module Vizkit
         end
 
         def update_dirty_items
-            properties = dirty_items(Orocos::Property)
+            properties = dirty_items(Orocos::AttributeBase)
             properties.each do |item|
-                task_item,task = find_parent(item,Vizkit::TaskProxy)
+                task_item,task = find_parent(item,Orocos::TaskContextBase)
                 raise "Found no task for #{item.text}" unless task
-                next if !task.ping
+                next if !task.reachable?
                 item = item.parent.child(item.row,0) if item.column == 1
                 prop = task.property(item.text)
                 raise "Found no property called #{item.text} for task #{task.name}"unless prop
                 sample = prop.new_sample.zero!
                 update_object(sample,item,true)
                 prop.write sample
+                if task.respond_to? :synchronize
+                    task.synchronize
+                    progress = Qt::ProgressDialog.new
+                    progress.setLabelText "synchronizing task context"
+                    progress.setMaximum(10)
+                    progress.show
+                    time = task.last_sync
+                    index = 0
+                    while time == task.last_sync
+                        progress.setValue(index)
+                        Vizkit.process_events
+                        break if progress.wasCanceled
+                        index += 1
+                        sleep 0.1
+                    end
+                    progress.close if progress.isVisible
+                end
             end
             unmark_dirty_items
         end
@@ -299,10 +317,10 @@ module Vizkit
 
         def find_parent(child,type)
             object = item_to_object(child)
-            if object.class == type || object == type
+            if object == type || object.is_a?(type)
                 [child,object]
             else
-                if child.parent 
+                if child.parent
                     find_parent(child.parent,type)
                 else
                     nil
@@ -371,7 +389,7 @@ module Vizkit
             object = item_to_object(item)
             fields = Array.new
             if object == Orocos::OutputPort || object.is_a?(Orocos::Log::OutputPort) || 
-               object.is_a?(Vizkit::PortProxy)
+               object.is_a?(Orocos::PortProxy)
                 fields 
             elsif object == :NO_SUBFIELD
                 fields << object
@@ -395,31 +413,29 @@ module Vizkit
 
         def port_from_item(item)
             port_item,port = find_parent(item,Orocos::Log::OutputPort)
-            port_item,port = find_parent(item,Vizkit::PortProxy) if !port
+            port_item,port = find_parent(item,Orocos::PortProxy) if !port
             return port if port
 
             port_item,port = find_parent(item,Orocos::OutputPort)if !port
             port_item,port = find_parent(item,Orocos::InputPort)if !port
+
             return nil if !port
-            _,task = find_parent(item,Vizkit::TaskProxy)
-            _,task = find_parent(item,Orocos::Log::TaskContext) if !task 
-            return nil if !port || !task
-            if task.respond_to? :ping
-                if task.ping
-                    task.port(port_item.text) 
-                else 
-                    nil
-                end
-            else
+            _,task = find_parent(port_item,Orocos::TaskContextBase)
+            _,task = find_parent(port_item,Orocos::Log::TaskContext) if !task 
+
+            return nil if !task
+            if task.reachable?
                 task.port(port_item.text)
+            else 
+                nil
             end
         end
 
         def property_from_item(item)
-            property_item,property = find_parent(item,Orocos::Property)
+            property_item,property = find_parent(item,Orocos::AttributeBase)
             return nil if !property
 
-            _,task = find_parent(item,Vizkit::TaskProxy)
+            _,task = find_parent(item,Orocos::TaskContextBase)
             _,task = find_parent(item,Orocos::Log::TaskContext) if !task 
             
             return nil if !task
@@ -550,15 +566,15 @@ module Vizkit
                 end
                 item3.setText(policy.join("; "))
 
-            elsif object.kind_of?(Vizkit::TaskProxy)
+            elsif object.kind_of?(Orocos::TaskContextBase)
                 item, item2 = child_items(parent_item,row)
                 item.setText(object.name)
 
                 encode_data(item,object)
                 encode_data(item2,object)
-                item2.setText(object.state.to_s) 
+                item2.setText(object.state.to_s)
 
-                if !object.__last_ping
+                if !object.reachable?
                     item.removeRows(0,item.rowCount)
                 else
                     if object.doc?
@@ -582,17 +598,14 @@ module Vizkit
 
                     irow = 0
                     orow = 0
-                    task = object.__task
-                    if task
-                        task.each_port do |port|
-                            if port.is_a?(Orocos::InputPort)
-                                update_object(port,item3,read_from_model,irow)
-                                irow += 1
-                            else
-                                next if !enable_tooling && port.name == "state"
-                                update_object(port,item5,read_from_model,orow)
-                                orow +=1
-                            end
+                    object.each_port do |port|
+                        if port.input?
+                            update_object(port.to_orocos_port,item3,read_from_model,irow)
+                            irow += 1
+                        else
+                            next if !enable_tooling && port.name == "state"
+                            update_object(port.to_orocos_port,item5,read_from_model,orow)
+                            orow +=1
                         end
                     end
                     item3.remove_rows(irow,item3.row_count-irow) if irow < item3.row_count
@@ -624,7 +637,7 @@ module Vizkit
                     end
                 end
 
-            elsif object.kind_of?(Orocos::Property)
+            elsif object.kind_of?(Orocos::AttributeBase)
                 item, item2 = child_items(parent_item,row)
                 item.setText(object.name)
 
@@ -645,8 +658,8 @@ module Vizkit
                     item2.set_editable(true)
                 end
                 if @dirty_items.empty?
-                    encode_data(item,Orocos::Property)
-                    encode_data(item2,Orocos::Property)
+                    encode_data(item,Orocos::AttributeBase)
+                    encode_data(item2,Orocos::AttributeBase)
                 end
             elsif object.kind_of?(Orocos::Log::Property)
                 item, item2 = child_items(parent_item,row)
@@ -676,7 +689,7 @@ module Vizkit
                 encode_data(item2,object.class)
 
                 if update_item?(item)
-                    _,task = find_parent(parent_item,Vizkit::TaskProxy)
+                    _,task = find_parent(parent_item,Orocos::TaskContextBase)
                     raise "cannot find task for port #{object.name}" if !task
                     reader = reader_for(task,object.name)
                     update_object(reader.read,item) if reader

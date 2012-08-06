@@ -4,10 +4,8 @@ module Vizkit
         #default values
         class << self
             attr_accessor :update_frequency
-            attr_accessor :max_reconnect_frequency
         end
         OQConnection::update_frequency = 8
-        OQConnection::max_reconnect_frequency = 0.5
 
         attr_reader :port
         attr_reader :reader
@@ -19,7 +17,6 @@ module Vizkit
             @timer_id = nil
             @last_sample = nil    #save last sample so we can reuse the memory
             @callback_fct = nil
-            @using_reduced_update_frequency = false
 
             if widget.respond_to?(:call)
                 @callback_fct = widget
@@ -35,21 +32,16 @@ module Vizkit
             @widget = widget
 
             #merge options here to store all informations about the connections in @policy  
-            options = ReaderWriterProxy.default_policy.merge(options)
+            options = Orocos::ReaderWriterProxy.default_policy.merge(options)
             @local_options, @policy = Kernel.filter_options(options,:update_frequency => OQConnection::update_frequency)
-            port_options, @policy  = Kernel.filter_options @policy,:subfield => Array.new ,:typelib_type => nil
+            port_options, @policy  = Kernel.filter_options @policy,:subfield => Array.new ,:typelib_type => nil,:raise => true
 
-            @port = if port.is_a? Vizkit::PortProxy
+            @port = if port.is_a? Orocos::PortProxy
                         port
                     else
-                        PortProxy.new task,port,port_options
+                        Orocos::PortProxy.new task,port,port_options
                     end
             raise "Cannot create OQConnection because no port is given" if !@port
-            #use update_frequency as periodicity for the port proxy
-            #if not given as option
-            if !@policy.has_key? :port_proxy_periodicity
-               @policy[:port_proxy_periodicity] = 1.0/@local_options[:update_frequency]
-            end
             @reader = @port.reader @policy
             if widget
                 Vizkit.info "Create new OQConnection for #{@port.name} and qt object #{widget}"
@@ -117,19 +109,8 @@ module Vizkit
                 Vizkit.disconnect_from @widget
                 return
             end
-
-            if @port.__input?
-                Vizkit.warn "Disconnecting OQConnection to InputPort #{@port.full_name}. Only connections to OutputPorts are supported! "
-                disconnect
-                return
-            end
-            if @reader.__reader_writer
+            if !@reader.respond_to?(:__reader_writer) || @reader.__reader_writer
                 @last_sample ||= @reader.new_sample
-                if @using_reduced_update_frequency
-                    Vizkit.info "OQConnection for #{@port.name}: Port is reachable setting update_frequency back to #{@local_options[:update_frequency]}" 
-                    self.update_frequency= @using_reduced_update_frequency
-                    @using_reduced_update_frequency = false
-                end
                 while(sample = @reader.read_new(@last_sample))
                     Vizkit.info "OQConnection to port #{@port.full_name} received new sample"
                     if @block
@@ -137,10 +118,6 @@ module Vizkit
                     end
                     callback_fct.call sample,@port.full_name if callback_fct
                 end
-            elsif !@using_reduced_update_frequency
-                Vizkit.info "OQConnection for #{@port.name}: Port is not reachable reducing update_frequency to #{OQConnection::max_reconnect_frequency}" 
-                @using_reduced_update_frequency = self.update_frequency
-                self.update_frequency = OQConnection::max_reconnect_frequency
             end
         rescue Interrupt
             raise
@@ -271,16 +248,6 @@ module Vizkit
             self
         end
     end
-
-    class PortProxy
-        alias :org_connect_to :connect_to
-        alias :org_disconnect_from :disconnect_from
-        remove_method :connect_to,:disconnect_from
-        def org_disconnect_all
-            method_missing(:disconnect_all)
-        end
-        include OQConnectionIntegration
-    end
 end
 
 module Orocos
@@ -305,9 +272,17 @@ module Orocos
         include Vizkit::OQConnectionIntegration
     end
 
-    class TaskContext
+    module TaskContextBase
         alias :org_connect_to :connect_to
         remove_method :connect_to
         include Vizkit::OQConnectionTaskContextIntegration
+    end
+
+    class PortProxy
+        alias :org_connect_to :connect_to
+        alias :org_disconnect_all :disconnect_all
+        alias :org_disconnect_from :disconnect_from
+        remove_method :connect_to,:disconnect_from
+        include Vizkit::OQConnectionIntegration
     end
 end

@@ -54,10 +54,10 @@ class StateViewer < Qt::Widget
     end
 
     def add(task,options=Hash.new)
-        @tasks << if task.is_a?(Vizkit::TaskProxy)
-                    task
+        @tasks << if task.is_a? String
+                      Orocos::Nameservice.resolve_proxy task
                   else
-                      Vizkit::TaskProxy.new(task)
+                      task
                   end
         if !@timer.active
             @timer.start(1000/@options[:update_frequency])
@@ -98,4 +98,4 @@ end
 
 Vizkit::UiLoader.register_ruby_widget("StateViewer",StateViewer.method(:new))
 Vizkit::UiLoader.register_control_for("StateViewer",Orocos::TaskContext,:add)
-Vizkit::UiLoader.register_control_for("StateViewer",Vizkit::TaskProxy,:add)
+Vizkit::UiLoader.register_control_for("StateViewer",Orocos::TaskContextProxy,:add)

@@ -25,7 +25,9 @@ class StructViewer
         def config(port,options=Hash.new)
             #encode some values 
             #otherwise tree_view is not able to open a new widget for an embedded type 
-            port = Vizkit::PortProxy.new(port.task,port)
+            #use a proxy task for this 
+            task = Orocos::Nameservice.resolve_proxy(port.task.name)
+            port = task.port(port.name)
             #add place holder
             item,item2 = @tree_view.update(nil,port.full_name,@tree_view.root,false,@item_hash.size)
             item2.setText(port.type_name.to_s)
