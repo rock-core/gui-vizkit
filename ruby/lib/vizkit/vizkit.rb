@@ -1,4 +1,4 @@
-#!usr/bin/env ruby
+require 'ping'
 
 module Vizkit
     extend Logger::Root('Vizkit', Logger::WARN)
@@ -121,7 +121,12 @@ module Vizkit
         # the typelib side 
         gc_timer = Qt::Timer.new
         gc_timer.connect(SIGNAL(:timeout)) do 
-            GC.start
+            if(Ping.pingecho(Orocos::CORBA.name_service,1))
+                Vizkit.error "Namservice is back online. Truning GC on" if GC.enable
+                GC.start
+            else
+                Vizkit.error "Nameserice is not reachable !!! Turning GC off to prevent blocking!" if !GC.disable
+            end
         end
         gc_timer.start(5000)
         $qApp.exec
