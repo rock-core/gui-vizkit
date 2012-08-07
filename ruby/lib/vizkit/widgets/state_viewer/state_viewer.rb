@@ -55,7 +55,7 @@ class StateViewer < Qt::Widget
 
     def add(task,options=Hash.new)
         @tasks << if task.is_a? String
-                      Orocos::Nameservice.resolve_proxy task
+                      Orocos::Nameservice.resolve_proxy task,:raise => false
                   else
                       task
                   end

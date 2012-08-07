@@ -70,6 +70,9 @@ rescue Orocos::CORBAError => e
     exit 1
 end
 
+Orocos::CORBA.call_timeout = 5000
+Orocos::CORBA.connect_timeout = 5000
+
 if remaining.empty?
   @timer = Qt::Timer.new
   task_inspector ||= Vizkit.default_loader.TaskInspector
@@ -78,23 +81,31 @@ if remaining.empty?
   task_inspector.enable_tooling=@show_all
 
   #check for new tasks every 5 seconds 
+  @error_counter = 0
   refresh = Proc.new do 
       begin
+      if !service.reachable?
+          raise Orocos::CORBAError
+      end
       service.names.each do |name|
           task = Orocos::Nameservice.resolve_proxy name, :raise => false
           task_inspector.config(task,:cleanup_nameservice =>@clean)
       end
+      @error_counter = 0
       rescue Orocos::CORBAError => e
-          Vizkit.error "Corba name service is not answering. Cannot update display. ... keep on trying "
-          Vizkit.error ""
-          corba_error
+          if @error_counter > 15
+              Vizkit.error "Corba name service is not answering. Cannot update display. ... keep on trying "
+              Vizkit.error ""
+              corba_error
+          end
+          @error_counter += 1
       end
   end
   @timer.connect SIGNAL('timeout()') do 
       refresh.call
   end
   refresh.call
-  @timer.start(5000)
+  @timer.start(1000)
 else
     remaining.each do |spec|
         task_name, port_name = spec.split('.')
@@ -110,7 +121,7 @@ else
         else
             widget = Vizkit.default_loader.create_plugin_for(task.port(port_name),:display,nil,true)
             if widget
-                Vizkit.connect_port_to task_name,port_name,widget
+                Vizkit.connect_port_to task,port_name,widget
                 widget.show
             else
                 Vizkit.warn "Cannot find a display widget for #{port_name}"
