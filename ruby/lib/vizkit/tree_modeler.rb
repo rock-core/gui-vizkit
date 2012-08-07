@@ -21,6 +21,7 @@ module Vizkit
 
         def self.task_state(task,parent,pos)
             return if !task.respond_to? :model
+            return if !task.reachable?
             menu = Qt::Menu.new(parent)
 
             #add some helpers
@@ -470,8 +471,8 @@ module Vizkit
         #return true if the item shall be updated returns false if 
         #the parent is not expanded 
         def update_item?(item)
-            if force_update || !@tree_view || !item.parent || 
-               @tree_view.is_expanded(@model.index_from_item(item.parent))
+            if(@tree_view && item.parent && @tree_view.is_expanded(@model.index_from_item(item.parent))) ||
+              force_update || !item.parent
                 true
             else
                 false
@@ -598,14 +599,19 @@ module Vizkit
 
                     irow = 0
                     orow = 0
-                    object.each_port do |port|
-                        if port.input?
-                            update_object(port.to_orocos_port,item3,read_from_model,irow)
-                            irow += 1
-                        else
-                            next if !enable_tooling && port.name == "state"
-                            update_object(port.to_orocos_port,item5,read_from_model,orow)
-                            orow +=1
+
+                    if !object.model
+                        item2.setText("NO MODEL AVAILABLE")
+                    else
+                        object.each_port do |port|
+                            if port.input?
+                                update_object(port.to_orocos_port,item3,read_from_model,irow)
+                                irow += 1
+                            else
+                                next if !enable_tooling && port.name == "state"
+                                update_object(port.to_orocos_port,item5,read_from_model,orow)
+                                orow +=1
+                            end
                         end
                     end
                     item3.remove_rows(irow,item3.row_count-irow) if irow < item3.row_count
