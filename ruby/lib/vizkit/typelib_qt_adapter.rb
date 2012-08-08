@@ -8,6 +8,9 @@ rescue Exception => e
 end
 
 module Vizkit
+    class TypelibQtCallError < RuntimeError
+    end
+
     class TypelibQtAdapter
         attr_reader :adapter
         attr_reader :qt_object
@@ -68,35 +71,35 @@ module Vizkit
 		
 		parameters_cxx = []
 		params.each_with_index do |param, i|
-		    begin
-			# the plugin reports a C++ type name, convert from Ruby
-			typename = Typelib::GCCXMLLoader.cxx_to_typelib(param)
-			if !Orocos.registered_type?(param)
-			    Orocos.load_typekit_for(typename, true) 
-			end
+                    # the plugin reports a C++ type name, convert from Ruby
+                    typename = Typelib::GCCXMLLoader.cxx_to_typelib(param)
+                    if !Orocos.registered_type?(param)
+                        begin
+                            Orocos.load_typekit_for(typename, true) 
+                        rescue Orocos::TypekitTypeNotFound
+                            matches = false
+                            break
+                        end
+                    end
 			
-			ruby_typelib_name = Orocos.typelib_type_for(typename)
-			ruby_typelib_names << ruby_typelib_name
+                    ruby_typelib_name = Orocos.typelib_type_for(typename)
+                    ruby_typelib_names << ruby_typelib_name
 
-			parameters_cxx << Typelib.from_ruby(parameters[i], ruby_typelib_name)
-                    rescue Interrupt
-                        raise
-		    rescue Exception => e  
-			matches = false
-                        Vizkit.info e
-			break;
-		    end
-		    
+                    parameters_cxx << Typelib.from_ruby(parameters[i], ruby_typelib_name)
 		    param_list_typelib << typename
 		end
 		
-		if(matches)
+		if matches
 		    #get the correct method signature for qt
 		    #as it would be very complex to build it from the parameters, we just
 		    #fetch it from qt, as we allready verified that out
 		    #parameters are correct.
 		    signature = adapter.getMethodSignatureFromNumber(method_name, params_idx)
-		    return adapter.callQtMethodWithSignature(signature, parameters_cxx, param_list_typelib, return_value)
+                    begin
+                        return adapter.callQtMethodWithSignature(signature, parameters_cxx, param_list_typelib, return_value)
+                    rescue Exception => e
+                        raise TypelibQtCallError, e, e.backtrace
+                    end
 		end
 	    end
             false
@@ -104,20 +107,28 @@ module Vizkit
 	
     end  
 
-end
-module QtTypelibExtension
-    def method_list
-        @qt_object_adapter ||= Vizkit::TypelibQtAdapter.new(self) 
-        @qt_object_adapter.method_list
-    end
+    module QtTypelibExtension
+        def method_list
+            @qt_object_adapter ||= Vizkit::TypelibQtAdapter.new(self) 
+            @qt_object_adapter.method_list
+        end
 
-    def method_missing(m, *args, &block)
-        @qt_object_adapter ||= Vizkit::TypelibQtAdapter.new(self) 
-        if(!@qt_object_adapter.call_qt_method(m.to_s, args, nil))
-            "calling super"
-            super
+        def method_missing(m, *args, &block)
+            @qt_object_adapter ||= Vizkit::TypelibQtAdapter.new(self) 
+            result =
+                begin @qt_object_adapter.call_qt_method(m.to_s, args, nil)
+                rescue TypelibQtCallError => e
+                    backtrace = caller
+                    backtrace = ["#{backtrace[0].gsub(/in `\w+'/, "exception from C++ method #{name}::#{m.to_s}")}"] + backtrace[1..-1]
+                    raise e, e.message, backtrace
+                end
+
+            if result
+                # Should be the return value
+                nil
+            else
+                super
+            end
         end
     end
 end
-
-

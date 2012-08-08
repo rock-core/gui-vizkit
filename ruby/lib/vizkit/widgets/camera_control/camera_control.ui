@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>789</width>
-    <height>372</height>
+    <width>794</width>
+    <height>430</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -25,6 +25,12 @@
      <layout class="QVBoxLayout" name="verticalLayout">
       <item>
        <widget class="ImageView" name="image_view">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
         <property name="minimumSize">
          <size>
           <width>300</width>
@@ -64,7 +70,14 @@
      <layout class="QHBoxLayout" name="horizontalLayout">
       <item>
        <layout class="QGridLayout" name="gridLayout">
-        <item row="4" column="2">
+        <item row="3" column="0">
+         <widget class="QLabel" name="label_9">
+          <property name="text">
+           <string>Trigger Mode</string>
+          </property>
+         </widget>
+        </item>
+        <item row="7" column="2">
          <widget class="QSpinBox" name="spinbox_gain"/>
         </item>
         <item row="2" column="0">
@@ -90,14 +103,14 @@
         <item row="2" column="2">
          <widget class="QSpinBox" name="spinbox_fps"/>
         </item>
-        <item row="3" column="0">
+        <item row="5" column="0">
          <widget class="QLabel" name="label">
           <property name="text">
            <string>Exposure Time [sec]:</string>
           </property>
          </widget>
         </item>
-        <item row="3" column="1">
+        <item row="5" column="1">
          <widget class="QSlider" name="slider_exposure">
           <property name="maximumSize">
            <size>
@@ -116,14 +129,14 @@
           </property>
          </widget>
         </item>
-        <item row="4" column="0">
+        <item row="7" column="0">
          <widget class="QLabel" name="label_2">
           <property name="text">
            <string>Gain:</string>
           </property>
          </widget>
         </item>
-        <item row="4" column="1">
+        <item row="7" column="1">
          <widget class="QSlider" name="slider_gain">
           <property name="maximumSize">
            <size>
@@ -136,7 +149,7 @@
           </property>
          </widget>
         </item>
-        <item row="3" column="2">
+        <item row="5" column="2">
          <widget class="QSpinBox" name="spinbox_exposure">
           <property name="minimum">
            <number>1000</number>
@@ -146,35 +159,15 @@
           </property>
          </widget>
         </item>
-        <item row="6" column="0">
-         <widget class="QLabel" name="label_4">
-          <property name="text">
-           <string>Exposure Mode</string>
-          </property>
-         </widget>
-        </item>
-        <item row="7" column="0">
+        <item row="12" column="0">
          <widget class="QLabel" name="label_6">
           <property name="text">
            <string>Whitebalance Mode:</string>
           </property>
          </widget>
         </item>
-        <item row="6" column="1">
-         <widget class="QComboBox" name="combobox_exposure_mode"/>
-        </item>
-        <item row="7" column="1">
+        <item row="12" column="1">
          <widget class="QComboBox" name="combobox_whitebalance_mode"/>
-        </item>
-        <item row="8" column="0">
-         <widget class="QLabel" name="label_5">
-          <property name="text">
-           <string>Gain Mode</string>
-          </property>
-         </widget>
-        </item>
-        <item row="8" column="1">
-         <widget class="QComboBox" name="combobox_gain_mode"/>
         </item>
         <item row="0" column="0">
          <widget class="QLabel" name="label_8">
@@ -210,6 +203,29 @@
           </property>
          </widget>
         </item>
+        <item row="4" column="0">
+         <widget class="QLabel" name="label_4">
+          <property name="text">
+           <string>Exposure Mode</string>
+          </property>
+         </widget>
+        </item>
+        <item row="3" column="1">
+         <widget class="QComboBox" name="combobox_trigger_mode"/>
+        </item>
+        <item row="4" column="1">
+         <widget class="QComboBox" name="combobox_exposure_mode"/>
+        </item>
+        <item row="6" column="0">
+         <widget class="QLabel" name="label_5">
+          <property name="text">
+           <string>Gain Mode</string>
+          </property>
+         </widget>
+        </item>
+        <item row="6" column="1">
+         <widget class="QComboBox" name="combobox_gain_mode"/>
+        </item>
        </layout>
       </item>
      </layout>
@@ -231,5 +247,102 @@
   </customwidget>
  </customwidgets>
  <resources/>
- <connections/>
+ <connections>
+  <connection>
+   <sender>slider_exposure</sender>
+   <signal>valueChanged(int)</signal>
+   <receiver>spinbox_exposure</receiver>
+   <slot>setValue(int)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>657</x>
+     <y>291</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>843</x>
+     <y>291</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>spinbox_exposure</sender>
+   <signal>valueChanged(int)</signal>
+   <receiver>slider_exposure</receiver>
+   <slot>setValue(int)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>843</x>
+     <y>291</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>657</x>
+     <y>291</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>slider_gain</sender>
+   <signal>valueChanged(int)</signal>
+   <receiver>spinbox_gain</receiver>
+   <slot>setValue(int)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>657</x>
+     <y>326</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>843</x>
+     <y>326</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>spinbox_gain</sender>
+   <signal>valueChanged(int)</signal>
+   <receiver>slider_gain</receiver>
+   <slot>setValue(int)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>843</x>
+     <y>326</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>657</x>
+     <y>326</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>slider_fps</sender>
+   <signal>valueChanged(int)</signal>
+   <receiver>spinbox_fps</receiver>
+   <slot>setValue(int)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>657</x>
+     <y>223</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>843</x>
+     <y>223</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>spinbox_fps</sender>
+   <signal>valueChanged(int)</signal>
+   <receiver>slider_fps</receiver>
+   <slot>setValue(int)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>843</x>
+     <y>223</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>657</x>
+     <y>223</y>
+    </hint>
+   </hints>
+  </connection>
+ </connections>
 </ui>
