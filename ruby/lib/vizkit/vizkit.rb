@@ -118,19 +118,26 @@ module Vizkit
 
         # the garbage collector has to be called manually for now 
         # because ruby does not now how many objects were created from 
-        # the typelib side 
-        gc_timer = Qt::Timer.new
-        gc_timer.connect(SIGNAL(:timeout)) do 
-            if(Ping.pingecho(Orocos::CORBA.name_service,1))
-                Vizkit.error "Namservice is back online. Truning GC on" if GC.enable
-                GC.start
-            else
-                Vizkit.error "Nameserice is not reachable !!! Turning GC off to prevent blocking!" if !GC.disable
+        # the typelib side
+        thread = Thread.new do
+            loop do  
+                if(Ping.pingecho(Orocos::CORBA.name_service,1))
+                    Vizkit.info "Namservice is back online. Truning GC on" if GC.enable
+                    GC.start
+                else
+                    if !GC.disable
+                        box = Qt::MessageBox.new
+                        box.setIcon(Qt::MessageBox::Warning)
+                        box.setText "Nameservice is no longer reachable!"
+                        box.setInformativeText "Turining GC of to prevent blocking. The GUI will automatically reconnect as soon as possible."
+                        box.show
+                    end
+                end
+                sleep(2)
             end
         end
-        gc_timer.start(5000)
         $qApp.exec
-        gc_timer.stop
+        thread.exit
     end
 
     def self.process_events()

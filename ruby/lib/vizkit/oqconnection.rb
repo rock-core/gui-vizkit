@@ -34,7 +34,7 @@ module Vizkit
             #merge options here to store all informations about the connections in @policy  
             options = Orocos::ReaderWriterProxy.default_policy.merge(options)
             @local_options, @policy = Kernel.filter_options(options,:update_frequency => OQConnection::update_frequency)
-            port_options, @policy  = Kernel.filter_options @policy,:subfield => Array.new ,:typelib_type => nil,:raise => true
+            port_options, @policy  = Kernel.filter_options @policy,:subfield => Array.new ,:typelib_type => nil,:raise => false
 
             @port = if port.is_a? Orocos::PortProxy
                         port
@@ -192,7 +192,12 @@ module Vizkit
                 options = widget
                 widget = nil
             end
-            if (block_given? && !self.to_orocos_port.is_a?(Orocos::Log::OutputPort)) || 
+            port = nil
+            begin
+                port = self.to_orocos_port
+            rescue Orocos::CORBA::ComError
+            end
+            if (block_given? && !port.is_a?(Orocos::Log::OutputPort)) ||
                 widget.is_a?(Method) || widget.respond_to?(:plugin_spec)
                 return connect_to_widget(widget,options,&block)
             elsif !widget || widget.respond_to?(:to_orocos_port) || widget.respond_to?(:find_port)
