@@ -97,5 +97,4 @@ class StateViewer < Qt::Widget
 end
 
 Vizkit::UiLoader.register_ruby_widget("StateViewer",StateViewer.method(:new))
-Vizkit::UiLoader.register_control_for("StateViewer",Orocos::TaskContext,:add)
-Vizkit::UiLoader.register_control_for("StateViewer",Orocos::TaskContextProxy,:add)
+Vizkit::UiLoader.register_control_for("StateViewer",Orocos::TaskContextBase,:add)
