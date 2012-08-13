@@ -125,7 +125,7 @@ module Vizkit
         # the typelib side
         thread = Thread.new do
             loop do  
-                if(Ping.pingecho(Orocos::CORBA.name_service,1))
+                if(!Orocos::CORBA.name_service || Ping.pingecho(Orocos::CORBA.name_service,1))
                     Vizkit.info "Namservice is back online. Truning GC on" if GC.enable
                     GC.start
                 else
@@ -133,7 +133,7 @@ module Vizkit
                         box = Qt::MessageBox.new
                         box.setIcon(Qt::MessageBox::Warning)
                         box.setText "Nameservice is no longer reachable!"
-                        box.setInformativeText "Turining GC of to prevent blocking. The GUI will automatically reconnect as soon as possible."
+                        box.setInformativeText "Turning GC off to prevent blocking. The GUI will automatically reconnect as soon as possible."
                         box.show
                     end
                 end
