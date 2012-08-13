@@ -37,7 +37,7 @@ class LoaderUiTest < Test::Unit::TestCase
         assert_equal Qt::Widget, Vizkit::PluginHelper.class_from_string("Qt::Widget")
         assert_equal Types::Base::Samples::RigidBodyState, Vizkit::PluginHelper.class_from_string("Types::Base::Samples::RigidBodyState")
         assert_equal Orocos.registry.get("/base/samples/RigidBodyState"), Vizkit::PluginHelper.class_from_string("/base/samples/RigidBodyState")
-        assert_equal Orocos.master_project.find_opaque_for_intermediate(Types::Base::Samples::RigidBodyState), Vizkit::PluginHelper.class_from_string("/base/samples/RigidBodyState_m")
+        assert_equal Types::Base::Samples::RigidBodyState, Vizkit::PluginHelper.class_from_string("/base/samples/RigidBodyState_m")
         assert_equal Types::Base::Angle, Vizkit::PluginHelper.class_from_string("Types::Base::Angle")
         assert_equal Types::Base::Angle, Vizkit::PluginHelper.class_from_string("/base/Angle")
     end
@@ -74,10 +74,17 @@ class LoaderUiTest < Test::Unit::TestCase
         #test typelib class 
         klass = Types::Base::Samples::RigidBodyState
         names = Vizkit::PluginHelper.normalize_obj(klass)
-        assert_equal "/base/samples/RigidBodyState_m",names.first
+        assert_equal "/base/samples/RigidBodyState",names.first
 
         names = Vizkit::PluginHelper.normalize_obj("Types::Base::Samples::RigidBodyState")
-        assert_equal "/base/samples/RigidBodyState_m",names.first
+        assert_equal "/base/samples/RigidBodyState",names.first
+
+        names = Vizkit::PluginHelper.normalize_obj("/wrappers/Matrix</double,3,1>")
+        assert names.include?("/base/Vector3d")
+
+        names = Vizkit::PluginHelper.normalize_obj("/base/samples/frame/Frame")
+        assert names.include?("/base/samples/frame/Frame")
+
 
         #test typelib value
         argument = klass.new
