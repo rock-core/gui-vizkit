@@ -364,5 +364,5 @@ UiLoader.register_3d_plugin_for('LaserScanVisualization', "/base/samples/LaserSc
 UiLoader.register_3d_plugin('MotionCommandVisualization',"vizkit-base", 'MotionCommandVisualization')
 UiLoader.register_3d_plugin_for('MotionCommandVisualization', "/base/MotionCommand2D", :updateMotionCommand)
 end
-Vizkit::UiLoader.register_widget_for("vizkit::Vizkit3DWidget","/transformer/ConfigurationState_m", :update)
+Vizkit::UiLoader.register_widget_for("vizkit::Vizkit3DWidget","/transformer/ConfigurationState", :update)
 

@@ -58,8 +58,9 @@ module Vizkit
         #
         # @see register_map_obj
         # @note This is used to find all strings for these a plugin might be registered 
-        #   able to handle the given object.
         # @note There will be no BasicObject for ruby1.8.
+        # @note all m types are converted to the corresponding opaque type (this will not work if Orocos is not initialized therefore no m types should be
+        # used for registering widgets!)
         # @return [Array<String>] an array of names.
         # @example
         #   normalize_obj(123) => ["Fixnum", "Integer", "Numeric", "Object", "BasicObject"]
@@ -145,19 +146,15 @@ module Vizkit
                               nil
                           end
                 if Orocos.registry.include?(class_name)
-                    # convert all types into intermediate if intermediate
-                    # is available
-                    begin
-                        if typekit
-                            typekit.intermediate_type_for(class_name)
-                        else
-                            Orocos.registry.get class_name
-                        end
-                    rescue ArgumentError
-                        Orocos.registry.get class_name
+                    # convert all types into opaque types if intermediate
+                    type = Orocos.registry.get class_name
+                    if typekit.m_type? type
+                        Orocos.master_project.find_opaque_for_intermediate(type)
+                    else
+                        type
                     end
                 else
-                    Vizkit.info "Typelib Type #{class_name} cannot be found."
+                    Vizkit.info "Typelib Type #{class_name} cannot be found"
                     nil
                 end
             else
@@ -349,7 +346,7 @@ module Vizkit
             callback_type(callback_type)
             default(default)
         end
-
+        
         def call(*args)
             @callback.call(*args)
         end
