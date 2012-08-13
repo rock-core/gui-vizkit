@@ -13,6 +13,7 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "Plot2d" do
         options[:pre_xaxis_window] = 5
         options[:yaxis_window] = 5
         options[:pre_yaxis_window] = 5
+        options[:max_points] = 50000
 	
         options[:colors] = [Qt::red, Qt::green, Qt::blue, Qt::cyan, Qt::magenta, Qt::yellow, Qt::gray]
         options[:reuse] = true
@@ -250,7 +251,7 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "Plot2d" do
     end
 
     def update_vector(sample,name)
-        if sample.size() > 10000
+        if sample.size() > @options[:max_points]
             Vizkit.logger.warn "Cannot plot #{name}. Vector is too big"
             return
         end
