@@ -4,7 +4,7 @@ module Vizkit
     extend Logger::Root('Vizkit', Logger::WARN)
 
     #register mapping to find plugins for a specific object
-    PluginHelper.register_map_obj("Orocos::OutputPort","Orocos::Log::OutputPort","Orocos::PortProxy","Orocos::InputPort,Orocos::PortProxy") do |port|
+    PluginHelper.register_map_obj("Orocos::OutputPort","Orocos::Log::OutputPort","Orocos::PortProxy","Orocos::InputPort") do |port|
         if port.respond_to? :type_name
             a = PluginHelper.normalize_obj(port.type_name)
             a.delete("Object")
@@ -14,7 +14,7 @@ module Vizkit
     end
     PluginHelper.register_map_obj("Orocos::TaskContext","Orocos::TaskContextProxy") do |task|
         if task.respond_to?(:model) && task.model
-            PluginHelper.classes(task.model)+["TaskContextBase"] 
+            PluginHelper.classes(task.model)+["TaskContextBase"]
         else
             ["TaskContextBase"]
         end
