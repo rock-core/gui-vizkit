@@ -78,7 +78,8 @@ log = Orocos::Log::Replay.open(remaining,Typelib::Registry.new)
 #select only ports which are not filtered out
 log.track(true, @search_filter)
 
-Vizkit::ReaderWriterProxy.default_policy = {:port_proxy => nil}
+#we have to initialize orocos to load typekits
+Orocos.initialize
 
 def replay(log)
     unless log.replay?
