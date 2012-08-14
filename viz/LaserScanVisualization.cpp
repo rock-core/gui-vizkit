@@ -8,8 +8,36 @@
 
 using namespace vizkit;
 
+// TODO move this in a separate library because MLS is using this as well
+// adapted from http://mjijackson.com/2008/02/rgb-to-hsl-and-rgb-to-hsv-color-model-conversion-algorithms-in-javascript
+// 
+float hue2rgb(float p, float q, float t)
+{
+    if(t < 0.0) t += 1.0;
+    if(t > 1.0) t -= 1.0;
+    if(t < 1.0/6.0) return p + (q - p) * 6.0 * t;
+    if(t < 1.0/2.0) return q;
+    if(t < 2.0/3.0) return p + (q - p) * (2.0/3.0 - t) * 6.0;
+    return p;
+}
+osg::Vec4 hslToRgb(float h, float s, float l)
+{
+    float r, b, g;
+    if(s == 0)
+	r = g = b = l; // achromatic
+    else 
+    {
+	float q = l < 0.5 ? l * (1.0 + s) : l + s - l * s;
+	float p = 2.0 * l - q;
+	r = hue2rgb(p, q, h + 1.0/3.0);
+	g = hue2rgb(p, q, h);
+	b = hue2rgb(p, q, h - 1.0/3.0);
+    }
+    return osg::Vec4( r, g, b, 1.0 );
+}
+
 vizkit::LaserScanVisualization::LaserScanVisualization()
-    : mYForward(false),colorize(false),show_polygon(true),colorize_interval(5)
+    : mYForward(false),colorize(false),show_polygon(true),colorize_interval(0.2)
 {
     scanOrientation = Eigen::Quaterniond::Identity();
     scanPosition.setZero();
@@ -80,12 +108,16 @@ void vizkit::LaserScanVisualization::updateMainNode(osg::Node* node)
     {
         osg::ref_ptr<osg::Vec4Array> color = new osg::Vec4Array;
         color->push_back(osg::Vec4(0.0,0.0,0.0,0.0));
-        double dist;
-        for(std::vector<uint32_t>::const_iterator it = scan.ranges.begin(); it != scan.ranges.end(); it++) 
+        float col;
+        int interval = colorize_interval*1000;
+        double angle = scan.start_angle;
+        for(std::vector<uint32_t>::const_iterator it = scan.ranges.begin(); it != scan.ranges.end(); it++,angle+=scan.angular_resolution)
         {
-            dist = 0.001*(*it);
-            dist = dist*colorize_interval-((int)(dist*colorize_interval));
-            color->push_back(osg::Vec4(dist,dist,dist, 0.8));
+            if(scan.isRangeValid(*it))
+            {
+                col  = ((float)(((int)(*it*cos(angle))%interval)))/interval;
+                color->push_back(hslToRgb(col,1.0,0.5));
+            }
         }
         scanGeom->setColorArray(color.get());
         scanGeom->setColorBinding( osg::Geometry::BIND_PER_VERTEX );
@@ -151,5 +183,5 @@ bool LaserScanVisualization::isColorizeEnabled()const { return colorize; }
 void LaserScanVisualization::setShowPolygon(bool value){show_polygon = value;emit propertyChanged("ShowPolygon");}
 bool LaserScanVisualization::isShowPolygonEnabled()const { return show_polygon; }
 
-void LaserScanVisualization::setColorizeInterval(double value){colorize_interval = 1.0/value;emit propertyChanged("ColorizeInterval");}
-double LaserScanVisualization::getColorizeInterval()const { return 1.0/colorize_interval; }
+void LaserScanVisualization::setColorizeInterval(double value){colorize_interval = value;emit propertyChanged("ColorizeInterval");}
+double LaserScanVisualization::getColorizeInterval()const { return colorize_interval; }

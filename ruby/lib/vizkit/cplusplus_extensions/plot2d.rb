@@ -9,9 +9,15 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "Plot2d" do
         options[:time_window] = 30              #window size during auto scrolling
         options[:cached_time_window] = 60        #total cached window size
         options[:pre_time_window] = 5
+        options[:xaxis_window] = 5
+        options[:pre_xaxis_window] = 5
+        options[:yaxis_window] = 5
+        options[:pre_yaxis_window] = 5
+	
         options[:colors] = [Qt::red, Qt::green, Qt::blue, Qt::cyan, Qt::magenta, Qt::yellow, Qt::gray]
         options[:reuse] = true
         options[:use_y_axis2] = false
+        options[:plot_style] = :Line  #:Dot
         options[:multi_use_menu] = true
         options[:update_period] = 0.25   # repaint periode if new data are available
                                          # this prevents repainting for each new sample
@@ -19,17 +25,27 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "Plot2d" do
     end
 
     def time 
-        if @log_replay
-            @log_replay.time
-        else
-            Time.now
-        end
+        time = if @log_replay
+                   @log_replay.time
+               else
+                   Time.now
+               end
+        @time ||= time 
+        time
+    end
+
+    def setXTitle(value)
+        getXAxis.setLabel(value.to_s)
+    end
+
+    def setYTitle(value)
+        getYAxis.setLabel(value.to_s)
     end
 
     def initialize_vizkit_extension
         @options = default_options
         @graphs = Hash.new
-        @time = time.to_f
+        @time = nil 
         @timer = Qt::Timer.new
         @needs_update = false
         @timer.connect(SIGNAL"timeout()") do 
@@ -58,9 +74,16 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "Plot2d" do
                     action_use_y2.checkable = true
                     action_use_y2.checked = @options[:use_y_axis2]
                     menu.add_action(action_use_y2)
+		    action_plotdot = Qt::Action.new("'dot' style", self)
+ 		    action_plotdot.checkable = true
+                    action_plotdot.checked = @options[:plot_style] == :Dot
+                    menu.add_action(action_plotdot)
+		    action_plotline = Qt::Action.new("'line' style", self)		    
+ 		    action_plotline.checkable = true
+                    action_plotline.checked = @options[:plot_style] == :Line
+                    menu.add_action(action_plotline)
                 end
                 menu.addSeparator
-
                 action_saving = Qt::Action.new("Save to File", self)
                 menu.add_action(action_saving)
 
@@ -73,10 +96,34 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "Plot2d" do
                     @options[:reuse] = !@options[:reuse]
                 elsif(action == action_use_y2)
                     @options[:use_y_axis2] = !@options[:use_y_axis2]
+ 		elsif(action == action_plotdot)
+                    plot_style(:Dot)
+		elsif(action == action_plotline)
+                    plot_style(:Line)
                 elsif action == action_saving
                     file_path = Qt::FileDialog::getSaveFileName(nil,"Save Plot to Pdf",File.expand_path("."),"Pdf (*.pdf)")
                     savePdf(file_path,false,0,0) if file_path
                 end
+            end
+        end
+    end
+
+    def graph_style(graph,style)
+        if style == :Dot
+            graph.setLineStyle(Qt::CPGraph::LSNone)
+            graph.setScatterStyle(Qt::CPGraph::SSDot)
+        else
+            graph.setLineStyle(Qt::CPGraph::LSLine)
+            graph.setScatterStyle(Qt::CPGraph::SSNone)
+        end
+        @needs_update = true
+    end
+
+    def plot_style(style)
+        if @options[:plot_style] != style 
+            @options[:plot_style] = style
+            @graphs.each_value do |graph|
+                graph_style(graph,style)
             end
         end
     end
@@ -110,19 +157,29 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "Plot2d" do
         graph2(value.full_name+subfield) if value.respond_to? :full_name
     end
 
-    def graph2(name)
-        graph = if(@graphs.has_key?(name))
-                    @graphs[name]
-                else
+    def graph2(name)	
+        graph = if(@graphs.has_key?(name))	            
+                    @graphs[name]		    
+                else    		    
                     graph = if @options[:use_y_axis2] == true
                                 getYAxis2.setVisible(true)
                                 getYAxis2.setLabel(name.split(".").last)
-                                addGraph(getXAxis(),getYAxis2())
+                                org = $VERBOSE
+                                $VERBOSE = nil
+                                graph = addGraph(getXAxis(),getYAxis2())
+                                $VERBOSE = org 
+                                graph
                             else
-                                getYAxis.setLabel(name.split(".").last)
-                                addGraph(getXAxis(),getYAxis())
+                                getYAxis.setLabel(name.split(".").last)                                
+                                org = $VERBOSE
+                                $VERBOSE = nil
+                                graph = addGraph(getXAxis(),getYAxis())						
+                                $VERBOSE = org 
+                                graph
                             end
+
                     graph.setName(name)
+                    graph_style(graph,@options[:plot_style])
                     graph.addToLegend
                     if(@graphs.size < @options[:colors].size)
                         graph.setPen(Qt::Pen.new(Qt::Brush.new(@options[:colors][@graphs.size]),1))
@@ -137,7 +194,7 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "Plot2d" do
 
     def rename_graph(old_name,new_name)
         graph = @graphs[old_name]
-        if graph
+        if graph           
             graph.setName(new_name)
             @graphs[new_name] = @graphs[old_name]
             @graphs.delete old_name
@@ -146,9 +203,9 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "Plot2d" do
 
     #diplay is called each time new data are available on the orocos output port
     #this functions translates the orocos data struct to the widget specific format
-    def update(sample,name)
+    def update(sample,name)        
         graph = graph2(name)
-        x = time.to_f-@time
+        x = time.to_f-@time.to_f
         graph.removeDataBefore(x-@options[:cached_time_window])
         graph.addData(x,sample.to_f)
         if @options[:auto_scrolling]
@@ -171,6 +228,25 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "Plot2d" do
         update(sample[0],name+"_x")
         update(sample[1],name+"_y")
         update(sample[2],name+"_z")
+    end
+   
+    def set_x_axis_scale(start,stop)
+        getXAxis.setRange(start,stop)
+    end 
+    
+    def set_y_axis_scale(start,stop)
+        getYAxis.setRange(start,stop)
+    end 
+
+    def update_custom(name,values_x,values_y)
+	graph = graph2(name)
+	graph.addData(values_x,values_y)	
+	if @options[:auto_scrolling]
+        	getXAxis.setRange(values_x-@options[:xaxis_window],values_x+@options[:pre_xaxis_window])
+		getYAxis.setRange(values_y-@options[:yaxis_window],values_y+@options[:pre_yaxis_window])
+        	graph.rescaleValueAxis(true)		
+        end       
+        @needs_update = true
     end
 
     def update_vector(sample,name)
@@ -200,17 +276,15 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "Plot2d" do
         update sample.rad,name
     end
 end
-
-Vizkit::UiLoader.register_widget_for("Plot2d","Fixnum",:update)
-Vizkit::UiLoader.register_widget_for("Plot2d","Float",:update)
+vector_types = ["/std/vector</uint8_t>","/std/vector</uint16_t>","/std/vector</uint32_t>",
+                "/std/vector</uint64_t>","/std/vector</int8_t>","/std/vector</int16_t>",
+                "/std/vector</int32_t>","/std/vector</int64_t>","/std/vector</float>",
+                "/std/vector</double>"]
+Vizkit::UiLoader.register_widget_for("Plot2d","Typelib::NumericType",:update)
 Vizkit::UiLoader.register_widget_for("Plot2d","/base/Quaterniond",:update_orientation)
 Vizkit::UiLoader.register_widget_for("Plot2d","/base/samples/SonarBeam",:update_sonar_beam)
 Vizkit::UiLoader.register_widget_for("Plot2d","/base/samples/LaserScan",:update_laser_scan)
-Vizkit::UiLoader.register_widget_for("Plot2d","/std/vector</uint8_t>",:update_vector)
-Vizkit::UiLoader.register_widget_for("Plot2d","/std/vector</uint16_t>",:update_vector)
-Vizkit::UiLoader.register_widget_for("Plot2d","/std/vector</uint32_t>",:update_vector)
-Vizkit::UiLoader.register_widget_for("Plot2d","/std/vector</double>",:update_vector)
-Vizkit::UiLoader.register_widget_for("Plot2d","/std/vector</float>",:update_vector)
+Vizkit::UiLoader.register_widget_for("Plot2d",vector_types,:update_vector)
 Vizkit::UiLoader.register_widget_for("Plot2d","/base/Angle",:update_angle)
 Vizkit::UiLoader.register_widget_for("Plot2d","/base/Vector3d",:update_vector3d)
 

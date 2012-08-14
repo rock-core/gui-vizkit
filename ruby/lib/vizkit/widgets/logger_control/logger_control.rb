@@ -85,5 +85,6 @@ class LoggerControlWidget < Qt::Widget
   end
 end
 
-Vizkit::UiLoader.register_ruby_widget "logger_control", LoggerControlWidget.method(:new)
-Vizkit::UiLoader.register_control_for "logger_control", "logger::Logger", :config
+Vizkit::UiLoader.register_ruby_widget "LoggerControl", LoggerControlWidget.method(:new)
+Vizkit::UiLoader.register_control_for "LoggerControl", "logger::Logger", :config
+Vizkit::UiLoader.register_deprecate_plugin_clone("logger_control","LoggerControl")

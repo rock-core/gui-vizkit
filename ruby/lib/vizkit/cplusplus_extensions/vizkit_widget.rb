@@ -3,7 +3,7 @@ module Vizkit
 module VizkitPluginExtension
     attr_reader :plugins 
 
-    def load_adapters
+    def load_adapters(plugin_spec)
         # code for backward compatibility
         # this is for backward compatibility, to support the deprecated call Vizkit.default_loader._Viz.plugins['_Viz']
         if !Orocos.master_project # Check if Orocos has been initialized
@@ -12,7 +12,7 @@ module VizkitPluginExtension
         @bridges = Hash.new
         @plugins = Hash.new
         
-        plugins[self.name] = self
+        plugins[plugin_spec.plugin_name] = self
         @adapter_collection = getRubyAdapterCollection
         return if !@adapter_collection
         @adapter_collection.getListOfAvailableAdapter.each do |name|
@@ -110,39 +110,6 @@ module VizkitPluginExtension
         end
         #end
         pp.breakable 
-
-        pp.text "----------------------------------------------------------"
-        pp.breakable 
-        pp.text "  Registerd for:"
-        pp.breakable
-        registered_for.each do |val|
-            callback = callback_fct(val)
-            callback = if callback.respond_to? :to_sym
-                           callback.to_sym
-                        else
-                           callback.class.name
-                        end
-            pp.text "    #{val} (#{callback})"
-            pp.breakable
-        end
-        pp.text "----------------------------------------------------------"
-        pp.breakable
-    end
-
-    def registered_for
-        loader.registered_for(self)
-    end
-
-    def callback_fct(value)
-        loader.callback_fct(ruby_class_name,value)
-    end
-
-    def name
-        @__name__
-    end
-
-    def lib_name
-        @__lib_name__
     end
 end
 
@@ -245,19 +212,10 @@ module VizkitPluginLoaderExtension
     #
     #   createPlugin("vfh_star")
     #
-    def createPlugin(lib_name, plugin_name = nil,ruby_name = nil)
+    def createPlugin(lib_name, plugin_name, plugin_spec = PluginSpec.new(plugin_name))
 	path = findPluginPath(lib_name)
-	
-	#try to load build in plugins
-	if(!path && !plugin_name)
-	    plugin_name = lib_name
-	    lib_name = 'vizkit-base'
-	    
-	    path = findPluginPath(lib_name)
-	end
-	
 	if !path
-	    Kernel.raise "#{plugin_name} is not a builtin plugin, nor lib#{lib_name}-viz.so in VIZKIT_PLUGIN_RUBY_PATH."
+	    Kernel.raise "#{plugin_name} is not a lib#{lib_name}-viz.so in VIZKIT_PLUGIN_RUBY_PATH."
 	end
 	plugin = load_plugin(path)
 	if !plugin_name
@@ -279,13 +237,10 @@ module VizkitPluginLoaderExtension
 	addPlugin(plugin)
 
         plugin.extend VizkitPluginExtension
-        plugin.load_adapters
+        plugin.load_adapters(plugin_spec)
 
 	plugin.extend(QtTypelibExtension)
-	plugin_name = lib_name unless plugin_name
-        plugin.instance_variable_set(:@__name__,plugin_name)
-        plugin.instance_variable_set(:@__lib_name__,lib_name)
-        extendUpdateMethods(plugin,ruby_name)
+        extendUpdateMethods(plugin,plugin_spec)
         plugin
     end
 
@@ -351,11 +306,10 @@ module VizkitPluginLoaderExtension
         end
     end
     
-    def extendUpdateMethods(plugin,ruby_name)
-        uiloader = Vizkit.default_loader
-        fcts = uiloader.callback_fcts(ruby_name)
+    def extendUpdateMethods(plugin,plugin_spec)
+        fcts = plugin_spec.find_all_callbacks(:callback_type => :display).find_all{|spec|spec.respond_to?(:to_sym)}
 	if !fcts
-	    Vizkit.info "no callback functions registered for Vizkit3D plugin #{plugin.ruby_class_name} (c++ name: #{plugin.name}) from #{plugin.lib_name}"
+	    Vizkit.info "no callback functions registered for Vizkit3D plugin #{plugin_spec.plugin_name} (c++ name: #{plugin_spec.cplusplus_name}) from #{plugin_spec.lib_name}"
             return
 	end
         fcts.each do |fct|
@@ -375,13 +329,13 @@ module VizkitPluginLoaderExtension
                     Vizkit.debug "#{port_name}: associated to the #{frame_name} frame for plugin #{plugin}"
                     widget.setPluginDataFrame(frame_name, plugin)
                 else
-                    Vizkit.debug "no known frame for #{port_name}, displayed by widget #{plugin.name} (plugin #{plugin})"
+                    Vizkit.debug "no known frame for #{port_name}, displayed by widget #{plugin_spec.plugin_name} (plugin #{plugin})"
                 end
                 super data
             end
 
             plugin.class.instance_eval do 
-                define_method(fct, block)
+                define_method(fct.to_sym, block)
             end
         end
     end
@@ -396,13 +350,19 @@ UiLoader.extend_cplusplus_widget_class "vizkit::QVizkitMainWindow" do
     include VizkitPluginLoaderExtension
 end
 
-UiLoader.register_3d_plugin('TrajectoryVisualization', 'TrajectoryVisualization', nil)
+UiLoader.register_3d_plugin('TrajectoryVisualization',"vizkit-base", 'TrajectoryVisualization')
 UiLoader.register_3d_plugin_for('TrajectoryVisualization', "/base/Vector3d", :updateTrajectory)
-UiLoader.register_3d_plugin_for('TrajectoryVisualization', "Eigen::Vector3", :updateTrajectory)
-UiLoader.register_3d_plugin_for('TrajectoryVisualization', "Types::Base::Geometry::Spline3", :updateSpline)
-UiLoader.register_3d_plugin('RigidBodyStateVisualization', 'RigidBodyStateVisualization', nil)
-UiLoader.register_3d_plugin_for('RigidBodyStateVisualization', "/base/samples/RigidBodyState", :updateRigidBodyState)
-UiLoader.register_3d_plugin('LaserScanVisualization', 'LaserScanVisualization', nil)
-UiLoader.register_3d_plugin_for('LaserScanVisualization', "/base/samples/LaserScan", :updateLaserScan)
+UiLoader.register_3d_plugin_for('TrajectoryVisualization', "/base/samples/RigidBodyState") do |obj,sample,_|
+    obj.updateTrajectory(sample.position)
 end
+UiLoader.register_3d_plugin_for('TrajectoryVisualization', "Eigen::Vector3", :updateTrajectory)
+UiLoader.register_3d_plugin_for('TrajectoryVisualization', "/base/geometry/Spline<3>", :updateSpline)
+UiLoader.register_3d_plugin('RigidBodyStateVisualization',"vizkit-base", 'RigidBodyStateVisualization')
+UiLoader.register_3d_plugin_for('RigidBodyStateVisualization', "/base/samples/RigidBodyState", :updateRigidBodyState)
+UiLoader.register_3d_plugin('LaserScanVisualization',"vizkit-base", 'LaserScanVisualization')
+UiLoader.register_3d_plugin_for('LaserScanVisualization', "/base/samples/LaserScan", :updateLaserScan)
+UiLoader.register_3d_plugin('MotionCommandVisualization',"vizkit-base", 'MotionCommandVisualization')
+UiLoader.register_3d_plugin_for('MotionCommandVisualization', "/base/MotionCommand2D", :updateMotionCommand)
+end
+Vizkit::UiLoader.register_widget_for("vizkit::Vizkit3DWidget","/transformer/ConfigurationState_m", :update)
 

@@ -7,8 +7,11 @@ require 'rock/bundle'
 
 @show_all = false
 @proxy = true
+@clean = true
+Bundles.public_logs = false 
+
 parser = OptionParser.new do |opt|
-    opt.banner = "rock-display [--host hostname] task_name[:port_name] [task_name[:port_name]]"
+    opt.banner = "rock-display [--host hostname] task_name[.port_name] [task_name[.port_name]]"
     opt.on('--host=HOSTNAME', String, "the corba nameserver we should contact") do |name|
         Orocos::CORBA.name_service = name
     end
@@ -20,6 +23,23 @@ parser = OptionParser.new do |opt|
     end
     opt.on('--debug',"Show debug information") do
         Vizkit.logger.level = Logger::INFO
+        Bundles.public_logs = true
+    end
+    opt.on('-c','--noclean',"Does not removes dangling corba tasks from the name service.") do
+        @clean = false
+    end
+    opt.on('-M', '--maxMessageSize SIZE', 
+           'maximum size of a message transported via corba (e.g. 2145, 3K, 3.5M, 0.1G)') do |size|
+        size_match = /^(\d+(\.\d+)?)([MGK])?$/.match(size)
+        if !size_match
+            Vizkit::warn "cannot parse #{size} for a message size value"
+            return
+        end
+        factors = {'K' => 1024, 'M' => 1024**2, 'G'=> 1024**3}
+        factor = size_match[3] ? factors[size_match[3]] : 1
+        value =  (size_match[1].to_f * factor).to_i
+        Vizkit::info "set corba max message size to #{value}"
+        Orocos::CORBA::max_message_size=value
     end
     opt.on('-M', '--maxMessageSize SIZE', 
            'maximum size of a message transported via corba (e.g. 2145, 3K, 3.5M, 0.1G)') do |size|
@@ -40,29 +60,48 @@ parser = OptionParser.new do |opt|
     end
 end
 
+def corba_error
+    Vizkit.error "Corba error. Maybe Orocos is not initialized"
+    Vizkit.error "or the corba name service is answering on a wrong network interface."
+    Vizkit.error "Try to reset the nameserver and to disable all virtual network interfaces."
+end
+
 
 remaining = parser.parse(ARGV)
 task_inspector = nil
+widget = nil
 
-Bundles.public_logs = false
-Bundles.initialize
+begin
+    Bundles.initialize
+    Orocos::CORBA.cleanup if @clean
+rescue Orocos::CORBAError => e
+    Vizkit.error "Corba name service is not answering. Cannot start rock-display."
+    Vizkit.error ""
+    corba_error
+    exit 1
+end
+
+Orocos::CORBA.call_timeout = 3000
+Orocos::CORBA.connect_timeout = 500
 Vizkit::ReaderWriterProxy.default_policy[:port_proxy] = nil if !@proxy
 
 if remaining.empty?
   @timer = Qt::Timer.new
-  task_inspector ||= Vizkit.default_loader.task_inspector
+  task_inspector ||= Vizkit.default_loader.TaskInspector
+  raise "Cannot find plugin TaskInspector" unless task_inspector
+
   task_inspector.enable_tooling=@show_all
 
   #check for new tasks every 5 seconds 
   refresh = Proc.new do 
       begin
-      Orocos.task_names.each do |name|
-          task_inspector.config(name)
+      Orocos.task_names.dup.each do |name|
+          task_inspector.config(name,:cleanup_nameservice =>@clean)
       end
       rescue Orocos::CORBAError => e
-          Vizkit.warn "Corba error. Maybe Orocos is not initialized."
-          Vizkit.warn e
-          Vizkit.warn e.backtrace
+          Vizkit.error "Corba name service is not answering. Cannot update display. ... keep on trying "
+          Vizkit.error ""
+          corba_error
       end
   end
   @timer.connect SIGNAL('timeout()') do 
@@ -72,13 +111,18 @@ if remaining.empty?
   @timer.start(5000)
 else
     remaining.each do |spec|
-        task_name, port_name = spec.split(':')
+        task_name, port_name = spec.split('.')
+        if !task_name 
+            Vizkit.warn "Wrong parameter. Ignoring empty task name"
+            next 
+        end
         task = Vizkit::TaskProxy.new task_name
         if !port_name || !task.ping
-            task_inspector ||= Vizkit.default_loader.task_inspector
+            task_inspector ||= Vizkit.default_loader.TaskInspector
+            task_inspector.enable_tooling= true
             task_inspector.config(task)
         else
-            widget = Vizkit.default_loader.widget_for task.port(port_name)
+            widget = Vizkit.default_loader.create_plugin_for(task.port(port_name),:display,nil,true)
             if widget
                 Vizkit.connect_port_to task_name,port_name,widget
                 widget.show
@@ -92,7 +136,7 @@ end
 
 if task_inspector
     task_inspector.show
-else
+elsif !widget
     puts parser
     exit 1
 end

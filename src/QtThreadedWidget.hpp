@@ -3,6 +3,7 @@
 
 #include <QApplication>
 
+#include <boost/thread/thread.hpp>
 #include <boost/thread/mutex.hpp>
 #include <boost/thread/condition_variable.hpp>
 
@@ -14,7 +15,10 @@ class QtThreadedWidgetBase
 
     boost::mutex mut;
     boost::condition_variable cond;
+    boost::thread gui_thread;
     bool running;
+    bool restart;
+    bool destroy;
 
 public:
     QtThreadedWidgetBase();

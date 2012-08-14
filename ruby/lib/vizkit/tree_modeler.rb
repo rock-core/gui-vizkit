@@ -9,8 +9,7 @@ module Vizkit
             menu = Qt::Menu.new(parent)
 
             # Determine applicable widgets for the output port
-            widgets = Vizkit.default_loader.widget_names_for_value(type_name)
-            widgets = widgets + Vizkit.default_loader.widget_names_for_value(Typelib::CompoundType)
+            widgets = Vizkit.default_loader.find_all_plugin_names(:argument=>type_name, :callback_type => :display,:flags => {:deprecated => false})
             widgets.uniq!
             widgets.each do |w|
                 menu.add_action(Qt::Action.new(w, parent))
@@ -50,17 +49,8 @@ module Vizkit
             #check if there are widgets for the task 
             if task.model && task.__task
                 menu.addSeparator
-                Vizkit.default_loader.control_names_for_value(task.__task.class).each do |w|
+                Vizkit.default_loader.find_all_plugin_names(:argument => task,:callback_type => :control,:flags => {:deprecated => false}).each do |w|
                     menu.add_action(Qt::Action.new(w, parent))
-                end
-                #show widgets for model and all super models
-                model = task.model
-                while model
-                    widgets = Vizkit.default_loader.control_names_for_value(model.name)
-                    widgets.each do |w|
-                        menu.add_action(Qt::Action.new(w, parent))
-                    end
-                    model = model.superclass
                 end
             end
 
@@ -81,7 +71,7 @@ module Vizkit
                         task.cleanup
                     elsif action.text == "Load Configuration"
                         file_name = Qt::FileDialog::getOpenFileName(nil,"Load Config",File.expand_path("."),"Config Files (*.yml)")
-                        task.load_conf(file_name) if file_name
+                        task.apply_conf_file(file_name) if file_name
                     elsif action.text == "Apply Configuration"
                         task.apply_conf
                     elsif action.text == "Save Configuration"
@@ -101,11 +91,7 @@ module Vizkit
 
         def self.control_widget_for(type_name,parent,pos)
             menu = Qt::Menu.new(parent)
-
-            # Determine applicable widgets for the output port
-            widgets = Vizkit.default_loader.control_names_for_value(type_name)
-            return nil if widgets.empty?
-            widgets.each do |w|
+            Vizkit.default_loader.find_all_plugin_names(:argument => type_name,:callback_type => :control,:flags => {:deprecated => false}).each do |w|
                 menu.add_action(Qt::Action.new(w, parent))
             end
             # Display context menu at cursor position.
@@ -214,6 +200,10 @@ module Vizkit
             #this is needed to determine if someone clicked on a subfield
             if !port
                 port = port_from_item(item)
+                #do not display any context menu if the port is a log port which is empty
+                if port.is_a?(Orocos::Log::OutputPort) && port.stream.size == 0
+                    return 
+                end
             end
 
             #check if someone clicked on a property 
@@ -226,32 +216,39 @@ module Vizkit
             elsif object.is_a? Orocos::Log::Annotations
                     widget_name = Vizkit::ContextMenu.widget_for(Orocos::Log::Annotations,tree_view,pos)
                     if widget_name
-                        widget = Vizkit.display object, :widget => widget_name
+                        widget = Vizkit.display object, :widget => widget_name 
                         widget.setAttribute(Qt::WA_QuitOnClose, false) if widget
                     end
             #if object is a port or part of a port
-            elsif(port) 
-                if auto && !subfield
-                    #check if there is a default widget 
-                    begin 
-                        widget = Vizkit.display port,:subfield => subfield
-                        widget.setAttribute(Qt::WA_QuitOnClose, false) if widget
-                    rescue RuntimeError 
-                        auto = false
-                    end
-                end
-                #auto can be modified in the other if block
-                if !auto 
-                    #create a sub port
-                    port_temp = if !subfield.empty?
-                                    Vizkit::PortProxy.new(port.task,port,:subfield => subfield)
-                                else
-                                    port
-                                end
-                    widget_name = Vizkit::ContextMenu.widget_for(port_temp.type_name,tree_view,pos)
+            elsif(port)
+                if port.is_a?(Orocos::InputPort)|| (port.respond_to?(:__input?) && port.__input?)
+                    widget_name = Vizkit::ContextMenu.control_widget_for(port.type_name,tree_view,pos)
                     if widget_name
-                        widget = Vizkit.display(port_temp, :widget => widget_name)
-                        widget.setAttribute(Qt::WA_QuitOnClose, false) if widget.is_a? Qt::Widget
+                        widget = Vizkit.control port, :widget => widget_name 
+                    end
+                else
+                    if auto && !subfield
+                        #check if there is a default widget 
+                        begin 
+                            widget = Vizkit.display port,:subfield => subfield
+                            widget.setAttribute(Qt::WA_QuitOnClose, false) if widget
+                        rescue RuntimeError 
+                            auto = false
+                        end
+                    end
+                    #auto can be modified in the other if block
+                    if !auto 
+                        #create a sub port
+                        port_temp = if !subfield.empty?
+                                        Vizkit::PortProxy.new(port.task,port,:subfield => subfield)
+                                    else
+                                        port
+                                    end
+                        widget_name = Vizkit::ContextMenu.widget_for(port_temp.type_name,tree_view,pos)
+                        if widget_name
+                            widget = Vizkit.display(port_temp, :widget => widget_name)
+                            widget.setAttribute(Qt::WA_QuitOnClose, false) if widget.is_a? Qt::Widget
+                        end
                     end
                 end
             #if object is a property or part of the property
@@ -264,7 +261,7 @@ module Vizkit
                                 end
                     widget_name = Vizkit::ContextMenu.control_widget_for(type_name,tree_view,pos)
                     if widget_name
-                        widget = Vizkit.control nil, :widget => widget_name ,:type_name => type_name do |sample| 
+                        widget = Vizkit.control nil, :widget => widget_name do |sample| 
                             update_object(sample,item)
                             @dirty_items << item unless @dirty_items.include? item
                             widget.close
@@ -402,6 +399,7 @@ module Vizkit
             return port if port
 
             port_item,port = find_parent(item,Orocos::OutputPort)if !port
+            port_item,port = find_parent(item,Orocos::InputPort)if !port
             return nil if !port
             _,task = find_parent(item,Vizkit::TaskProxy)
             _,task = find_parent(item,Orocos::Log::TaskContext) if !task 
@@ -474,6 +472,9 @@ module Vizkit
         # added as well. The original tree structure will be preserved.
         def update_object(object, parent_item, read_from_model=false, row=0)
             if object.kind_of?(Orocos::Log::Replay)
+                #this is a workaround to get access to the object
+                #for displaying inforamtion about a log port 
+                @log_replay = object
                 row = 0
                 if !object.annotations.empty?
                     item, item2 = child_items(parent_item,0)
@@ -518,14 +519,36 @@ module Vizkit
             elsif object.kind_of?(Vizkit::OQConnection)
                 item, item2 = child_items(parent_item,row)
                 item.setText(object.port.full_name)
+                connected = false
                 if object.alive?
                     item2.setText("connected")
+                    connected = true
                 else
                     item2.setText("not connected")
                 end
                 item2, item3 = child_items(item,0)
                 item2.setText("update_frequency")
                 item3.setText(object.update_frequency.to_s)
+
+                item2, item3 = child_items(item,1)
+                if object.widget.is_a? Qt::Object
+                    item2.setText("receiver widget")
+                    if connected
+                        item3.setText("#{object.widget.objectName}.#{object.callback_fct.name}")
+                    else
+                        item3.setText("#{object.widget.objectName}")
+                    end
+                else
+                    item2.setText("receiver")
+                    item3.setText("ruby proc")
+                end
+                item2, item3 = child_items(item,2)
+                item2.setText("policy")
+                policy = Array.new
+                object.policy.each_pair do |key,val|
+                    policy << "#{key} => #{val}"
+                end
+                item3.setText(policy.join("; "))
 
             elsif object.kind_of?(Vizkit::TaskProxy)
                 item, item2 = child_items(parent_item,row)
@@ -535,7 +558,7 @@ module Vizkit
                 encode_data(item2,object)
                 item2.setText(object.state.to_s) 
 
-                if !object.ping
+                if !object.__last_ping
                     item.removeRows(0,item.rowCount)
                 else
                     if object.doc?
@@ -559,14 +582,17 @@ module Vizkit
 
                     irow = 0
                     orow = 0
-                    object.__task.each_port do |port|
-                        if port.is_a?(Orocos::InputPort)
-                            update_object(port,item3,read_from_model,irow)
-                            irow += 1
-                        else
-                            next if !enable_tooling && port.name == "state"
-                            update_object(port,item5,read_from_model,orow)
-                            orow +=1
+                    task = object.__task
+                    if task
+                        task.each_port do |port|
+                            if port.is_a?(Orocos::InputPort)
+                                update_object(port,item3,read_from_model,irow)
+                                irow += 1
+                            else
+                                next if !enable_tooling && port.name == "state"
+                                update_object(port,item5,read_from_model,orow)
+                                orow +=1
+                            end
                         end
                     end
                     item3.remove_rows(irow,item3.row_count-irow) if irow < item3.row_count
@@ -604,8 +630,10 @@ module Vizkit
 
                 if object.doc?
                     item.set_tool_tip(object.doc)
-                    item2.set_tool_tip(object.doc)
+                else
+                    item.set_tool_tip(object.type.name)
                 end
+                item2.set_tool_tip(object.type.name)
 
                 if update_item?(item) || read_from_model
                     update_object(object.read,item,read_from_model)
@@ -637,12 +665,10 @@ module Vizkit
 
                 if object.doc?
                     item.set_tool_tip(object.doc)
-                    item2.set_tool_tip(object.doc)
                 else
-                    # Set tooltip informing about context menu
-                    item.set_tool_tip(@tooltip)
-                    item2.set_tool_tip(@tooltip)
+                    item.set_tool_tip(object.type_name)
                 end
+                item2.set_tool_tip(object.type_name)
 
                 #do not encode the object because 
                 #the port is only a temporary object!
@@ -657,15 +683,24 @@ module Vizkit
                 end
             elsif object.kind_of?(Orocos::InputPort)
                 item, item2 = child_items(parent_item,row)
+
                 if object.doc?
                     item.set_tool_tip(object.doc)
-                    item2.set_tool_tip(object.doc)
+                else
+                    item.set_tool_tip(object.type_name)
                 end
+                item2.set_tool_tip(object.type_name)
+
+                #do not encode the object because 
+                #the port is only a temporary object!
+                encode_data(item,object.class)
+                encode_data(item2,object.class)
+
                 item.setText(object.name)
                 item2.setText(object.type_name.to_s)
             elsif object.kind_of?(Orocos::Log::OutputPort)
                 item, item2 = child_items(parent_item,row)
-                item.setText(object.name)
+                item.setText("#{object.name} (#{object.stream.size})")
                 item2.setText(object.type_name.to_s)
 
                 # Set tooltip informing about context menu
@@ -689,7 +724,24 @@ module Vizkit
                 encode_data(item2,:NO_SUBFIELD)
                 encode_data(item3,:NO_SUBFIELD)
 
-                item2, item3 = child_items(item,2)
+                index = 2
+                if @log_replay
+                    item2, item3 = child_items(item,index)
+                    item2.setText("First sample index")
+                    encode_data(item2,:NO_SUBFIELD)
+                    encode_data(item3,:NO_SUBFIELD)
+                    item3.setText(@log_replay.first_sample_pos(object.stream).to_s)
+                    index +=1
+
+                    item2, item3 = child_items(item,index)
+                    item2.setText("Last sample index")
+                    encode_data(item2,:NO_SUBFIELD)
+                    encode_data(item3,:NO_SUBFIELD)
+                    item3.setText(@log_replay.last_sample_pos(object.stream).to_s)
+                    index +=1
+                end
+
+                item2, item3 = child_items(item,index)
                 item2.setText("Filter")
                 encode_data(item2,:NO_SUBFIELD)
                 encode_data(item3,:NO_SUBFIELD)
@@ -698,7 +750,7 @@ module Vizkit
                 else
                     item3.setText("no")
                 end
-
+                
             elsif object.kind_of?(Hash)
                 object.each_pair do |key,value|
                     item, item2 = child_items(parent_item,row)
@@ -713,6 +765,10 @@ module Vizkit
                 object.each_field do |name,value|
                     item, item2 = child_items(parent_item,row)
                     item.set_text name
+
+                    item.set_tool_tip(value.class.name)
+                    item2.set_tool_tip(value.class.name)
+
                     #this is a workaround 
                     #if each field is created by its self we cannot write 
                     #the data back to the sample and we do not know its name 

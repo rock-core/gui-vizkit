@@ -99,8 +99,45 @@ class LogControl
         @tree_view.update(@log_replay, nil)
       end
 
+
+
       @brush = Qt::Brush.new(Qt::Color.new(200,200,200))
       @widget_hash = Hash.new
+
+      actionNone.connect(SIGNAL("triggered(bool)")) do |checked|
+        if checked 
+            actionCurrent_Port.setChecked(false)
+        else 
+            actionNone.setChecked(true)
+        end
+      end
+
+      actionCurrent_Port.connect(SIGNAL("triggered(bool)")) do |checked|
+        if checked 
+            actionNone.setChecked(false)
+        else 
+            actionCurrent_Port.setChecked(true)
+        end
+      end
+
+      actionExport.connect(SIGNAL("triggered()")) do 
+        setDisabled(true)
+        file = Qt::FileDialog::getSaveFileName(nil,"Export Log File",File.expand_path("."),"Log Files (*.log)")
+        if file
+          bstop_clicked
+          progress = Qt::ProgressDialog.new
+          progress.setLabelText "exporting streams"
+          progress.show       
+          @log_replay.export_to_file(file,timeline.getStartMarkerIndex, timeline.getEndMarkerIndex) do |index,max|
+            progress.setMaximum(max)
+            progress.setValue(index)
+            Vizkit.process_events
+            progress.wasCanceled
+          end
+          progress.close if progress.isVisible
+        end
+        setEnabled(true)
+      end
 
       display_info
     end
@@ -164,7 +201,17 @@ class LogControl
         @log_replay.speed = @log_replay.speed*2
         @log_replay.reset_time_sync
       else
-        @log_replay.step(false)
+        if actionNone.isChecked
+            @log_replay.step(false)
+        else
+            port = @log_replay.current_port 
+            begin
+                @log_replay.step(false)
+                timeline.setSliderIndex(@log_replay.sample_index)
+                display_info
+                $qApp.processEvents
+            end while port && port != @log_replay.current_port
+        end
       end
       timeline.setSliderIndex(@log_replay.sample_index)
       display_info
@@ -176,7 +223,17 @@ class LogControl
         @log_replay.speed = @log_replay.speed*0.5
         @log_replay.reset_time_sync
       else
-        @log_replay.step_back
+        if actionNone.isChecked
+            @log_replay.step_back
+        else
+            port = @log_replay.current_port 
+            begin
+                @log_replay.step_back
+                timeline.setSliderIndex(@log_replay.sample_index)
+                display_info
+                $qApp.processEvents
+            end while port && port != @log_replay.current_port
+        end
       end
       timeline.setSliderIndex(@log_replay.sample_index)
       display_info
@@ -241,5 +298,7 @@ class LogControl
   
 end
 
-Vizkit::UiLoader.register_ruby_widget('log_control',LogControl.method(:create_widget))
-Vizkit::UiLoader.register_control_for('log_control',Orocos::Log::Replay, :config)
+Vizkit::UiLoader.register_ruby_widget('LogControl',LogControl.method(:create_widget))
+Vizkit::UiLoader.register_control_for('LogControl',Orocos::Log::Replay, :config)
+Vizkit::UiLoader.register_deprecate_plugin_clone("log_control","LogControl")
+

@@ -9,13 +9,18 @@ module Vizkit
 
     #Proxy for Orocos::InputPort Writer and OutputPort Reader which automatically handles reconnects
     class ReaderWriterProxy
-        def self.default_policy=(policy=Hash.new)
-            @@default_policy=policy
+        class << self
+            def default_policy
+                if @default_policy[:port_proxy].is_a? String
+                    @default_policy[:port_proxy] = TaskProxy.new(@default_policy[:port_proxy])
+                end
+                @default_policy
+            end
+            def default_policy=(value)
+                @default_policy = value
+            end
         end
-        def self.default_policy
-            @@default_policy
-        end
-        # Default policy is configured in vizkit.rb
+        ReaderWriterProxy.default_policy = {:pull => false,:init => true,:port_proxy_periodicity => 0.125,:port_proxy => "port_proxy"}
 
         #the type of the port is determining if the object is a reader or writer
         #to automatically set up a orogen port proxy task set the hash value :port_proxy to the name of the port_proxy task
@@ -24,97 +29,96 @@ module Vizkit
         #port = name of the port
         #options = connections policy {:port_proxy => nil, :proxy_periodicity => 0.2, (see Orocos::InputPort/OutputPort)}
         def initialize(task,port,options = Hash.new)
-            options = ReaderWriterProxy.default_policy.merge options
-            @local_options, @policy = Kernel.filter_options options, :port_proxy => nil,:port_proxy_periodicity => 0.2
+            options =  ReaderWriterProxy.default_policy.merge options
+            @local_options,@policy = Kernel.filter_options options, :port_proxy_periodicity => nil,:port_proxy => nil
 
             @__port = port
             if(@__port.is_a?(String) || @__port.is_a?(Orocos::Port))
                 @__port = TaskProxy.new(task).port(@__port)
             end
-
-            @__orogen_port_proxy = @local_options[:port_proxy]
-            if(@__orogen_port_proxy.is_a? String)
-                @__orogen_port_proxy = TaskProxy.new(@__orogen_port_proxy)
-            end
-        
-            if @__orogen_port_proxy && @__orogen_port_proxy.name == @__port.task.name
-                Vizkit.warn "ReaderWriterProxy: Orogen Port_Proxy #{@__orogen_port_proxy.name} would connect to its self. Therefore disabling PortProxy for port #{@__port.full_name}."
-                @__orogen_port_proxy = nil
-            end
-
+            @__orogen_port_proxy = if @local_options[:port_proxy].is_a? String
+                                       if @local_options[:port_proxy] != @__port.task.name
+                                           TaskProxy.new(@local_options[:port_proxy])
+                                       end
+                                   else
+                                       if @local_options[:port_proxy] && @local_options[:port_proxy].name != @__port.task.name
+                                           @local_options[:port_proxy]
+                                       else
+                                           nil
+                                       end
+                                   end
+            @__proxy_connected = false
             __reader_writer(false)
         end
 
         #returns true if the reader is still valid and the connection active
         #it does not reconnect if it is broken 
-        def __valid?
-            return false if !@__reader_writer
-
-            if !@__reader_writer.port.task.reachable?
-               if @__reader_writer.is_a? Orocos::OutputReader
-                   Vizkit.info "Port reader for #{@__port.full_name} is no longer valid."
-               else
-                   Vizkit.info "Port writer for #{@__port.full_name} is no longer valid."
-               end
-               disconnect
-               @__reader_writer = nil
-               return false
+        def connected?
+            return false if !@__reader_writer 
+            if !@__reader_writer.connected?
+                if @__reader_writer.is_a? Orocos::OutputReader
+                    Vizkit.info "Port reader for #{@__port.full_name} is no longer valid."
+                else
+                    Vizkit.info "Port writer for #{@__port.full_name} is no longer valid."
+                end
+                __invalidate
+                #check if the task is still reachable
+                #if there is a problem with the name service this will disable all reader
+                port.task.ping
+                false
+            else
+                #check if the proxy is connected 
+                #we do not have to do this every time because the proxy is disconnecting
+                #every one if a port gets invalid therefor the first time is enough 
+                if @__orogen_port_proxy && !@__proxy_connected 
+                    if @__orogen_port_proxy.isConnected(port.task.name,port.name)
+                        @__proxy_connected = true
+                    else
+                        false
+                    end
+                else
+                    true
+                end
             end
-
-            #validate if there is a orocos task which is used as port proxy
-            if(@__orogen_port_proxy && !@__orogen_port_proxy.proxy_port?(@__port))
-                Vizkit.info "Task: #{@__orogen_port_proxy.name} is no longer proxing port #{port}."
-                @__reader_writer = nil
-                return false
-            end
-            return true
         end
 
-        def disconnect
-            return if !@__port
-            if @__orogen_port_proxy && !@__port
-                Vizkit.info "Calling disconnect_proxy_port for #{@__port.full_name}."
-                @__orogen_port_proxy.delete_proxy_port(@__port)
-            end
-            @__reader_writer.disconnect if @__reader_writer
-        end
-
-        #returns a valid reader which can be used for reading or nil if the Task cannot be contacted 
+        #returns a valid reader/writer which can be used for reading/writing or nil if the Task cannot be contacted 
         def __reader_writer(disable_proxy_on_error=true)
-            return @__reader_writer if __valid?
-            return nil if !type_name
-
-            if  !@__port.task.reachable? 
-                Vizkit.info "Port #{@__port.full_name} is not reachable"
-                @__reader_writer = nil
-                return @__reader_writer
-            end 
-
-            port = if @__orogen_port_proxy
+            return @__reader_writer if connected?
+            return nil if @__reader_writer  #just wait for the proxy to reconnect
+            proxy = @__orogen_port_proxy && @__orogen_port_proxy.reachable? 
+            proxing = proxy && @__orogen_port_proxy.isProxingPort(@__port.task.name,@__port.name)
+            port = if proxing || (proxy &&  @__port.__output?)
                        begin 
-                           raise "force_local? is set to true" if @__port.respond_to?(:force_local?) && @__port.force_local?
-                           raise "Proxy #{@__orogen_port_proxy.name} is not reachable" if !@__orogen_port_proxy.reachable? 
-                           options = { :periodicity => @local_options[:port_proxy_periodicity] }
-                           if @policy[:init]
-                               options[:keep_last_value] = true
+                           #check if the port_proxy is already proxing the port 
+                           if proxing  
+                               port_name = @__orogen_port_proxy.getOutputPortName(@__port.task.name,@__port.name)
+                               raise 'cannot get proxy port name for task' unless port_name
+                               @__orogen_port_proxy.port(port_name)
+                           else
+                               # create proxy port
+                               options = { :periodicity => @local_options[:port_proxy_periodicity] }
+                               options[:keep_last_value] = true if @policy[:init]
+                               port = @__port.__port
+                               if port.respond_to?(:force_local?) && port.force_local?
+                                   @__orogen_port_proxy = nil
+                                   port
+                               elsif port
+                                   @__orogen_port_proxy.proxy_port(port, options)
+                               else
+                                   nil
+                               end
                            end
-
-                           options = options.merge(@policy)
-                           real_port = @__port.to_orocos_port
-                           if real_port.kind_of?(Orocos::OutputPort) && !options.has_key?(:pull)
-                               options[:pull] = true
-                           end
-                           @__orogen_port_proxy.proxy_port(@__port, options)
                        rescue Interrupt
                            raise
                        rescue Exception => e
                            if(disable_proxy_on_error)
-                               Vizkit.warn "Disabling proxying of port #{@__port.full_name}: #{e.message}"
+                               Vizkit.warn "Disabling proxying for port #{@__port.full_name}: #{e.message}"
                                e.backtrace.each do |line|
                                    Vizkit.warn "  #{line}"
                                end
                                @__orogen_port_proxy = nil
-                               @__port.__port
+                               @__port.__port 
                             else
                                Vizkit.info "cannot proxy port #{@__port.full_name}: #{e.message}"
                                e.backtrace.each do |line|
@@ -123,27 +127,39 @@ module Vizkit
                                return nil
                             end
                        end
+                   elsif @__orogen_port_proxy && @__port.__output? &&
+                         (!@__port.__port.respond_to?(:force_local?) || !@__port.__port.force_local?)
                    else
+                       @__orogen_port_proxy = nil
                        @__port.__port
                    end
             if port
                 if port.respond_to? :reader
                     @__reader_writer = port.reader @policy
+                    @__proxy_connected = false
                     Vizkit.info "Create reader for output port: #{port.full_name}"
                 else
                     @__reader_writer = port.writer @policy
+                    @__orogen_port_proxy = nil                  # writer ports are never proxied
                     Vizkit.info "Create writer for input port: #{port.full_name}"
                 end
+                if connected? 
+                    @__reader_writer
+                else
+                    nil
+                end
             else
-                @__reader_writer = nil
+                __invalidate
             end
-            @__reader_writer
         rescue Orocos::NotFound, Orocos::CORBAError => e
-            Vizkit.warn "ReaderWriterProxy: error while proxuing the port: #{e}"
+            Vizkit.warn "ReaderWriterProxy: error while proxing the port: #{e}"
             e.backtrace.each do |line|
                 Vizkit.warn "  #{line}"
             end
-            @__reader_writer = nil
+            __invalidate
+            #it seems that there is something wrong with the port 
+            #this happens if port is an old object 
+            @__port.__invalidate
         end
 
         def port
@@ -154,28 +170,38 @@ module Vizkit
             @__port.type_name
         end
 
+        def type
+            @__port.type
+        end
+
         def new_sample
             @__port.new_sample
+        end
+        
+        def __invalidate
+            # for now we can not disconnect the reader writer 
+            # beacause orcos.rb does not support this 
+            @__reader_writer = nil
         end
 
         def method_missing(m, *args, &block)
             reader_writer = __reader_writer
             if reader_writer
                 reader_writer.send(m, *args, &block)
-            elsif Orocos::OutputReader.public_instance_methods.include?(m.to_s) || Orocos::InputWriter.public_instance_methods.include?(m.to_s)
+            elsif Orocos::OutputReader.public_method_defined?(m) || Orocos::InputWriter.public_method_defined?(m)
                 Vizkit.warn "ReaderWriterProxy for port #{port.full_name}: ignoring method #{m} because port is not reachable."
-                @__reader_writer = nil
+                nil
             else
                 super(m,*args,&block)
             end
         rescue Orocos::NotFound, Orocos::CORBAError
-            @__reader_writer = nil
+            connected?
         end
     end
 
     class ReaderProxy < ReaderWriterProxy
         def initialize(task,port,options = Hash.new)
-            temp_options, options = Kernel.filter_options options,:subfield => Array.new ,:type_name => nil
+            temp_options, options = Kernel.filter_options options,:subfield => Array.new,:typelib_type => nil
             super
             @local_options.merge! temp_options
             @local_options[:subfield] = Array(@local_options[:subfield])
@@ -220,7 +246,7 @@ module Vizkit
 
     class WriterProxy < ReaderWriterProxy
         def initialize(task,port,options = Hash.new)
-            temp_options, options = Kernel.filter_options options,:subfield => Array.new ,:type_name => nil
+            temp_options, options = Kernel.filter_options options,:subfield => Array.new ,:typelib_type => nil
             raise "Subfields are not supported for WriterProxy #{port.full_name}" if options.has_key?(:subfield) && !options[:subfield].empty?
             super(task,port,options)
             Vizkit.info "Create WriterProxy for #{port.full_name}"
@@ -231,15 +257,22 @@ module Vizkit
     class PortProxy
         #task = name of the task or its TaskContext
         #port = name of the port or its Orocos::Port
-        #options = {:subfield => Array,:type_name => type_name of the subfield}
+        #options = {:subfield => Array,:typelib_type => type of the subfield}
         #
         #if the PortProxy is used for a subfield reader the type_name of the subfield must be given
         #because otherwise the type_name would only be known after the first sample was received 
         def initialize(task, port,options = Hash.new)
-            @local_options, options = Kernel::filter_options options,{:subfield => Array.new,:type_name => nil,:port_proxy => nil}
+            @local_options, options = Kernel::filter_options options,{:subfield => Array.new,:typelib_type => nil}
+            if !options.empty?
+                raise ArgumentError,"invalid options #{options} for PortProxy"
+            end
             @local_options[:subfield] = Array(@local_options[:subfield])
 
-            @__task = TaskProxy.new(task)
+            @__task = if task.is_a? TaskProxy 
+                          task
+                      else
+                          TaskProxy.new(task)
+                      end
             raise "Cannot create PortProxy if no task is given" if !@__task
 
             if(port.is_a? String)
@@ -259,11 +292,8 @@ module Vizkit
             else
                 Vizkit.info "Create PortProxy for: #{full_name}"
             end
-            __port
-            if @__port.respond_to?(:force_local?) && @__port.force_local?
-                Vizkit.info "No port proxy is used for port #{@__port.full_name}"
-                @local_options[:port_proxy] = nil 
-            end
+            @__reader_writer = Array.new
+            self
         end
 
         #returns the Orocos::InputPort or Orocos::OutputPort object
@@ -289,36 +319,32 @@ module Vizkit
             @__port_name
         end
 
-        def type_name
-            @type_name ||= if(type = @local_options[:type_name]) != nil
-                               type
-                           elsif @__port || __port
-                               if !@local_options[:subfield].empty?
-                                   @new_sample ||= @__port.new_sample.zero!
-                                   sample = @new_sample
-                                   @local_options[:subfield].each do |f|
-                                       sample = if f.is_a? Fixnum 
-                                                    sample.element_t
-                                                elsif sample.respond_to? :raw_get_field
-                                                    sample.raw_get_field(f)
+        def type
+            @type ||= if(type = @local_options[:typelib_type]) != nil
+                          type
+                      elsif @__port || __port
+                          if !@local_options[:subfield].empty?
+                              @type ||= @__port.type
+                              @local_options[:subfield].each do |f|
+                                  @type = if @type.respond_to? :deference
+                                                    @type.deference
                                                 else
-                                                    sample[f]
+                                                    @type[f]
                                                 end
-                                   end
-                                   if sample.respond_to? :name
-                                       sample.name
-                                   elsif sample.class.respond_to? :name
-                                       sample.class.name
-                                   else
-                                       sample.class
-                                   end
-                               else
-                                   @__port.type_name
-                               end
-                           elsif
-                               nil
-                           end
-            @type_name
+                              end
+                              @type
+                          else
+                              @__port.type
+                          end
+                      elsif
+                          raise RuntimeError, "Cannot discover type for PortProxy #{full_name} because the port is not reachable and the option hint ':typelib_type' is not given. " +
+                                              "If you are replaying a log file call Vizkit.control before you are using a TaskProxy."
+                      end
+            @type
+        end
+
+        def type_name
+            type.name
         end
 
         def task
@@ -327,7 +353,7 @@ module Vizkit
 
         #returns true if the underlying port is an input port 
         #if the task is not running it will always return false 
-        def input? 
+        def __input? 
             port = __port
             if port.respond_to? :writer
                true
@@ -338,7 +364,7 @@ module Vizkit
         
         #returns true if the underlying port is an output port 
         #if the task is not running it will always return false 
-        def output?
+        def __output?
             port = __port
             if port.respond_to? :reader
                true
@@ -356,17 +382,29 @@ module Vizkit
         def disconnect_from(port,policy = Hash.new)
             raise "Cannot disconnect port #{full_name} from #{full_name} because task #{task.name} is not reachable!" if !task.ping
             raise "Cannot disconnect port #{full_name} from #{full_name} because task #{port.task.name} is not reachable!" if !port.task.reachable?
-            pp port
             __port.disconnect_from(port)
         end
 
+        def __invalidate
+            @__port = nil
+            @__reader_writer.each do |reader_writer|
+                reader_writer.__invalidate
+            end
+            nil
+        end
+
+	def __valid?
+	    @__port != nil
+        end
+
         def __port
-            if @__task.reachable? && (!@__port || !@__port.task.reachable?)
+            if @__task.reachable? && !@__port
                 if(@__task.has_port?(@__port_name))
                     task = @__task.__task
                     if task
                         @__port = task.port(@__port_name) 
                         Vizkit.info "Create Port for: #{@__port.full_name}"
+                        # activate log ports 
                         if @__port.respond_to? :tracked=
                             Vizkit.info "Call tracked=true on port #{@__port.full_name}"
                             @__port.tracked=true
@@ -374,58 +412,37 @@ module Vizkit
                     end
                 else
                     Vizkit.warn "Task #{task().name} has no port #{name}. This can happen for tasks with dynamic ports."
-                    @__port = nil
+                    __invalidate
                 end
             end
             @__port
         rescue Orocos::NotFound, Orocos::CORBAError
-            @__port = nil
+            __invalidate
         end
 
         def writer(policy = Hash.new)
-            WriterProxy.new(@__task_proxy,self,@local_options.merge(policy))
+            @__reader_writer << WriterProxy.new(@__task_proxy,self,@local_options.merge(policy))
+            @__reader_writer.last
         end
 
         def reader(policy = Hash.new)
-            ReaderProxy.new(@__task_proxy,self,@local_options.merge(policy))
+            @__reader_writer << ReaderProxy.new(@__task_proxy,self,@local_options.merge(policy))
+            @__reader_writer.last
         end
 
         def new_sample
-            if type_name.respond_to?(:new)
-		#the type is a class
-                return nil
-            elsif type_name.respond_to? :to_str
-                if @__port && @__port.type_name == type_name
-                    @__port.new_sample
-                else
-                    if @new_sample
-                        if @new_sample.class.registry.include? type_name
-                            @new_sample.class.registry.get(type_name).new
-                        else
-                            nil
-                        end
-                    else
-                        if !Orocos.registry.include? type_name
-                            Vizkit.info "load typekit for #{type_name}"
-                            Orocos.load_typekit_for type_name
-                        end
-                        Orocos.registry.get(type_name).new
-                    end
-                end
-            else
-                nil
-            end
+            type.new
         end
 
         def __subfield(sample,field=Array.new)
             return sample if(field.empty? || !sample)
-            begin
-                field.each do |f| 
-                    sample = sample[f]
+            field.each do |f| 
+                sample = sample[f]
+                if !sample
+                    #if the field name is wrong typelib will raise an ArgumentError
+                    Vizkit.warn "Cannot extract subfield for port #{full_name}: Subfield #{f} does not exist (out of index)!"
+                    break
                 end
-            rescue ArgumentError => e
-                Vizkit.info "Cannot extract subfield for port #{port.full_name}: Subfield does not exist!"
-                sample = nil
             end
             #check if the type is right
             if(sample.respond_to?(:type_name) && sample.type_name != type_name )
@@ -437,9 +454,9 @@ module Vizkit
         def method_missing(m, *args, &block)
             if __port
                 @__port.send(m, *args, &block)
-            elsif Orocos::OutputPort.public_instance_methods.include?(m.to_s) || Orocos::InputPort.public_instance_methods.include?(m.to_s)
+            elsif Orocos::OutputPort.public_method_defined?(m) || Orocos::InputPort.public_method_defined?(m)
                 Vizkit.warn "PortProxy #{full_name}: ignoring method #{m} because port is not reachable."
-                @__port = nil
+                __invalidate
             else
                 super
             end
@@ -448,7 +465,7 @@ module Vizkit
             e.backtrace.each do |line|
                 Orocos.warn "  #{line}"
             end
-            @__port = nil
+            __invalidate
         end
     end
 
@@ -456,11 +473,37 @@ module Vizkit
     #It can also be used to automatically set up a orogen port proxy task which is a orocos Task normally running on the same machine
     #and pulls the data from the robot to not block the graphically interfaces.
     class TaskProxy
+        class << self
+            #TODO this should probably moved to the coba nameservice 
+            attr_accessor  :nameservice_down
+            attr_accessor  :do_not_connect_for
+            attr_accessor  :last_nameservice_connection
+            attr_accessor  :tasks
+
+	    def disconnect_all(state = :NotReachable)
+		tasks.each do |task|
+		    task.__disconnect(state)
+                end
+	    end
+
+            def check_corba_timeouts
+                return unless Orocos::CORBA.call_timeout && Orocos::CORBA.connect_timeout
+                if Orocos::CORBA.call_timeout > 3000 || Orocos::CORBA.connect_timeout > 3000
+                    Vizkit.warn "Corba call timout is set to #{Orocos::CORBA.call_timeout} and connect timeout to #{Orocos::CORBA::connect_timeout}"
+                    Vizkit.warn "This might block your script during connection problems."
+                end
+            end
+        end
+        TaskProxy.nameservice_down = false
+        TaskProxy.do_not_connect_for = 10
+	TaskProxy.tasks = Array.new
+
+        attr_reader :__last_ping
         #Creates a new TaskProxy for an Orogen Task
-        #automatically uses the tasks from the corba name service or the log file when added to Vizkit (see Vizkit.use_task)
+        #automatically uses the tasks from the corba name service or the log file when added to the local name service
         #task_name = name of the task or its TaskContext
         #code block  = is called every time a TaskContext is created (every connect or reconnect)
-        def initialize(task_name,&block)
+        def initialize(task_name,options=Hash.new,&block)
             if task_name.is_a?(Orocos::TaskContext) || task_name.is_a?(Orocos::Log::TaskContext)
                 @__task = task_name if task_name.is_a? Orocos::Log::TaskContext
                 task_name = task_name.name
@@ -473,10 +516,14 @@ module Vizkit
             @__readers = Hash.new
             @__ports = Hash.new
             @__state = :NotReachable
+            @__options,options = Kernel.filter_options options, :cleanup_nameservice => true
+            if !options.empty?
+                raise "invalid options #{options} for TaskProxy"
+            end
+            raise "Cannot create TaskProxy with no name!" if !task_name || task_name.empty? 
+            TaskProxy.check_corba_timeouts if TaskProxy.tasks.empty?
+	    TaskProxy.tasks << self
             Vizkit.info "Create TaskProxy for task: #{name}"
-
-            #needed to automatically track log task
-            ping if Vizkit.use_log_task? name
         end
 
         #code block is called every time a new connection is set up
@@ -489,8 +536,19 @@ module Vizkit
         end
 
         def __reconnect()
-            @task = nil
+            __disconnect
             ping
+        end
+
+        def __disconnect(state = :NotReachable)
+            @__state = state
+            @__readers.clear
+            @__task = nil
+            #invalidate all ports
+            @__ports.each_value do |port|
+                port.__invalidate
+            end
+            nil
         end
 
         def __task
@@ -505,37 +563,79 @@ module Vizkit
             end
         end
 
-        def ping
-            if !@__task || !@__task.reachable?
+        # check if the task is still reachable 
+        # to prevent blocking the nameservice will be used to discover if the task is reachable 
+        # after it went down.
+        # to check if a running task is no longer reachable the state_reader of the task is used
+        def ping()
+            return false if @__state == :NoModel || @__state == :ComError #prevents pinging
+            reader = @__task.instance_variable_get(:@state_reader)
+            if !@__task || (reader && !reader.connected?) || (!reader && !@__task.reachable?)
                 begin 
                     if @__task
                         Vizkit.info "Task #{name} is no longer reachable."
-                        proxy = ReaderWriterProxy.default_policy[:port_proxy]
-                        proxy.delete_proxy_ports_for_task(name) if proxy && self != proxy && proxy.reachable?
+                        __disconnect
                     end
-
-                    @__readers.clear
-                    @__task = if Vizkit.use_log_task? name
-                                  Vizkit.info "TaskProxy #{name } is using an Orocos::Log::TaskContext as underlying task"
-                                  Vizkit.log_task name
-                              else
-                                  task = Orocos::TaskContext.get(name)
-                                  Vizkit.info "Create TaskContext for: #{name}"
-                                  task
-                              end
-                    @__connection_code_block.call if @__connection_code_block
-
+                    if !TaskProxy.nameservice_down || (Time.now - TaskProxy.last_nameservice_connection).to_f >= TaskProxy.do_not_connect_for
+                        TaskProxy.nameservice_down = false
+                        Vizkit.info "Tying to access name service to create TaskContext for: #{name}"
+                        @__task = Orocos::TaskContext.get(name)
+                        #this is not reached if TaskContext.get is not successfully 
+                        Vizkit.info "Create TaskContext for: #{name}"
+                        # check if the name service was down
+                        # if so we have to reset the port proxy because the connections
+                        # are no longer working 
+                        # TODO this should be moved to the port proxy 
+                        if @__state  == :NameServiceDown && model.name == "port_proxy::Task"
+                            Vizkit.warn "resetting port proxy #{name} to ensure valid connections"
+                            if !closeAllProxyConnections()
+                                Vizkit.error "Cannot reset port proxy. It seems that the updateHook is blocked" 
+                                Vizkit.error "Connection might be no longer valid !!!" 
+                            end
+                        else
+                            #we can now change to the state port to monitore if the task is still reachable
+                            @__task.state
+                            @__connection_code_block.call(self) if @__connection_code_block
+                        end
+                    end
                 rescue Orocos::NotInitialized
                     Vizkit.info "TaskProxy #{name} can not be found (Orocos is not initialized and there is no log task called like this)."
+                    #Try to get the task from the local name service
+                    if nil != (service = Nameservice.get(:Local))
+                        @__task = service.resolve(name)
+                    end
+                rescue Orocos::NotFound
+                    #check if the corba name service is still publishing its name and remove it
+                    #this prevents blocking of the ruby script
+		    begin 
+			if @__options[:cleanup_nameservice] && Orocos.task_names.include?(name)
+			    Orocos::CORBA.unregister(name)
+			    Vizkit.warn "unregistered dangling CORBA name #{name}"
+			    @__state = :TaskCrashed
+			elsif @__state != :TaskCrashed
+			    @__state = :NotReachable
+			end
+		    rescue Orocos::CORBA::ComError
+			# there is something wrong this the name server
+			Vizkit.error "ComError while communicating with the nameserver." 			
+                        Vizkit.error "Disabling all tasks !!!"
+			Vizkit.error "Is the nameserver responding on the wrong network interface?." 			
+                    	TaskProxy.disconnect_all(:ComError)
+		    end
                     @__task = nil
-                rescue Orocos::NotFound, Orocos::CORBAError
-                    @__task = nil
+                rescue Orocos::CORBAError => e
+                    Vizkit.error "Corba error nameservice down ?"
+                    Vizkit.error "prevent accessing name service for #{TaskProxy::do_not_connect_for} seconds"
+                    TaskProxy.last_nameservice_connection = Time.now
+                    TaskProxy.nameservice_down = true
+                    TaskProxy.disconnect_all(:NameServiceDown)
                 rescue Orocos::NoModel
-                    @__task = nil 
-                    @__state = :NoModel 
+                    Vizkit.warn "No task model for task #{name}."
+                    Vizkit.warn "You have to build the orogen component on this machine in order to access the task."
+                    __disconnect(:NoModel)
                 end
             end
-            @__task != nil
+            @__last_ping = @__task != nil
         end
 
         def each_port(options = Hash.new,&block)
@@ -549,7 +649,7 @@ module Vizkit
         end
 
         def respond_to?(method)
-            return true if super || Orocos::TaskContext.public_instance_methods.include?(method.to_s) ||__task.respond_to?(method)
+            return true if super || Orocos::TaskContext.public_method_defined?(method) ||__task.respond_to?(method)
             false
         end
 
@@ -563,6 +663,9 @@ module Vizkit
                             name
                         end
             if @__ports.has_key?(full_name)
+                if !options.empty?
+                    raise ArgumentError,"invalid options #{options} for TaskProxy::port"
+                end
                 @__ports[full_name]
             else
                 @__ports[full_name] = PortProxy.new(self,name,options)
@@ -579,12 +682,13 @@ module Vizkit
 
         def method_missing(m, *args, &block)
             if !ping
-                if Orocos::TaskContext.public_instance_methods.include?(m.to_s)
+         #       if Orocos::TaskContext.public_method_defined?(m)
                     Vizkit.warn "TaskProxy #{name}: ignoring method #{m} because task is not reachable."
-                    @__task = nil
-                else
-                    super
-                end
+                    nil
+         #       else
+         # this is bad for remote methods calls
+         #           super
+         #       end
             else
                 if @__task && @__task.has_port?(m.to_s)
                     port(m.to_s,*args)
@@ -593,7 +697,7 @@ module Vizkit
                 end
             end
         rescue Orocos::NotFound,Orocos::CORBAError
-            @__task = nil
+ 	    __disconnect
         end
 
         alias :reachable? :ping
