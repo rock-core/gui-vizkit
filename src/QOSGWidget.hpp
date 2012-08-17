@@ -52,6 +52,10 @@ using Qt::WindowFlags;
 
 #include <iostream>
 
+namespace vizkit{
+    class ConnexionHID;
+};
+
 class QOSGWidget : public QWidget
 {
     Q_OBJECT
@@ -69,6 +73,10 @@ public:
         return _gw.get(); 
     }
 
+    vizkit::ConnexionHID* getConnexionHID() const{
+        return chid;
+    }
+
 protected:
 
     void init();
@@ -78,6 +86,7 @@ protected:
     // Looking at the doc for Qt::WA_PaintOnScreen this may be appropriate.
     // Didn't seem to help or hurt.
     virtual QPaintEngine *paintEngine() { return 0; }
+    vizkit::ConnexionHID *chid;
 
 // Grabbed this from Martin Beckett:
 //  The GraphincsWindowWin32 implementation already takes care of message handling.
@@ -99,7 +108,6 @@ protected:
 
     osg::ref_ptr<osgViewer::GraphicsWindow> _gw;
     bool _overrideTraits;
-
 }; // QOSGWidget
 
 

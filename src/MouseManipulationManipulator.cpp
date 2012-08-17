@@ -9,6 +9,8 @@
 namespace enview {
 
 bool MouseManipulationManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa) {
+    return false;
+
     	typedef osgUtil::LineSegmentIntersector::Intersections::iterator intersectIter;
 	typedef osg::NodePath::iterator npIter;
 

@@ -20,6 +20,7 @@
 #include "QOSGWidget.hpp"
 #include "CompositeViewerQOSG.hpp"
 #include "MouseManipulationManipulator.h"
+#include "ConnexionHID.h"
 
 #if defined(WIN32) && !defined(__CYGWIN__)
 #include <osgViewer/api/Win32/GraphicsWindowWin32>
@@ -391,6 +392,7 @@ ViewQOSG::ViewQOSG( QWidget *parent )
       QOSGWidget( parent ),
       _daw(parent)
 {
+    chid = 0;
 
 // OSG
     setGeometry( 0, 0, parent->width(), parent->height() );
@@ -405,9 +407,17 @@ ViewQOSG::ViewQOSG( QWidget *parent )
     getCamera()->setViewport(
         new osg::Viewport( 0, 0, parent->width(), parent->height()));
 
+    chid = new vizkit::ConnexionHID();
+    
     setupManipulatorAndHandler( *this );
+    
+    if(chid->init(getCameraManipulator())){
+        osgGA::KeySwitchMatrixManipulator *keyswitchManipulator = dynamic_cast<osgGA::KeySwitchMatrixManipulator*>(getCameraManipulator());
+        keyswitchManipulator->selectMatrixManipulator( 5 );
+    }
 
 } // ViewQOSG::ViewQOSG
+
 
 //---------------------------------------------------------------------------
 // note:  since ViewQOSG has focusPolicy of Qt::NoFocus, this won't be called,
@@ -531,6 +541,7 @@ float ViewQOSG::aspectRatio( int width, int height )
 void setupManipulatorAndHandler(osgViewer::View & view
                                 /*, osg::ArgumentParser & arguments*/)
 {
+    ViewQOSG *v = dynamic_cast<ViewQOSG*>(&view);
     // set up the camera manipulators.
     {
         osg::ref_ptr<osgGA::KeySwitchMatrixManipulator> keyswitchManipulator = 
@@ -546,9 +557,11 @@ void setupManipulatorAndHandler(osgViewer::View & view
             '4', "Terrain", new osgGA::TerrainManipulator() );
 	keyswitchManipulator->addMatrixManipulator( 
 	    '5', "MouseManipulator", new enview::MouseManipulationManipulator(view.getCamera()) );
+        if(v && v->getConnexionHID())
+	    keyswitchManipulator->addMatrixManipulator( '6', "NullManipulator",  v->getConnexionHID());
 
 	// set the default to be the terrain manipulator as it matches enview best at the moment
-	keyswitchManipulator->selectMatrixManipulator( 3 );
+        keyswitchManipulator->selectMatrixManipulator( 3 );
 
         view.setCameraManipulator( keyswitchManipulator.get() );
     }
