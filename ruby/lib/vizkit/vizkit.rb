@@ -1,4 +1,5 @@
-require 'ping'
+require 'timeout'
+require 'socket'
 
 module Vizkit
     extend Logger::Root('Vizkit', Logger::WARN)
@@ -115,6 +116,22 @@ module Vizkit
             return false
         end
     end
+
+    # ping is no longer part of ruby 1.9
+    def self.ping_nameservice
+        begin
+            Timeout::timeout(1) do
+                s = TCPSocket.new(Orocos::CORBA.name_service, 22)
+                s.close
+            end
+        rescue Errno::ECONNREFUSED
+            return true
+        rescue Timeout::Error, StandardError
+            return false
+        end
+        return true
+    end
+
     def self.exec()
         #install event filter
         obj = ShortCutFilter.new
@@ -125,7 +142,7 @@ module Vizkit
         # the typelib side
         thread = Thread.new do
             loop do  
-                if(!Orocos::CORBA.name_service || Ping.pingecho(Orocos::CORBA.name_service,1))
+                if(!Orocos::CORBA.name_service || ping_nameservice)
                     Vizkit.info "Namservice is back online. Truning GC on" if GC.enable
                     GC.start
                 else
