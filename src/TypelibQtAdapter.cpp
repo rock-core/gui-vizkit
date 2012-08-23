@@ -9,6 +9,7 @@
 #include <rice/Constructor.hpp>
 #include <rice/Array.hpp>
 #include <typelib_ruby.hh>
+#include <rtt/base/ChannelElementBase.hpp>
 
 using namespace Rice;
 
