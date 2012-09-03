@@ -39,9 +39,9 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "SonarView" do
     #TODO very very ugly 
     #a new visualization is planed 
     #that would fix the problem 
-    if sonar_scan.class.name == "/base/samples/SonarScan"
-      setSonarScan(sonar_scan.scanData.to_byte_array[8..-1],sonar_scan.scanData.size,sonar_scan.angle,sonar_scan.time_beetween_bins,false)
-    elsif sonar_scan.class.name == "/sensorData/Sonar"
+    #if sonar_scan.class.name == "/base/samples/SonarScan"
+    #  setSonarScan(sonar_scan.scanData.to_byte_array[8..-1],sonar_scan.scanData.size,sonar_scan.angle,sonar_scan.time_beetween_bins,false)
+    if sonar_scan.class.name == "/sensorData/Sonar"
       setSonarScan(sonar_scan.scanData.to_byte_array[8..-1],sonar_scan.scanData.size,sonar_scan.bearing,sonar_scan.adInterval,true)
     elsif sonar_scan.class.name == "/base/samples/SonarBeam"
         angle = if sonar_scan.bearing.rad < 0 
@@ -57,6 +57,6 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "SonarView" do
   end
 end
 
-Vizkit::UiLoader.register_widget_for("SonarView","/sensorData/Sonar",:display)
-Vizkit::UiLoader.register_widget_for("SonarView","/base/samples/SonarScan",:display)
+#Vizkit::UiLoader.register_widget_for("SonarView","/sensorData/Sonar",:display)
+#Vizkit::UiLoader.register_widget_for("SonarView","/base/samples/SonarScan",:display)
 Vizkit::UiLoader.register_widget_for("SonarView","/base/samples/SonarBeam",:display)
