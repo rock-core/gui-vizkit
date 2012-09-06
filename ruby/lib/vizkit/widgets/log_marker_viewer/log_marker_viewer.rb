@@ -8,15 +8,23 @@ class LogMarkerViewer < Qt::Widget
     @layout.addWidget(@widget,0,0)
     @current_index = -1;
     self.setLayout @layout
+    @log_control = Vizkit.default_loader.find_created_plugins("LogControl").first
+    @widget.list.connect(SIGNAL("doubleClicked(QModelIndex)")) do |index|
+        if @log_control    
+            @log_control.seek_to @markers[index.row].time
+        end
+    end
   end
 
   def config2(annotations,options=Hash.new)
     @markers = Orocos::Log::LogMarker.parse(annotations.samples)
     @markers.each do |marker|
+        time = "#{marker.time.hour}:#{marker.time.min}:#{marker.time.sec}"
+        time += " "* (8-time.size)
         if marker.index >= 0
-            @widget.list.addItem("#{" "*3*marker.index}#{marker.type}(#{marker.index}): #{marker.comment}")
+            @widget.list.addItem("#{time}: #{" "*3*marker.index}#{marker.type}(#{marker.index}):  #{marker.comment}")
         else
-            @widget.list.addItem("+++ #{marker.type}: #{marker.comment} ++++")
+            @widget.list.addItem("#{time}: +++ #{marker.type}: #{marker.comment} ++++")
         end
 
     end
