@@ -311,6 +311,17 @@ module Vizkit
             availableWidgets.include? name
         end
 
+        # returns an array of all created pluigns with the given class name
+        # or an empty array if no plugin can be found
+        def find_created_plugins(class_name)
+            spec = find_plugin_spec!({:plugin_name => class_name})
+            if spec
+                spec.created_plugins
+            else
+                []
+            end
+        end
+
         def create_plugin(class_name,parent=nil,reuse=false,raise_=true)
             spec = find_plugin_spec!({:plugin_name => class_name})
             return unless spec
