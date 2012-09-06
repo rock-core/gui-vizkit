@@ -257,6 +257,10 @@ class LogControl
     end
 
     def seek_to(index)
+        if index.is_a? Time
+            @log_replay.seek(index)
+            index = @log_replay.sample_index
+        end
         timeline.setSliderIndex index
         slider_released(index)
     end
