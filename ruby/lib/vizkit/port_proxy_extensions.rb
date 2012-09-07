@@ -9,7 +9,7 @@ module Orocos
             return nil if !port.task.reachable?
             port = port.to_orocos_port
             options, policy = Kernel.filter_options options,
-                :periodicity => nil,
+                :periodicity => 0.1,
                 :keep_last_value => false
 
             if !reachable? 
