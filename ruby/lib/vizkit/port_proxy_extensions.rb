@@ -81,7 +81,7 @@ module Orocos
         def load_plugins_for_type(type_name)
             #workaround for int types --> there is no plugin
             #TODO find a more generic solution
-            if(type_name == "int")
+            if(type_name == "int" || type_name == "bool")
                 Orocos.info "Task #{self.name}: ignore load_plugins_for_type because of type int"
                 return true
             end
