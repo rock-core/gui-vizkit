@@ -17,7 +17,10 @@ module Vizkit
     end
 
     if !ENV['VIZKIT_NO_GUI']
+        old_lang = ENV['LC_ALL']
+        ENV['LC_ALL'] = 'C'
         Qt::Application.new(ARGV)
+        ENV['LC_ALL'] = old_lang
     end
 
     def self.app
