@@ -50,6 +50,7 @@ module Vizkit
             def extend_cplusplus_widget_class(class_name,&block)
                 spec = current_loader_instance.register_plugin(class_name,:cplusplus_widget) do |parent|
                     widget = current_loader_instance.create_widget(class_name,parent,true,true)
+                    raise RuntimeError, "There is no widget called #{class_name} available. Check spelling" unless widget
                     UiLoader.redefine_widget_class_name(widget,class_name)
                     widget
                 end

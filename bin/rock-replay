@@ -8,6 +8,7 @@ require 'optparse'
 replay_into = nil
 replay_connections = []
 replay_configuration = nil
+use_sample_time = false
 parser = OptionParser.new do |opt|
     opt.banner = <<-EOT
 
@@ -58,6 +59,9 @@ Examples:
     opt.on('--debug') do
         Vizkit.logger.level = Logger::INFO
     end
+    opt.on('--use-sample-time', String, 'makes the alignment algorithm use sample timestamp time for alignment') do
+        use_sample_time = true
+    end
 end
 
 
@@ -75,6 +79,7 @@ if remaining.empty?
 end
 
 log = Orocos::Log::Replay.open(remaining,Typelib::Registry.new)
+log.use_sample_time = use_sample_time
 #select only ports which are not filtered out
 log.track(true, @search_filter)
 

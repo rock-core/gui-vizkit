@@ -58,8 +58,9 @@ module Vizkit
         #
         # @see register_map_obj
         # @note This is used to find all strings for these a plugin might be registered 
-        #   able to handle the given object.
         # @note There will be no BasicObject for ruby1.8.
+        # @note all m types are converted to the corresponding opaque type (this will not work if Orocos is not initialized therefore no m types should be
+        # used for registering widgets!)
         # @return [Array<String>] an array of names.
         # @example
         #   normalize_obj(123) => ["Fixnum", "Integer", "Numeric", "Object", "BasicObject"]
@@ -90,7 +91,7 @@ module Vizkit
             (map_obj(names.first,object)+names).compact
         end
 
-        # Generates an array of strings consisting the class 
+        # Generates an array of strings consisting the class
         # and all super class names of the given class object.
         # 
         # @param [Class] klass the class
@@ -99,10 +100,23 @@ module Vizkit
         def self.classes(klass,include_super=true)
             return Array.new unless klass
             raise ArgumentError, "#{klass} is not a class" unless klass.respond_to? :name
-            if include_super && klass.respond_to?(:superclass) && klass.superclass && klass != klass.superclass
-                Array(klass.name) + classes(klass.superclass)
+
+            arry = if include_super && klass.respond_to?(:superclass) && klass.superclass && klass != klass.superclass
+                    Array(klass.name) + classes(klass.superclass)
+                else
+                    Array(klass.name)
+                end
+
+            # add opaque type if intermediate or m_type
+            if Orocos.registry && Orocos.registry.include?(klass.name) && Orocos.master_project.intermediate_type?(klass)
+                type = Orocos.master_project.find_opaque_for_intermediate(klass)
+                if type.respond_to? :intermediate
+                    Array(type.type.name) + arry
+                else
+                    Array(type.name) + arry
+                end
             else
-                Array(klass.name)
+                arry
             end
         end
 
@@ -145,19 +159,9 @@ module Vizkit
                               nil
                           end
                 if Orocos.registry.include?(class_name)
-                    # convert all types into intermediate if intermediate
-                    # is available
-                    begin
-                        if typekit
-                            typekit.intermediate_type_for(class_name)
-                        else
-                            Orocos.registry.get class_name
-                        end
-                    rescue ArgumentError
-                        Orocos.registry.get class_name
-                    end
+                    Orocos.registry.get class_name
                 else
-                    Vizkit.info "Typelib Type #{class_name} cannot be found."
+                    Vizkit.info "Typelib Type #{class_name} cannot be found"
                     nil
                 end
             else
@@ -349,7 +353,7 @@ module Vizkit
             callback_type(callback_type)
             default(default)
         end
-
+        
         def call(*args)
             @callback.call(*args)
         end

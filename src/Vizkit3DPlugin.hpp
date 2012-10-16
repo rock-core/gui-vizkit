@@ -136,7 +136,6 @@ class VizPluginBase : public QObject
 	osg::ref_ptr<osg::Group> getVizNode() const;
 	osg::ref_ptr<osg::Group> getRootNode() const;
 
-    
        /**
         * @return true if plugin is enabled
         */
@@ -166,8 +165,6 @@ class VizPluginBase : public QObject
          */
         std::vector<QDockWidget*> getDockWidgets();
         
-        void setPose(const base::Vector3d &position, const base::Quaterniond &orientation);
-        
     public slots:
 	/** @return the name of the plugin */
 	virtual const QString getPluginName() const;
@@ -185,6 +182,11 @@ class VizPluginBase : public QObject
         void setKeepOldData(bool value);
         bool isKeepOldDataEnabled();
 
+	/**
+	 * Clears the visualization of the plugin
+	 * */
+	virtual void clearVisualization();
+	
         /**
         * deletes all copies of the osg graph which were genereted by keepCurrentViz
         */
@@ -193,6 +195,7 @@ class VizPluginBase : public QObject
         int getMaxOldData()const {return max_old_data;};
         void setMaxOldData(int value);
 
+	void setPose(const base::Vector3d &position, const base::Quaterniond &orientation);
     signals:
        /**
         * must be emitted if a property of an inherited plugin changes
@@ -249,6 +252,7 @@ class VizPluginBase : public QObject
         //orientation of the viznode
         base::Quaterniond orientation;
         
+	bool isAttached;
 	bool dirty;
         bool plugin_enabled;
         bool keep_old_data;

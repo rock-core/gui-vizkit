@@ -363,6 +363,8 @@ UiLoader.register_3d_plugin('LaserScanVisualization',"vizkit-base", 'LaserScanVi
 UiLoader.register_3d_plugin_for('LaserScanVisualization', "/base/samples/LaserScan", :updateLaserScan)
 UiLoader.register_3d_plugin('MotionCommandVisualization',"vizkit-base", 'MotionCommandVisualization')
 UiLoader.register_3d_plugin_for('MotionCommandVisualization', "/base/MotionCommand2D", :updateMotionCommand)
+UiLoader.register_3d_plugin('WaypointVisualization',"vizkit-base", 'WaypointVisualization')
+UiLoader.register_3d_plugin_for('WaypointVisualization', "/base/Waypoint", :updateWp)
 end
-Vizkit::UiLoader.register_widget_for("vizkit::Vizkit3DWidget","/transformer/ConfigurationState_m", :update)
+Vizkit::UiLoader.register_widget_for("vizkit::Vizkit3DWidget","/transformer/ConfigurationState", :update)
 

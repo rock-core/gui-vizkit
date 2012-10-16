@@ -5,7 +5,9 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "Plot2d" do
 
     def default_options()
         options = Hash.new
-        options[:auto_scrolling] = true
+        options[:auto_scrolling] = true     # auto scrolling for a specific axis is true
+        options[:auto_scrolling_y] = false  # if one of auto_scrolling or auto_scrolling_<axis>
+        options[:auto_scrolling_x] = false  # is true
         options[:time_window] = 30              #window size during auto scrolling
         options[:cached_time_window] = 60        #total cached window size
         options[:pre_time_window] = 5
@@ -13,6 +15,7 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "Plot2d" do
         options[:pre_xaxis_window] = 5
         options[:yaxis_window] = 5
         options[:pre_yaxis_window] = 5
+        options[:max_points] = 50000
 	
         options[:colors] = [Qt::red, Qt::green, Qt::blue, Qt::cyan, Qt::magenta, Qt::yellow, Qt::gray]
         options[:reuse] = true
@@ -208,7 +211,7 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "Plot2d" do
         x = time.to_f-@time.to_f
         graph.removeDataBefore(x-@options[:cached_time_window])
         graph.addData(x,sample.to_f)
-        if @options[:auto_scrolling]
+        if @options[:auto_scrolling] || @options[:auto_scrolling_x]
             getXAxis.setRange(x-@options[:time_window],x+@options[:pre_time_window])
             graph.rescaleValueAxis(true)
         end
@@ -241,8 +244,11 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "Plot2d" do
     def update_custom(name,values_x,values_y)
 	graph = graph2(name)
 	graph.addData(values_x,values_y)	
-	if @options[:auto_scrolling]
+	if @options[:auto_scrolling] || @options[:auto_scrolling_x]
         	getXAxis.setRange(values_x-@options[:xaxis_window],values_x+@options[:pre_xaxis_window])
+        	graph.rescaleValueAxis(true)		
+        end       
+	if @options[:auto_scrolling] || @options[:auto_scrolling_y]
 		getYAxis.setRange(values_y-@options[:yaxis_window],values_y+@options[:pre_yaxis_window])
         	graph.rescaleValueAxis(true)		
         end       
@@ -250,7 +256,7 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "Plot2d" do
     end
 
     def update_vector(sample,name)
-        if sample.size() > 10000
+        if sample.size() > @options[:max_points]
             Vizkit.logger.warn "Cannot plot #{name}. Vector is too big"
             return
         end
@@ -259,8 +265,10 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "Plot2d" do
         sample.to_a.each_with_index do |value,index|
             graph.addData(index,value)
         end
-        if @options[:auto_scrolling]
+        if @options[:auto_scrolling] || @options[:auto_scrolling_x]
             graph.rescaleKeyAxis(false)
+        end
+        if @options[:auto_scrolling] || @options[:auto_scrolling_y]
             graph.rescaleValueAxis(false)
         end
         @needs_update = true
