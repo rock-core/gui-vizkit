@@ -16,7 +16,7 @@ Plots data from one or more Orocos port sample fields
 
     EOT
     opt.on('--host=HOSTNAME', String, "the corba nameserver we should contact") do |name|
-        Orocos::CORBA.name_service = name
+        Orocos::CORBA.name_service.ip = name
     end
     opt.on('--help') do
         puts parser

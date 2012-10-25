@@ -41,7 +41,7 @@ class TaskProxyTest < Test::Unit::TestCase
         test_task = Vizkit::TaskProxy.new("test_task")
         assert(!test_task.reachable?)
         Orocos.run "port_proxy::Task" => "port_proxy",:output => "%m.log" do 
-            task = Orocos::TaskContext.get "port_proxy"
+            task = Orocos.name_service.get "port_proxy"
             task.start
             assert_equal(:NotReachable,test_task.state)
         end
@@ -63,7 +63,7 @@ class TaskProxyTest < Test::Unit::TestCase
         connection.check_periodicity = 1
         Orocos.run "port_proxy::Task" => "test_task",:output => "%m2.log" do 
             #setup source
-            task2 = Orocos::TaskContext.get "test_task"
+            task2 = Orocos.name_service.get "test_task"
             task2.start
             assert(task2.createProxyConnection(connection))
             assert(task2.has_port? "out_dummy_port")
@@ -94,7 +94,7 @@ class TaskProxyTest < Test::Unit::TestCase
 
         #check if the taskproxy can recover after the task is reachable again
         Orocos.run "port_proxy::Task" => "test_task",:output => "%m3.log" do 
-            task2 = Orocos::TaskContext.get "test_task"
+            task2 = Orocos.name_service.get "test_task"
             task2.start
             assert(task2.createProxyConnection(connection))
             assert(task2.has_port? "out_dummy_port")
@@ -113,7 +113,7 @@ class TaskProxyTest < Test::Unit::TestCase
             time = Time.now
             writer.write time
             sleep(0.3)
-            assert_equal(time,reader.read)
+            assert_equal(time.usec,reader.read.usec)
         end
         assert(!reader.connected?)
         assert(!writer.connected?)
@@ -130,7 +130,7 @@ class TaskProxyTest < Test::Unit::TestCase
         writer = test_task.port("in_dummy_port").writer
         Orocos.run "port_proxy::Task" => "port_proxy",:output => "%m.log" do 
             #setup port porxy 
-            task = Orocos::TaskContext.get "port_proxy"
+            task = Orocos.name_service.get "port_proxy"
             connection = Types::PortProxy::ProxyConnection.new
             connection.task_name = "test_task"
             connection.port_name = "out_dummy_port"
@@ -150,7 +150,7 @@ class TaskProxyTest < Test::Unit::TestCase
                 connection.type_name = "/base/Time"
                 connection.periodicity = 0.1
                 connection.check_periodicity = 1
-                task2 = Orocos::TaskContext.get "test_task"
+                task2 = Orocos.name_service.get "test_task"
                 task2.start
                 assert(task2.createProxyConnection(connection))
                 assert(task2.has_port? "out_dummy_port")
@@ -183,7 +183,7 @@ class TaskProxyTest < Test::Unit::TestCase
 
             #check if the taskproxy can recover after the task is reachable again
             Orocos.run "port_proxy::Task" => "test_task",:output => "%m3.log" do 
-                task2 = Orocos::TaskContext.get "test_task"
+                task2 = Orocos.name_service.get "test_task"
                 task2.start
                 assert(task2.createProxyConnection(connection))
                 assert(task2.has_port? "out_dummy_port")
@@ -204,7 +204,7 @@ class TaskProxyTest < Test::Unit::TestCase
                 time = Time.now
                 writer.write time
                 sleep(0.3)
-                assert_equal(time,proxy_reader.read)
+                assert_equal(time.usec,proxy_reader.read.usec)
             end
             sleep(1.0)
             assert(!writer.connected?)

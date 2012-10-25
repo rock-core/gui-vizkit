@@ -105,7 +105,7 @@ if @show_and_exit
 elsif replay_into
     Orocos.initialize
     Orocos.run replay_into => "replay#{Process.pid}" do
-        task = Orocos::TaskContext.get "replay#{Process.pid}"
+        task = Orocos.name_service.get "replay#{Process.pid}"
 
         if replay_configuration
             Orocos.apply_conf(task, *replay_configuration)

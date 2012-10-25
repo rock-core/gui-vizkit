@@ -13,7 +13,7 @@ Bundles.public_logs = false
 parser = OptionParser.new do |opt|
     opt.banner = "rock-display [--host hostname] task_name[.port_name] [task_name[.port_name]]"
     opt.on('--host=HOSTNAME', String, "the corba nameserver we should contact") do |name|
-        Orocos::CORBA.name_service = name
+        Orocos::CORBA.name_service.ip = name
     end
     opt.on('-a','--all',"Display all tasks") do
         @show_all = true
@@ -95,7 +95,7 @@ if remaining.empty?
   #check for new tasks every 5 seconds 
   refresh = Proc.new do 
       begin
-      Orocos.task_names.dup.each do |name|
+      Orocos.name_service.names.each do |name|
           task_inspector.config(name,:cleanup_nameservice =>@clean)
       end
       rescue Orocos::CORBAError => e

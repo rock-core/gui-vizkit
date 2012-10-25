@@ -579,7 +579,7 @@ module Vizkit
                     if !TaskProxy.nameservice_down || (Time.now - TaskProxy.last_nameservice_connection).to_f >= TaskProxy.do_not_connect_for
                         TaskProxy.nameservice_down = false
                         Vizkit.info "Tying to access name service to create TaskContext for: #{name}"
-                        @__task = Orocos::TaskContext.get(name)
+                        @__task = Orocos.name_service.get(name)
                         #this is not reached if TaskContext.get is not successfully 
                         Vizkit.info "Create TaskContext for: #{name}"
                         # check if the name service was down
@@ -601,9 +601,6 @@ module Vizkit
                 rescue Orocos::NotInitialized
                     Vizkit.info "TaskProxy #{name} can not be found (Orocos is not initialized and there is no log task called like this)."
                     #Try to get the task from the local name service
-                    if nil != (service = Nameservice.get(:Local))
-                        @__task = service.resolve(name)
-                    end
                 rescue Orocos::NotFound
                     #check if the corba name service is still publishing its name and remove it
                     #this prevents blocking of the ruby script

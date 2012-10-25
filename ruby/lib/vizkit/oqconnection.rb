@@ -307,7 +307,6 @@ module Orocos
 
     class TaskContext
         alias :org_connect_to :connect_to
-        remove_method :connect_to
         include Vizkit::OQConnectionTaskContextIntegration
     end
 end
