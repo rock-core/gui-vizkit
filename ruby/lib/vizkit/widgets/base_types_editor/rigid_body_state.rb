@@ -106,4 +106,4 @@ class RigidBodyStateEditor
 end
 
 Vizkit::UiLoader.register_ruby_widget("RigidBodyStateEditor",RigidBodyStateEditor.method(:create_widget))
-Vizkit::UiLoader.register_control_for("RigidBodyStateEditor",Types::Base::Samples::RigidBodyState,:edit)
+Vizkit::UiLoader.register_control_for("RigidBodyStateEditor","/base/samples/RigidBodyState",:edit)

@@ -58,4 +58,4 @@ class AngleEditor < Qt::Widget
 end
 
 Vizkit::UiLoader.register_ruby_widget("AngleEditor",AngleEditor.method(:new))
-Vizkit::UiLoader.register_control_for("AngleEditor",Types::Base::Angle,:angle)
+Vizkit::UiLoader.register_control_for("AngleEditor","/base/Angle",:angle)
