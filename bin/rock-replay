@@ -78,6 +78,7 @@ if remaining.empty?
     end
 end
 
+Orocos.initialize       # load support for Typelib types
 log = Orocos::Log::Replay.open(remaining,Typelib::Registry.new)
 log.use_sample_time = use_sample_time
 #select only ports which are not filtered out
