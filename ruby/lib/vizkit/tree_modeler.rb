@@ -299,14 +299,10 @@ module Vizkit
 
         def find_parent(child,type)
             object = item_to_object(child)
-            if object.class == type || object == type
+            if object.kind_of?(type) || (object.kind_of?(Class) && object <= type)
                 [child,object]
-            else
-                if child.parent 
-                    find_parent(child.parent,type)
-                else
-                    nil
-                end
+            elsif child.parent 
+                find_parent(child.parent,type)
             end
         end
 
@@ -370,8 +366,9 @@ module Vizkit
         def subfield_from_item(item)
             object = item_to_object(item)
             fields = Array.new
-            if object == Orocos::OutputPort || object.is_a?(Orocos::Log::OutputPort) || 
-               object.is_a?(Vizkit::PortProxy)
+            if object.is_a?(Orocos::Log::OutputPort) || object.is_a?(Vizkit::PortProxy)
+                fields 
+            elsif object.kind_of?(Class) && (object <= Orocos::OutputPort || object <= Orocos::ROS::Topic)
                 fields 
             elsif object == :NO_SUBFIELD
                 fields << object
@@ -398,8 +395,8 @@ module Vizkit
             port_item,port = find_parent(item,Vizkit::PortProxy) if !port
             return port if port
 
-            port_item,port = find_parent(item,Orocos::OutputPort)if !port
-            port_item,port = find_parent(item,Orocos::InputPort)if !port
+            port_item,port = find_parent(item,Orocos::Port)if !port
+            port_item,port = find_parent(item,Orocos::ROS::Topic)if !port
             return nil if !port
             _,task = find_parent(item,Vizkit::TaskProxy)
             _,task = find_parent(item,Orocos::Log::TaskContext) if !task 
