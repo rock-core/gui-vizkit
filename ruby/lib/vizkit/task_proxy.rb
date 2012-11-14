@@ -100,7 +100,7 @@ module Vizkit
                                options = { :periodicity => @local_options[:port_proxy_periodicity] }
                                options[:keep_last_value] = true if @policy[:init]
                                port = @__port.__port
-                               if port.respond_to?(:force_local?) && port.force_local?
+                               if (port.respond_to?(:force_local?) && port.force_local?) || !port.respond_to?(:to_orocos_port)
                                    @__orogen_port_proxy = nil
                                    port
                                elsif port
