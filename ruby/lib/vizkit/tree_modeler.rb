@@ -262,7 +262,7 @@ module Vizkit
                     widget_name = Vizkit::ContextMenu.control_widget_for(type_name,tree_view,pos)
                     if widget_name
                         widget = Vizkit.control nil, :widget => widget_name do |sample| 
-                            update_object(sample,item)
+                            update_property(sample,item)
                             @dirty_items << item unless @dirty_items.include? item
                             widget.close
                         end
@@ -281,7 +281,7 @@ module Vizkit
                 prop = task.property(item.text)
                 raise "Found no property called #{item.text} for task #{task.name}"unless prop
                 sample = prop.new_sample.zero!
-                update_object(sample,item,true)
+                update_property(sample,item,true)
                 prop.write sample
             end
             unmark_dirty_items
@@ -468,356 +468,406 @@ module Vizkit
           @readers[full_name] = task_proxy.port(port_name).reader
         end
 
+        def update_log_replay(object, parent_item, read_from_model=false, row=0)
+            #this is a workaround to get access to the object
+            #for displaying inforamtion about a log port 
+            @log_replay = object
+            row = 0
+            if !object.annotations.empty?
+                item, item2 = child_items(parent_item,0)
+                item.setText("- Global Meta Data - ")
+                sub_row = 0
+                object.annotations.each do |annotation|
+                    update_log_annotations(annotation,item,read_from_model,sub_row)
+                    sub_row +=1
+                end
+                row =+ 1
+            end
+            object.tasks.each do |task|
+                next if !task.used?
+                update_task_proxy(task,parent_item,read_from_model,row)
+                row += 1
+            end
+        end
+
+        def update_log_annotations(object, parent_item, read_from_model=false, row=0)
+            item, item2 = child_items(parent_item,row)
+            item.setText(object.stream.name)
+            item2.setText(object.stream.type_name)
+
+            encode_data(item,object)
+            encode_data(item2,object)
+
+            item2, item3 = child_items(item,0)
+            item2.setText("samples")
+            item3.setText(object.samples.size.to_s)
+        end
+
+        def update_log_markers(object, parent_item, read_from_model=false, row=0)
+            item, item2 = child_items(parent_item,row)
+            item.setText(object.type.to_s)
+            item2.setText(object.comment)
+
+            item2, item3 = child_items(item,0)
+            item2.setText("time")
+            item3.setText(object.time.to_s)
+
+            item2, item3 = child_items(item,0)
+            item2.setText("index")
+            item3.setText(object.index.to_s)
+        end
+
+        def update_oqconnection(object, parent_item, read_from_model=false, row=0)
+            item, item2 = child_items(parent_item,row)
+            item.setText(object.port.full_name)
+            connected = false
+            if object.alive?
+                item2.setText("connected")
+                connected = true
+            else
+                item2.setText("not connected")
+            end
+            item2, item3 = child_items(item,0)
+            item2.setText("update_frequency")
+            item3.setText(object.update_frequency.to_s)
+
+            item2, item3 = child_items(item,1)
+            if object.widget.is_a? Qt::Object
+                item2.setText("receiver widget")
+                if connected
+                    item3.setText("#{object.widget.objectName}.#{object.callback_fct.name}")
+                else
+                    item3.setText("#{object.widget.objectName}")
+                end
+            else
+                item2.setText("receiver")
+                item3.setText("ruby proc")
+            end
+            item2, item3 = child_items(item,2)
+            item2.setText("policy")
+            policy = Array.new
+            object.policy.each_pair do |key,val|
+                policy << "#{key} => #{val}"
+            end
+            item3.setText(policy.join("; "))
+        end
+
+        def update_task_proxy(object, parent_item, read_from_model=false, row=0)
+            item, item2 = child_items(parent_item,row)
+            item.setText(object.name)
+
+            encode_data(item,object)
+            encode_data(item2,object)
+            item2.setText(object.state.to_s) 
+
+            if !object.__last_ping
+                item.removeRows(0,item.rowCount)
+            else
+                if object.doc?
+                    item.set_tool_tip(object.doc)
+                    item2.set_tool_tip(object.doc)
+                end
+
+                item3, item4 = child_items(item,0)
+                item3.setText("Properties")
+                row = 0
+                object.each_property do |attribute|
+                    update_property(attribute,item3,read_from_model,row)
+                    row+=1
+                end
+
+                #setting ports
+                item3, item4 = child_items(item,1)
+                item3.setText("Input Ports")
+                item5, item6 = child_items(item,2)
+                item5.setText("Output Ports")
+
+                irow = 0
+                orow = 0
+                object.each_output_port do |port|
+                    next if !enable_tooling && port.name == "state"
+                    update_output_port(port,item5,read_from_model,orow)
+                    orow +=1
+                end
+                object.each_input_port do |port|
+                    update_input_port(port,item3,read_from_model,irow)
+                    irow += 1
+                end
+                item3.remove_rows(irow,item3.row_count-irow) if irow < item3.row_count
+                item5.remove_rows(orow,item5.row_count-orow) if orow < item5.row_count
+            end
+        end
+
+        def update_log_task_context(object, parent_item, read_from_model=false, row=0)
+            item, item2 = child_items(parent_item,row)
+            item.setText(object.name)
+            item2.setText(object.file_path)
+            encode_data(item,object)
+            encode_data(item2,object)
+
+            row = 0
+            object.each_input_port do |port|
+                next unless port.used?
+                update_input_port(port,item,read_from_model,row)
+                row += 1
+            end
+            object.each_output_port do |port|
+                next unless port.used?
+                next if !enable_tooling && port.name == "state"
+                update_output_port(port,item,read_from_model,row)
+                row += 1
+            end
+
+            if !object.properties.empty?
+                item3, item4 = child_items(item,row)
+                row = 0
+                item3.setText("Properties")
+                object.each_property do |property|
+                    update_property(property,item3,read_from_model,row)
+                    row += 1
+                end
+            end
+        end
+
+        def update_property(object, parent_item, read_from_model=false, row=0)
+            item, item2 = child_items(parent_item,row)
+            item.setText(object.name)
+
+            if object.doc?
+                item.set_tool_tip(object.doc)
+            else
+                item.set_tool_tip(object.type.name)
+            end
+            item2.set_tool_tip(object.type.name)
+
+            if update_item?(item) || read_from_model
+                update_object(object.read,item,read_from_model)
+            end
+
+            if item.has_children 
+                set_all_children_editable(item,true)
+            else
+                item2.set_editable(true)
+            end
+            if @dirty_items.empty?
+                encode_data(item,Orocos::Property)
+                encode_data(item2,Orocos::Property)
+            end
+        end
+
+        def update_log_property(object, parent_item, read_from_model=false, row=0)
+            item, item2 = child_items(parent_item,row)
+            item.setText(object.name)
+
+            #do not show meta data for now because they are quite
+            #uninteresting for properties 
+
+            if update_item?(item)
+                update_object(object.read,item,read_from_model)
+            end
+        end
+
+        def update_output_port(object, parent_item, read_from_model=false, row=0)
+            item, item2 = child_items(parent_item,row)
+            item.setText(object.name)
+            item2.setText(object.type_name.to_s)
+
+            if object.doc?
+                item.set_tool_tip(object.doc)
+            else
+                item.set_tool_tip(object.type_name)
+            end
+            item2.set_tool_tip(object.type_name)
+
+            #do not encode the object because 
+            #the port is only a temporary object!
+            puts "#{object} #{object.name} #{object.class}"
+            encode_data(item,object.class)
+            encode_data(item2,object.class)
+
+            if update_item?(item)
+                task = object.task
+                reader = reader_for(task,object.name)
+                update_object(reader.read,item) if reader
+            end
+        end
+
+        def update_input_port(object, parent_item, read_from_model=false, row=0)
+            item, item2 = child_items(parent_item,row)
+
+            if object.doc?
+                item.set_tool_tip(object.doc)
+            else
+                item.set_tool_tip(object.type_name)
+            end
+            item2.set_tool_tip(object.type_name)
+
+            #do not encode the object because 
+            #the port is only a temporary object!
+            encode_data(item,object.class)
+            encode_data(item2,object.class)
+
+            item.setText(object.name)
+            item2.setText(object.type_name.to_s)
+        end
+
+        def update_log_output_port(object, parent_item, read_from_model=false, row=0)
+            item, item2 = child_items(parent_item,row)
+            item.setText("#{object.name} (#{object.stream.size})")
+            item2.setText(object.type_name.to_s)
+
+            # Set tooltip informing about context menu
+            item.set_tool_tip(@tooltip)
+            item2.set_tool_tip(@tooltip)
+
+            #encode the object 
+            encode_data(item,object)
+            encode_data(item2,object)
+
+            #add meta data
+            item2, item3 = child_items(item,0)
+            item2.setText("Meta Data")
+            encode_data(item2,:NO_SUBFIELD)
+            encode_data(item3,:NO_SUBFIELD)
+            update_hash(object.metadata,item2)
+
+            item2, item3 = child_items(item,1)
+            item2.setText("Samples")
+            item3.setText(object.number_of_samples.to_s)
+            encode_data(item2,:NO_SUBFIELD)
+            encode_data(item3,:NO_SUBFIELD)
+
+            index = 2
+            if @log_replay
+                item2, item3 = child_items(item,index)
+                item2.setText("First sample index")
+                encode_data(item2,:NO_SUBFIELD)
+                encode_data(item3,:NO_SUBFIELD)
+                item3.setText(@log_replay.first_sample_pos(object.stream).to_s)
+                index +=1
+
+                item2, item3 = child_items(item,index)
+                item2.setText("Last sample index")
+                encode_data(item2,:NO_SUBFIELD)
+                encode_data(item3,:NO_SUBFIELD)
+                item3.setText(@log_replay.last_sample_pos(object.stream).to_s)
+                index +=1
+            end
+
+            item2, item3 = child_items(item,index)
+            item2.setText("Filter")
+            encode_data(item2,:NO_SUBFIELD)
+            encode_data(item3,:NO_SUBFIELD)
+            if object.filter
+                item3.setText("yes")
+            else
+                item3.setText("no")
+            end
+        end
+
+        def update_hash(object, parent_item, read_from_model=false, row=0)
+            object.each_pair do |key,value|
+                item, item2 = child_items(parent_item,row)
+                item.setText(key.to_s)
+                item2.setText(value.to_s)
+                row+=1
+            end
+        end
+
+        def update_compound_type(object, parent_item, read_from_model=false, row=0)
+            Vizkit.debug("update_object->CompoundType")
+
+            row = 0;
+            object.each_field do |name,value|
+                item, item2 = child_items(parent_item,row)
+                item.set_text name
+
+                item.set_tool_tip(value.class.name)
+                item2.set_tool_tip(value.class.name)
+
+                #this is a workaround 
+                #if each field is created by its self we cannot write 
+                #the data back to the sample and we do not know its name 
+                if(value.kind_of?(Typelib::CompoundType))
+                    encode_data(item,Typelib::CompoundType.class)
+                    encode_data(item2,Typelib::CompoundType.class)
+                    item2.set_text(value.class.name)
+                end
+                if read_from_model
+                    object.set_field(name,update_object(value,item,read_from_model,row))
+                elsif !dirty?(item)
+                    update_object(value,item,read_from_model,row)
+                end
+                row += 1
+            end
+            #delete all other rows
+            parent_item.remove_rows(row,parent_item.row_count-row) if row < parent_item.row_count
+        end
+
+        def update_array(object, parent_item, read_from_model=false, row=0)
+            Vizkit.debug("update_object->Array||Typelib+each")
+            if object.size > @max_array_fields
+                item2 = if parent_item.parent
+                            parent_item.parent.child(parent_item.row,parent_item.column+1)
+                        else
+                            @root.child(parent_item.row,parent_item.column+1)
+                        end
+                item2.set_text "#{object.size} fields ..."
+            elsif object.size > 0
+                object.each_with_index do |val,row|
+                    item,item2 = child_items(parent_item,row)
+                    item2.set_text val.class.name
+                    item.set_text "[#{row}]"
+                    if read_from_model
+                        object[row] = update_object(val,item,read_from_model,row)
+                    else
+                        update_object(val,item,read_from_model,row)
+                    end
+                end
+                #delete all other rows
+                parent_item.remove_rows(row,parent_item.row_count-object.size) if row < parent_item.row_count
+            elsif read_from_model
+                a = (update_object(object.to_ruby,parent_item,read_from_model,0))
+                if a.kind_of? String
+                    # Append char by char because Typelib::ContainerType.<<(value) does not support argument strings longer than 1.
+                    a.each_char do |c|
+                        object << c
+                    end
+                end
+            end
+        end
+
         # Adds object to parent_item as a child. Object's children will be 
         # added as well. The original tree structure will be preserved.
         def update_object(object, parent_item, read_from_model=false, row=0)
             if object.kind_of?(Orocos::Log::Replay)
-                #this is a workaround to get access to the object
-                #for displaying inforamtion about a log port 
-                @log_replay = object
-                row = 0
-                if !object.annotations.empty?
-                    item, item2 = child_items(parent_item,0)
-                    item.setText("- Global Meta Data - ")
-                    sub_row = 0
-                    object.annotations.each do |annotation|
-                        update_object(annotation,item,read_from_model,sub_row)
-                        sub_row +=1
-                    end
-                    row =+ 1
-                end
-                object.tasks.each do |task|
-                    next if !task.used?
-                    update_object(task,parent_item,read_from_model,row)
-                    row += 1
-                end
+                update_log_replay(object, parent_item, read_from_model, row)
             elsif object.kind_of?(Orocos::Log::Annotations)
-                item, item2 = child_items(parent_item,row)
-                item.setText(object.stream.name)
-                item2.setText(object.stream.type_name)
-
-                encode_data(item,object)
-                encode_data(item2,object)
-                
-                item2, item3 = child_items(item,0)
-                item2.setText("samples")
-                item3.setText(object.samples.size.to_s)
-
+                update_log_annotations(object, parent_item, read_from_model, row)
             elsif object.kind_of?(Orocos::Log::LogMarker)
-                item, item2 = child_items(parent_item,row)
-                item.setText(object.type.to_s)
-                item2.setText(object.comment)
-                
-                item2, item3 = child_items(item,0)
-                item2.setText("time")
-                item3.setText(object.time.to_s)
-
-                item2, item3 = child_items(item,0)
-                item2.setText("index")
-                item3.setText(object.index.to_s)
-            
+                update_log_markers(object, parent_item, read_from_model, row)
             elsif object.kind_of?(Vizkit::OQConnection)
-                item, item2 = child_items(parent_item,row)
-                item.setText(object.port.full_name)
-                connected = false
-                if object.alive?
-                    item2.setText("connected")
-                    connected = true
-                else
-                    item2.setText("not connected")
-                end
-                item2, item3 = child_items(item,0)
-                item2.setText("update_frequency")
-                item3.setText(object.update_frequency.to_s)
-
-                item2, item3 = child_items(item,1)
-                if object.widget.is_a? Qt::Object
-                    item2.setText("receiver widget")
-                    if connected
-                        item3.setText("#{object.widget.objectName}.#{object.callback_fct.name}")
-                    else
-                        item3.setText("#{object.widget.objectName}")
-                    end
-                else
-                    item2.setText("receiver")
-                    item3.setText("ruby proc")
-                end
-                item2, item3 = child_items(item,2)
-                item2.setText("policy")
-                policy = Array.new
-                object.policy.each_pair do |key,val|
-                    policy << "#{key} => #{val}"
-                end
-                item3.setText(policy.join("; "))
-
+                update_oqconnection(object, parent_item, read_from_model, row)
             elsif object.kind_of?(Vizkit::TaskProxy)
-                item, item2 = child_items(parent_item,row)
-                item.setText(object.name)
-
-                encode_data(item,object)
-                encode_data(item2,object)
-                item2.setText(object.state.to_s) 
-
-                if !object.__last_ping
-                    item.removeRows(0,item.rowCount)
-                else
-                    if object.doc?
-                        item.set_tool_tip(object.doc)
-                        item2.set_tool_tip(object.doc)
-                    end
-
-                    item3, item4 = child_items(item,0)
-                    item3.setText("Properties")
-                    row = 0
-                    object.each_property do |attribute|
-                        update_object(attribute,item3,read_from_model,row)
-                        row+=1
-                    end
-
-                    #setting ports
-                    item3, item4 = child_items(item,1)
-                    item3.setText("Input Ports")
-                    item5, item6 = child_items(item,2)
-                    item5.setText("Output Ports")
-
-                    irow = 0
-                    orow = 0
-                    task = object.__task
-                    if task
-                        task.each_port do |port|
-                            if port.is_a?(Orocos::InputPort)
-                                update_object(port,item3,read_from_model,irow)
-                                irow += 1
-                            else
-                                next if !enable_tooling && port.name == "state"
-                                update_object(port,item5,read_from_model,orow)
-                                orow +=1
-                            end
-                        end
-                    end
-                    item3.remove_rows(irow,item3.row_count-irow) if irow < item3.row_count
-                    item5.remove_rows(orow,item5.row_count-orow) if orow < item5.row_count
-                end
-
+                update_task_proxy(object, parent_item, read_from_model, row)
             elsif object.kind_of?(Orocos::Log::TaskContext)
-                item, item2 = child_items(parent_item,row)
-                item.setText(object.name)
-                item2.setText(object.file_path)
-                encode_data(item,object)
-                encode_data(item2,object)
-
-                row = 0
-                object.each_port do |port|
-                    next unless port.used?
-                    next if !enable_tooling && port.name == "state"
-                    update_object(port,item,read_from_model,row)
-                    row += 1
-                end
-
-                if !object.properties.empty?
-                    item3, item4 = child_items(item,row)
-                    row = 0
-                    item3.setText("Properties")
-                    object.each_property do |property|
-                        update_object(property,item3,read_from_model,row)
-                        row += 1
-                    end
-                end
-
+                update_log_task_context(object, parent_item, read_from_model, row)
             elsif object.kind_of?(Orocos::Property)
-                item, item2 = child_items(parent_item,row)
-                item.setText(object.name)
-
-                if object.doc?
-                    item.set_tool_tip(object.doc)
-                else
-                    item.set_tool_tip(object.type.name)
-                end
-                item2.set_tool_tip(object.type.name)
-
-                if update_item?(item) || read_from_model
-                    update_object(object.read,item,read_from_model)
-                end
-
-                if item.has_children 
-                    set_all_children_editable(item,true)
-                else
-                    item2.set_editable(true)
-                end
-                if @dirty_items.empty?
-                    encode_data(item,Orocos::Property)
-                    encode_data(item2,Orocos::Property)
-                end
+                update_property(object, parent_item, read_from_model, row)
             elsif object.kind_of?(Orocos::Log::Property)
-                item, item2 = child_items(parent_item,row)
-                item.setText(object.name)
-
-                #do not show meta data for now because they are quite
-                #uninteresting for properties 
-
-                if update_item?(item)
-                    update_object(object.read,item,read_from_model)
-                end
+                update_log_property(object, parent_item, read_from_model, row)
             elsif object.kind_of?(Orocos::OutputPort)
-                item, item2 = child_items(parent_item,row)
-                item.setText(object.name)
-                item2.setText(object.type_name.to_s)
-
-                if object.doc?
-                    item.set_tool_tip(object.doc)
-                else
-                    item.set_tool_tip(object.type_name)
-                end
-                item2.set_tool_tip(object.type_name)
-
-                #do not encode the object because 
-                #the port is only a temporary object!
-                encode_data(item,object.class)
-                encode_data(item2,object.class)
-
-                if update_item?(item)
-                    _,task = find_parent(parent_item,Vizkit::TaskProxy)
-                    raise "cannot find task for port #{object.name}" if !task
-                    reader = reader_for(task,object.name)
-                    update_object(reader.read,item) if reader
-                end
+                update_output_port(object, parent_item, read_from_model, row)
             elsif object.kind_of?(Orocos::InputPort)
-                item, item2 = child_items(parent_item,row)
-
-                if object.doc?
-                    item.set_tool_tip(object.doc)
-                else
-                    item.set_tool_tip(object.type_name)
-                end
-                item2.set_tool_tip(object.type_name)
-
-                #do not encode the object because 
-                #the port is only a temporary object!
-                encode_data(item,object.class)
-                encode_data(item2,object.class)
-
-                item.setText(object.name)
-                item2.setText(object.type_name.to_s)
+                update_input_port(object, parent_item, read_from_model, row)
             elsif object.kind_of?(Orocos::Log::OutputPort)
-                item, item2 = child_items(parent_item,row)
-                item.setText("#{object.name} (#{object.stream.size})")
-                item2.setText(object.type_name.to_s)
-
-                # Set tooltip informing about context menu
-                item.set_tool_tip(@tooltip)
-                item2.set_tool_tip(@tooltip)
-
-                #encode the object 
-                encode_data(item,object)
-                encode_data(item2,object)
-
-                #add meta data
-                item2, item3 = child_items(item,0)
-                item2.setText("Meta Data")
-                encode_data(item2,:NO_SUBFIELD)
-                encode_data(item3,:NO_SUBFIELD)
-                update_object(object.metadata,item2)
-
-                item2, item3 = child_items(item,1)
-                item2.setText("Samples")
-                item3.setText(object.number_of_samples.to_s)
-                encode_data(item2,:NO_SUBFIELD)
-                encode_data(item3,:NO_SUBFIELD)
-
-                index = 2
-                if @log_replay
-                    item2, item3 = child_items(item,index)
-                    item2.setText("First sample index")
-                    encode_data(item2,:NO_SUBFIELD)
-                    encode_data(item3,:NO_SUBFIELD)
-                    item3.setText(@log_replay.first_sample_pos(object.stream).to_s)
-                    index +=1
-
-                    item2, item3 = child_items(item,index)
-                    item2.setText("Last sample index")
-                    encode_data(item2,:NO_SUBFIELD)
-                    encode_data(item3,:NO_SUBFIELD)
-                    item3.setText(@log_replay.last_sample_pos(object.stream).to_s)
-                    index +=1
-                end
-
-                item2, item3 = child_items(item,index)
-                item2.setText("Filter")
-                encode_data(item2,:NO_SUBFIELD)
-                encode_data(item3,:NO_SUBFIELD)
-                if object.filter
-                    item3.setText("yes")
-                else
-                    item3.setText("no")
-                end
-                
+                update_log_output_port(object, parent_item, read_from_model, row)
             elsif object.kind_of?(Hash)
-                object.each_pair do |key,value|
-                    item, item2 = child_items(parent_item,row)
-                    item.setText(key.to_s)
-                    item2.setText(value.to_s)
-                    row+=1
-                end
+                update_hash(object, parent_item, read_from_model, row)
             elsif object.kind_of?(Typelib::CompoundType)
-                Vizkit.debug("update_object->CompoundType")
-
-                row = 0;
-                object.each_field do |name,value|
-                    item, item2 = child_items(parent_item,row)
-                    item.set_text name
-
-                    item.set_tool_tip(value.class.name)
-                    item2.set_tool_tip(value.class.name)
-
-                    #this is a workaround 
-                    #if each field is created by its self we cannot write 
-                    #the data back to the sample and we do not know its name 
-                    if(value.kind_of?(Typelib::CompoundType))
-                        encode_data(item,Typelib::CompoundType.class)
-                        encode_data(item2,Typelib::CompoundType.class)
-                        item2.set_text(value.class.name)
-                    end
-                    if read_from_model
-                        object.set_field(name,update_object(value,item,read_from_model,row))
-                    elsif !dirty?(item)
-                        update_object(value,item,read_from_model,row)
-                    end
-                    row += 1
-                end
-                #delete all other rows
-                parent_item.remove_rows(row,parent_item.row_count-row) if row < parent_item.row_count
-
+                update_compound_type(object, parent_item, read_from_model, row)
             elsif object.is_a?(Array) || (object.kind_of?(Typelib::Type) && object.respond_to?(:each))
-                Vizkit.debug("update_object->Array||Typelib+each")
-                if object.size > @max_array_fields
-                    item2 = if parent_item.parent
-                                parent_item.parent.child(parent_item.row,parent_item.column+1)
-                            else
-                                @root.child(parent_item.row,parent_item.column+1)
-                            end
-                    item2.set_text "#{object.size} fields ..."
-                elsif object.size > 0
-                    object.each_with_index do |val,row|
-                        item,item2 = child_items(parent_item,row)
-                        item2.set_text val.class.name
-                        item.set_text "[#{row}]"
-                        if read_from_model
-                            object[row] = update_object(val,item,read_from_model,row)
-                        else
-                            update_object(val,item,read_from_model,row)
-                        end
-                    end
-                    #delete all other rows
-                    parent_item.remove_rows(row,parent_item.row_count-object.size) if row < parent_item.row_count
-                elsif read_from_model
-                    a = (update_object(object.to_ruby,parent_item,read_from_model,0))
-                    if a.kind_of? String
-                        # Append char by char because Typelib::ContainerType.<<(value) does not support argument strings longer than 1.
-                        a.each_char do |c|
-                            object << c
-                        end
-                    end
-                end
+                update_array(object, parent_item, read_from_model, row)
             else
                 Vizkit.debug("update_object->else")
 
