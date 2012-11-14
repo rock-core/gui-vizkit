@@ -151,7 +151,7 @@ module Vizkit
             else
                 __invalidate
             end
-        rescue Orocos::NotFound, Orocos::CORBAError => e
+        rescue Orocos::NotFound, Orocos::ComError => e
             Vizkit.warn "ReaderWriterProxy: error while proxing the port: #{e}"
             e.backtrace.each do |line|
                 Vizkit.warn "  #{line}"
@@ -194,7 +194,7 @@ module Vizkit
             else
                 super(m,*args,&block)
             end
-        rescue Orocos::NotFound, Orocos::CORBAError
+        rescue Orocos::NotFound, Orocos::ComError
             connected?
         end
     end
@@ -416,7 +416,7 @@ module Vizkit
                 end
             end
             @__port
-        rescue Orocos::NotFound, Orocos::CORBAError
+        rescue Orocos::NotFound, Orocos::ComError
             __invalidate
         end
 
@@ -460,7 +460,7 @@ module Vizkit
             else
                 super
             end
-        rescue Orocos::NotFound, Orocos::CORBAError => e
+        rescue Orocos::NotFound, Orocos::ComError => e
             Vizkit.warn "PortProxy #{full_name} got an error: #{e.message}"
             e.backtrace.each do |line|
                 Orocos.warn "  #{line}"
@@ -620,7 +620,7 @@ module Vizkit
                     	TaskProxy.disconnect_all(:ComError)
 		    end
                     @__task = nil
-                rescue Orocos::CORBAError => e
+                rescue Orocos::ComError => e
                     Vizkit.error "Corba error nameservice down ?"
                     Vizkit.error "prevent accessing name service for #{TaskProxy::do_not_connect_for} seconds"
                     TaskProxy.last_nameservice_connection = Time.now
@@ -693,7 +693,7 @@ module Vizkit
                     @__task.send(m, *args, &block)
                 end
             end
-        rescue Orocos::NotFound,Orocos::CORBAError
+        rescue Orocos::NotFound,Orocos::ComError
  	    __disconnect
         end
 
