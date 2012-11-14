@@ -404,14 +404,8 @@ module Vizkit
             _,task = find_parent(item,Vizkit::TaskProxy)
             _,task = find_parent(item,Orocos::Log::TaskContext) if !task 
             return nil if !port || !task
-            if task.respond_to? :ping
-                if task.ping
-                    task.port(port_item.text) 
-                else 
-                    nil
-                end
-            else
-                task.port(port_item.text)
+            if task.reachable?
+                task.port(port_item.text) 
             end
         end
 
