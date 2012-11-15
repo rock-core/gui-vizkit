@@ -672,7 +672,6 @@ module Vizkit
 
             #do not encode the object because 
             #the port is only a temporary object!
-            puts "#{object} #{object.name} #{object.class}"
             encode_data(item,object.class)
             encode_data(item2,object.class)
 
