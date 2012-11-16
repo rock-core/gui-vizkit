@@ -299,6 +299,10 @@ module Vizkit
         # Finally, if set to a string, the output is always enabled and uses the
         # provided file name.
         attr_accessor :port_proxy_log
+
+        # Allow to set the vizkit3d widget to a custom one. If it is not set by the
+        # user Vizkit will automatically create one if accessed.
+        attr_accessor :vizkit3d_widget
     end
     @vizkit3d_transformer_broadcaster_name = ['transformer_broadcaster', 'configuration_state']
     @port_proxy_log = nil
