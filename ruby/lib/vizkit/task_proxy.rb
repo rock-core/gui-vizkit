@@ -20,7 +20,7 @@ module Vizkit
                 @default_policy = value
             end
         end
-        ReaderWriterProxy.default_policy = {:pull => false,:init => true,:port_proxy_periodicity => 0.125,:port_proxy => "port_proxy"}
+        ReaderWriterProxy.default_policy = {:pull => false,:init => true,:port_proxy_periodicity => 0.125,:port_proxy => "/port_proxy"}
 
         #the type of the port is determining if the object is a reader or writer
         #to automatically set up a orogen port proxy task set the hash value :port_proxy to the name of the port_proxy task
@@ -71,7 +71,7 @@ module Vizkit
                 #we do not have to do this every time because the proxy is disconnecting
                 #every one if a port gets invalid therefor the first time is enough 
                 if @__orogen_port_proxy && !@__proxy_connected 
-                    if @__orogen_port_proxy.isConnected(port.task.name,port.name)
+                    if @__orogen_port_proxy.isConnected(port.task.basename,port.name)
                         @__proxy_connected = true
                     else
                         false
@@ -87,12 +87,12 @@ module Vizkit
             return @__reader_writer if connected?
             return nil if @__reader_writer  #just wait for the proxy to reconnect
             proxy = @__orogen_port_proxy && @__orogen_port_proxy.reachable? 
-            proxing = proxy && @__orogen_port_proxy.isProxingPort(@__port.task.name,@__port.name)
+            proxing = proxy && @__orogen_port_proxy.isProxingPort(@__port.task.basename,@__port.name)
             port = if proxing || (proxy &&  @__port.__output?)
                        begin 
                            #check if the port_proxy is already proxing the port 
                            if proxing  
-                               port_name = @__orogen_port_proxy.getOutputPortName(@__port.task.name,@__port.name)
+                               port_name = @__orogen_port_proxy.getOutputPortName(@__port.task.basename,@__port.name)
                                raise 'cannot get proxy port name for task' unless port_name
                                @__orogen_port_proxy.port(port_name)
                            else
@@ -300,7 +300,7 @@ module Vizkit
         #or raises an error if the task is not reachable
         def to_orocos_port
             port = __port
-            raise "Cannot return Orocos Port because task #{task.name} is not reachable" if !port
+            raise "Cannot return Orocos Port because task #{task.basename} is not reachable" if !port
             port
         end
 
@@ -374,14 +374,14 @@ module Vizkit
         end
 
         def connect_to(port,policy = Hash.new)
-            raise "Cannot connect port #{full_name} to #{full_name} because task #{task.name} is not reachable!" if !task.reachable?
-            raise "Cannot connect port #{full_name} to #{full_name} because task #{port.task.name} is not reachable!" if !port.task.reachable?
+            raise "Cannot connect port #{full_name} to #{full_name} because task #{task.basename} is not reachable!" if !task.reachable?
+            raise "Cannot connect port #{full_name} to #{full_name} because task #{port.task.basename} is not reachable!" if !port.task.reachable?
             __port.connect_to(port,policy)
         end
 
         def disconnect_from(port,policy = Hash.new)
-            raise "Cannot disconnect port #{full_name} from #{full_name} because task #{task.name} is not reachable!" if !task.ping
-            raise "Cannot disconnect port #{full_name} from #{full_name} because task #{port.task.name} is not reachable!" if !port.task.reachable?
+            raise "Cannot disconnect port #{full_name} from #{full_name} because task #{task.basename} is not reachable!" if !task.ping
+            raise "Cannot disconnect port #{full_name} from #{full_name} because task #{port.task.basename} is not reachable!" if !port.task.reachable?
             __port.disconnect_from(port)
         end
 
@@ -411,7 +411,7 @@ module Vizkit
                         end
                     end
                 else
-                    Vizkit.warn "Task #{task().name} has no port #{name}. This can happen for tasks with dynamic ports."
+                    Vizkit.warn "Task #{task().basename} has no port #{name}. This can happen for tasks with dynamic ports."
                     __invalidate
                 end
             end
@@ -506,10 +506,10 @@ module Vizkit
         def initialize(task_name,options=Hash.new,&block)
             if task_name.is_a?(Orocos::TaskContext) || task_name.is_a?(Orocos::Log::TaskContext)
                 @__task = task_name if task_name.is_a? Orocos::Log::TaskContext
-                task_name = task_name.name
+                task_name = task_name.basename
             elsif task_name.is_a? TaskProxy
                 @__task = task_name.instance_variable_get(:@__task)
-                task_name = task_name.name
+                task_name = task_name.basename
             end
             @__task_name = task_name
             @__connection_code_block = block

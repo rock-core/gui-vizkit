@@ -20,10 +20,10 @@ module Orocos
                 raise "Port #{port.full_name} cannot be proxied because it is not an OutputPort"
             end
 
-            if !isProxingPort(port.task.name,port.name)
+            if !isProxingPort(port.task.basename,port.name)
                 load_plugins_for_type(port.orocos_type_name)
                 con = Types::PortProxy::ProxyConnection.new
-                con.task_name = port.task.name
+                con.task_name = port.task.basename
                 con.port_name = port.name
                 con.type_name = port.orocos_type_name
                 con.periodicity = options[:periodicity]
@@ -35,7 +35,7 @@ module Orocos
                 Orocos.info "Task #{name}: Create port_proxy port for #{port.full_name}."
             end
 
-            port_out = self.port(getOutputPortName(port.task.name,port.name))
+            port_out = self.port(getOutputPortName(port.task.basename,port.name))
             if  port_out.orocos_type_name != port.orocos_type_name
                 raise "Task #{name} cannot proxy port #{name} because the already existing proxy port has a different type!"
             end
@@ -43,7 +43,7 @@ module Orocos
         end
 
         def delete_proxy_port(port)
-            if closeProxyConnection(port.task.name,port.name)
+            if closeProxyConnection(port.task.basename,port.name)
                 Vizkit.info "Delete connection #{port.full_name}"
             else
                 Vizkit.warn "Cannot delete connection #{port.full_name}"
@@ -51,10 +51,10 @@ module Orocos
         end
 
         def delete_proxy_ports_for_task(task)
-            if closeProxyConnection(port.task.name,"")
-                Vizkit.info "Delete connection for#{port.task.name}"
+            if closeProxyConnection(port.task.basename,"")
+                Vizkit.info "Delete connection for#{port.task.basename}"
             else
-                Vizkit.warn "Cannot delete connection #{port.task.name}"
+                Vizkit.warn "Cannot delete connection #{port.task.basename}"
             end
         end
 
@@ -74,7 +74,7 @@ module Orocos
         def port_full_name(port)
             #we have to generate the name by our self because subfield name have a different 
             #full_name but we want to use the same port of the port proxy
-            full_name = "#{port.task.name}_#{port.name}"
+            full_name = "#{port.task.basename}_#{port.name}"
         end
 
         #loads the plugins (typekit,transport) into the proxy
@@ -108,7 +108,7 @@ module Orocos
         #returns true if the proxy is proxing the given port
         #returns false if the proxy is not proxing the given port 
         def proxy_port?(port)
-            return false if !isProxingPort(port.task.name,port.name)
+            return false if !isProxingPort(port.task.basename,port.name)
             true
         end
     end
