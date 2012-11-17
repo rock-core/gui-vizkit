@@ -476,7 +476,7 @@ module Vizkit
             end
             object.tasks.each do |task|
                 next if !task.used?
-                update_task_proxy(task,parent_item,read_from_model,row)
+                update_log_task_context(task,parent_item,read_from_model,row)
                 row += 1
             end
         end
@@ -597,15 +597,10 @@ module Vizkit
             encode_data(item2,object)
 
             row = 0
-            object.each_input_port do |port|
-                next unless port.used?
-                update_input_port(port,item,read_from_model,row)
-                row += 1
-            end
             object.each_output_port do |port|
                 next unless port.used?
                 next if !enable_tooling && port.name == "state"
-                update_output_port(port,item,read_from_model,row)
+                update_log_output_port(port,item,read_from_model,row)
                 row += 1
             end
 
@@ -614,7 +609,7 @@ module Vizkit
                 row = 0
                 item3.setText("Properties")
                 object.each_property do |property|
-                    update_property(property,item3,read_from_model,row)
+                    update_log_property(property,item3,read_from_model,row)
                     row += 1
                 end
             end
