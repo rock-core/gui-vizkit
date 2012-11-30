@@ -4,7 +4,7 @@ module Vizkit
     extend Logger::Root('Vizkit', Logger::WARN)
 
     #register mapping to find plugins for a specific object
-    PluginHelper.register_map_obj("Orocos::OutputPort","Orocos::Log::OutputPort","Vizkit::PortProxy","Orocos::InputPort") do |port|
+    PluginHelper.register_map_obj("Orocos::Async::PortProxy","Orocos::InputPort", "Orocos::OutputPort") do |port|
         if port.respond_to? :type_name
             a = PluginHelper.normalize_obj(port.type_name)
             a.delete("Object")
@@ -12,7 +12,7 @@ module Vizkit
             a
         end
     end
-    PluginHelper.register_map_obj("Orocos::TaskContext","Vizkit::TaskProxy") do |task|
+    PluginHelper.register_map_obj("Orocos::TaskContext") do |task|
         PluginHelper.classes(task.model) if task.respond_to?(:model) && task.model
     end
 
@@ -127,36 +127,7 @@ module Vizkit
             GC.start
         end
         gc_timer.start(5000)
-
-        if !ReaderWriterProxy.default_policy[:port_proxy]
-            $qApp.exec
-        elsif Orocos::CORBA.initialized?
-            proxy = ReaderWriterProxy.default_policy[:port_proxy] 
-            proxy.__change_name("port_proxy_#{ENV["USERNAME"]}_#{Process.pid}")
-            output = if @port_proxy_log.respond_to?(:to_str)
-                         @port_proxy_log
-                     elsif @port_proxy_log || (@port_proxy_log.nil? && Vizkit.logger.level < Logger::WARN)
-                         "%m-%p.txt"
-                     else
-                         "/dev/null"
-                     end
-            Orocos.run "port_proxy::Task" => proxy.name, :output => output do
-                proxy.start
-                #wait unti the proxy is running 
-                1.upto(3) do 
-		    break if proxy.running?
-                    sleep(0.3333)
-                end
-                if proxy.running?
-                    $qApp.exec
-                else
-                    Vizkit.error "Cannot communicate with task #{proxy.name}"
-                    Vizkit.error "... I give up"
-                end
-            end
-        else
-            $qApp.exec
-        end
+        $qApp.exec
         gc_timer.stop
     end
 
@@ -266,10 +237,8 @@ module Vizkit
         if widget.kind_of?(Hash)
             widget, options = nil, widget
         end
-        connection = OQConnection.new(task_name, port_name, options, widget, &block)
-        connection.connect
-        Vizkit.connections << connection 
-        connection 
+        port = Orocos::Async.proxy(task_name).port(port_name)
+        port.connect_to widget,options,&block
     end
 
     @connections = Array.new

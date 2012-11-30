@@ -104,9 +104,9 @@ end
 
 Vizkit::UiLoader.register_ruby_widget("TaskInspector",TaskInspector.method(:create_widget))
 Vizkit::UiLoader.register_default_widget_for("TaskInspector",Orocos::TaskContext,:config)
-Vizkit::UiLoader.register_default_widget_for("TaskInspector",Vizkit::TaskProxy,:config)
+#Vizkit::UiLoader.register_default_widget_for("TaskInspector",Vizkit::TaskProxy,:config)
 Vizkit::UiLoader.register_default_widget_for("TaskInspector",Orocos::Log::TaskContext,:config)
 Vizkit::UiLoader.register_default_control_for("TaskInspector",Orocos::TaskContext,:config)
-Vizkit::UiLoader.register_default_control_for("TaskInspector",Vizkit::TaskProxy,:config)
+#Vizkit::UiLoader.register_default_control_for("TaskInspector",Vizkit::TaskProxy,:config)
 
 Vizkit::UiLoader.register_deprecate_plugin_clone("task_inspector","TaskInspector")

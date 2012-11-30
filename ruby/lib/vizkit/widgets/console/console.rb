@@ -328,9 +328,9 @@ module Vizkit
     end
     UiLoader.register_ruby_widget("Console",Console.method(:new))
     UiLoader.register_widget_for("Console",Orocos::TaskContext,:add_obj)
-    UiLoader.register_widget_for("Console",Vizkit::TaskProxy,:add_obj)
+#    UiLoader.register_widget_for("Console",Vizkit::TaskProxy,:add_obj)
     UiLoader.register_widget_for("Console",Orocos::Log::TaskContext,:add_obj)
     UiLoader.register_widget_for("Console",Typelib::Type,:add_dynamic_obj)
     UiLoader.register_control_for("Console",Orocos::TaskContext,:add_obj)
-    UiLoader.register_control_for("Console",Vizkit::TaskProxy,:add_obj)
+#    UiLoader.register_control_for("Console",Vizkit::TaskProxy,:add_obj)
 end
