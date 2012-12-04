@@ -1,7 +1,8 @@
 #!/usr/bin/env ruby
 
-require 'orocos'
+require 'orocos/async'
 require 'orocos/log'
+
 require File.join('vizkit','plugin_accessor.rb')
 require File.join('vizkit','typelib_qt_adapter')
 require File.join('vizkit','plugin')

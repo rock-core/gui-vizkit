@@ -1,7 +1,7 @@
 module Orocos
     class OutputPort
         alias :org_connect_to :connect_to
-        remove_method :connect_to
+        #remove_method :connect_to
 
         def connect_to(widget=nil, options = Hash.new,&block)
             widget,options = if widget.is_a?(Hash)
@@ -30,9 +30,6 @@ module Orocos
     end
 
     class Async::PortProxy
-        #alias :org_connect_to :connect_to
-        #remove_method :connect_to,:disconnect_from
-
         def connect_to(widget=nil, options = Hash.new,&block)
             widget,options = if widget.is_a?(Hash)
                                  [nil,widget]
@@ -61,14 +58,15 @@ module Orocos
                                   end
                               end
 
-            raise ArgumentError "cannot connect to #{widget} and code block at the same time." if callback && block
-            raise ArgumentError "cannot connect to #{widget}. no callback." if !callback && widget
+            raise ArgumentError, "cannot connect to #{widget} and code block at the same time." if callback && block
+            raise ArgumentError, "cannot connect to #{widget}. no callback." if !callback && widget
 
             if(widget.respond_to?(:config) && widget.config(self,options,&block) == :do_not_connect)
                 Vizkit.info "Disable auto connect for widget #{widget} because config returned :do_not_connect"
+                nil
             else
                 callback ||= block
-                raise ArgumentError "cannot connect. no code block." if !callback
+                raise ArgumentError, "cannot connect. no code block." if !callback
 
                 Vizkit.info "Create new Connection for #{name} and #{widget || callback}"
                 on_data do |data|

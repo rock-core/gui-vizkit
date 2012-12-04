@@ -127,6 +127,14 @@ module Vizkit
             GC.start
         end
         gc_timer.start(5000)
+
+        timer = Qt::Timer.new
+        timer.connect SIGNAL("timeout()") do
+            Orocos::Async.step
+            Thread.pass
+        end
+        timer.start 10
+
         $qApp.exec
         gc_timer.stop
     end
@@ -135,8 +143,21 @@ module Vizkit
         $qApp.processEvents
     end
 
+    def self.step
+        $qApp.processEvents
+        Orocos::Async.step
+    end
+
     def self.load(ui_file,parent = nil)
         default_loader.load(ui_file,parent)
+    end
+
+    def self.proxy(name,options=Hash.new)
+        Orocos::Async.proxy name,options
+    end
+
+    def self.get(name,options=Hash.new)
+        Orocos::Async.get name,options
     end
 
     def self.disconnect_from(handle)
