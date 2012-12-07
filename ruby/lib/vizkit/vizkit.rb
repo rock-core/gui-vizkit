@@ -4,13 +4,8 @@ module Vizkit
     extend Logger::Root('Vizkit', Logger::WARN)
 
     #register mapping to find plugins for a specific object
-    PluginHelper.register_map_obj("Orocos::Async::PortProxy","Orocos::InputPort", "Orocos::OutputPort") do |port|
-        if port.respond_to? :type_name
-            a = PluginHelper.normalize_obj(port.type_name)
-            a.delete("Object")
-            a.delete("BasicObject")
-            a
-        end
+    PluginHelper.register_map_obj("Orocos::Async::PortProxy","Orocos::Async::SubPortProxy","Orocos::InputPort", "Orocos::OutputPort") do |port|
+        PluginHelper.normalize_obj(port.type_name)-["Object","BasicObject"]
     end
     PluginHelper.register_map_obj("Orocos::TaskContext") do |task|
         PluginHelper.classes(task.model) if task.respond_to?(:model) && task.model
@@ -97,10 +92,6 @@ module Vizkit
         widget
     end
 
-    def self.connections
-        @connections
-    end
-
     class ShortCutFilter < Qt::Object
         def eventFilter(obj,event)
             if event.is_a?(Qt::KeyEvent)
@@ -160,85 +151,14 @@ module Vizkit
         Orocos::Async.get name,options
     end
 
-    def self.disconnect_from(handle)
-        if handle.is_a? Qt::Object 
-            @connections.delete_if do |connection|
-                if connection.widget.is_a?(Qt::Object) && connection.widget.objectName && handle.findChild(Qt::Widget,connection.widget.objectName)
-                    connection.disconnect
-                    true
-                else
-                    if(connection.widget == handle)
-                        connection.disconnect
-                        true
-                    else
-                        false
-                    end
-                end
-            end
-        else
-            @connections.delete_if do |connection|
-                if connection.port == handle
-                    connection.disconnect
-                    true
-                else
-                    false
-                end
-            end
-        end
-    end
-
     def self.connect_all()
         @connections.each do |connection|
             connection.connect
         end
     end
 
-    def self.reconnect_all()
-        @connections.each do |connection|
-            connection.reconnect()
-        end
-    end
-
-    #reconnects all connection to the widget and its children
-    #even if the connection is still alive
-    def self.reconnect(widget,force=false)
-        if widget.is_a?(Qt::Object)
-            @connections.each do |connection|
-                if connection.widget.is_a?(Qt::Object) && widget.findChild(Qt::Object,connection.widget.objectName)
-                    connection.reconnect
-                end
-            end
-        else
-            @connections.each do |connection|
-                connection.reconnect if connection.widget == widget
-            end
-        end
-    end
-
-    #connects all connection to the widget and its children
-    #if the connection is not responding
-    def self.connect(widget)
-        if widget.is_a?(Qt::Object)
-            @connections.each do |connection|
-                if connection.widget.is_a?(Qt::Object) 
-                    if connection.objectName() && widget.findChild(Qt::Object,connection.widget.objectName) || connection.widget == widget
-                        connection.connect
-                    end
-                end
-            end
-        else
-            @connections.each do |connection|
-                connection.connect if connection.widget == widget
-            end
-        end
-    end
-
     #disconnects all connections to widgets 
     def self.disconnect_all
-        @connections.each do |connection|
-            connection.disconnect
-        end
-        @connections = Array.new
     end
 
     # call-seq:
@@ -262,7 +182,6 @@ module Vizkit
         port.connect_to widget,options,&block
     end
 
-    @connections = Array.new
     @vizkit_local_options = {:widget => nil,:reuse => true,:parent =>nil,:widget_type => :display}
 
     class << self

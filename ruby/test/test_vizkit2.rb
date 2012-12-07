@@ -53,7 +53,7 @@ describe Vizkit do
         it "should raise if a connection is setup to widget but the type name is unknown" do
             w = Vizkit.default_loader.StructViewer
             t = Vizkit.proxy "test"
-            assert_raises ArgumentError do 
+            assert_raises Orocos::NotFound do
                 con = t.port("bla").connect_to w
             end
         end
@@ -61,7 +61,7 @@ describe Vizkit do
         it "should setup a connection between a port and a widget" do
             w = Vizkit.default_loader.ImageView
             t = Vizkit.proxy "test"
-            con = t.port("bla",:type_name => "/base/samples/frame/Frame").connect_to w
+            con = t.port("bla",:type => Types::Base::Samples::Frame::Frame).connect_to w
             con.must_be_kind_of Orocos::Async::PortProxy
         end
     end
@@ -107,6 +107,60 @@ describe Vizkit do
             end
             assert widget.sample
             (widget.sample.time-sample.time).must_be_within_delta 1e-6
+        end
+
+        it "should automatically find the right widget and connect it" do 
+            t1 = Vizkit.proxy("task",:retry_period => 0.08,:period => 0.1)
+            p = t1.port("position")
+
+            sleep 0.1
+            Orocos::Async.step
+            sleep 0.1
+            Orocos::Async.step
+            sleep 0.1
+            Orocos::Async.step
+
+            w = Vizkit.display p
+            w.must_be_instance_of Qt::Widget
+        end
+
+        it "should emulate sub fields as sub ports" do 
+            t1 = Vizkit.proxy("task",:retry_period => 0.08,:period => 0.1,:wait=>true)
+            p = t1.port("position",:wait => true)
+            sub = p.sub_port(:position)
+            data = nil
+            sub.on_data do |sample|
+                data = sample
+            end
+            sleep 0.1
+            port.write port.new_sample
+            Orocos::Async.step
+            sleep 0.1
+            Orocos::Async.step
+            sleep 0.1
+            Orocos::Async.step
+            assert data
+
+            w = Vizkit.display sub
+            w.must_be_instance_of Qt::Widget
+        end
+
+        it "should connect to ports when reachable" do 
+            data = nil
+            Vizkit.connect_port_to "task","position" do |sample,_|
+                data = sample
+            end
+            Orocos::Async.step
+            sleep 0.1
+            Orocos::Async.step
+            sleep 0.1
+            Orocos::Async.step
+            port.write port.new_sample
+            sleep 0.1
+            Orocos::Async.step
+            sleep 0.1
+            Orocos::Async.step
+            assert data
         end
     end
 end
