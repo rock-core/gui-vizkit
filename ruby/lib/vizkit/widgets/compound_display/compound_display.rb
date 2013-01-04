@@ -9,10 +9,30 @@ class CompoundDisplay < Qt::Widget
 
     slots 'save()', 'setWidget(int, QString, QWidget)'
         
+    # Config hash: {<position> => <config_object>}
+    attr_reader :config_hash
+            
     def initialize(parent=nil)
         super
         @gui = Vizkit.load(File.join(File.dirname(__FILE__),'compound_display.ui'),self)
+        @config_hash = Hash.new
         self
+    end
+    
+    def configure(pos, config)
+        raise "Unsupported config format: #{config.class}. Expecting CompoundDisplayConfig." if not config.is_a? CompoundDisplayConfig
+        @config_hash[pos] = config
+        connect(pos)
+    end
+    
+    def connect(pos)
+        config = @config_hash[pos]
+        Vizkit.info "Connecting #{config.task}.#{config.port} to #{config.widget} #{config.pull ? "config:pull" : ""}"
+        widget = Vizkit.default_loader.send(config.widget)
+        widget.set_parent(@gui.send("widget_#{pos}")) # place widget at desired position
+        Vizkit.info "Got widget #{widget}"
+        widget.show
+        Vizkit.connect_port_to(config.task, config.port, config.widget, :pull => config.pull)
     end
     
     def save
@@ -26,6 +46,19 @@ class CompoundDisplay < Qt::Widget
         puts "DEBUG: Displaying src: #{src} at position #{pos} in widget #{widget}"
     end
 
+end
+
+# Configuration model for one element of the CompoundDisplay.
+# You need one config object for each element.
+class CompoundDisplayConfig
+    attr_accessor :task, :port, :widget, :pull
+    
+    def initialize(task, port, widget, pull)
+        @task = task # string
+        @port = port # string
+        @widget = widget
+        @pull = pull # bool
+    end
 end
 
 Vizkit::UiLoader.register_ruby_widget("CompoundDisplay",CompoundDisplay.method(:new))
