@@ -30,10 +30,10 @@
       </widget>
      </item>
      <item row="1" column="2">
-      <widget class="QWidget" name="widget_3" native="true"/>
+      <widget class="QWidget" name="widget_2" native="true"/>
      </item>
      <item row="1" column="1">
-      <widget class="QWidget" name="widget_2" native="true"/>
+      <widget class="QWidget" name="widget_1" native="true"/>
      </item>
      <item row="2" column="2">
       <widget class="QLabel" name="label_6">
@@ -49,7 +49,7 @@
       </widget>
      </item>
      <item row="1" column="0">
-      <widget class="QWidget" name="widget_1" native="true"/>
+      <widget class="QWidget" name="widget_0" native="true"/>
      </item>
      <item row="0" column="1">
       <widget class="QLabel" name="label_2">
@@ -104,13 +104,13 @@
       </widget>
      </item>
      <item row="3" column="0">
-      <widget class="QWidget" name="widget_4" native="true"/>
+      <widget class="QWidget" name="widget_3" native="true"/>
      </item>
      <item row="3" column="1">
-      <widget class="QWidget" name="widget_5" native="true"/>
+      <widget class="QWidget" name="widget_4" native="true"/>
      </item>
      <item row="3" column="2">
-      <widget class="QWidget" name="widget_6" native="true"/>
+      <widget class="QWidget" name="widget_5" native="true"/>
      </item>
     </layout>
    </item>
