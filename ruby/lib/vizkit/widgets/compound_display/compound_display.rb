@@ -1,4 +1,5 @@
 require 'vizkit'
+require 'yaml'
 
 # Compound widget for displaying up to six visualization widgets in a 3x2 grid.
 # Grid 'layouts', i.e. specific position configurations, can be saved to and
@@ -11,10 +12,11 @@ require 'vizkit'
 # @author Allan Conquest <allan.conquest@dfki.de>
 class CompoundDisplay < Qt::Widget
 
-    slots 'save()', 'setWidget(int, QString, QWidget)'
-    
+    slots 'configure_by_yaml(QString)', 'save_yaml(QString)'
+
     # Config hash: {<position> => <config_object>}
     attr_reader :config_hash
+    
     # Flag whether to display the load / save configuration buttons.
     attr_reader :show_menu
             
@@ -28,11 +30,27 @@ class CompoundDisplay < Qt::Widget
         show_menu(true)
         layout.add_widget(@gui)
         @config_hash = Hash.new
+        
+        ## Configure configuration import / export
+        @gui.load_button.connect(SIGNAL :clicked) do
+            @config_load_path = Qt::FileDialog.getOpenFileName(self, "Open configuration file", ".", "YAML Files (*.yml *.yaml)")
+            if @config_load_path
+                configure_by_yaml(@config_load_path)
+            end
+        end
+        
+        @gui.save_button.connect(SIGNAL :clicked) do
+            @config_save_path = Qt::FileDialog.getSaveFileName(self, "Save configuration file", "./myconfig.yml", "YAML Files (*.yml *.yaml)")
+            if @config_save_path
+                save_yaml(@config_save_path)
+            end
+        end
+        
         self
     end
     
     def configure(pos, config)
-        raise "Unsupported config format: #{config.class}. Expecting CompoundDisplayConfig." if not config.is_a? CompoundDisplayConfig
+        Kernel.raise "Unsupported config format: #{config.class}. Expecting CompoundDisplayConfig." unless config.is_a? CompoundDisplayConfig
         @config_hash[pos] = config
         #connect(pos) # TODO COMMENT IN AGAIN!!!
     end
@@ -62,13 +80,35 @@ class CompoundDisplay < Qt::Widget
         widget.show
         port.connect_to(widget)
     end
-    def save
-        puts "DEBUG: Saving configuration"
+    
+    # Import yaml from file. Update all submitted elements at once (not necessarily every element of the CompoundDisplay).
+    # TODO specify format.
+    def configure_by_yaml(path)
+        ctr = 0
+        begin        
+            @config_hash = YAML.load_stream(open(path))
+            @config_hash.each do |idx,config|
+                #configure idx, config
+                connect idx
+            end
+        rescue Exception => e
+            Vizkit.error "A problem occured while trying to open '#{path}': \n#{e.message}"
+            
+            Vizkit.error e.backtrace.inspect  
+        end
     end
     
-    def set_widget(src, pos, widget=nil)
-        puts "DEBUG: Displaying src: #{src} at position #{pos} in widget #{widget}"
-        # TODO deprecated?
+    
+    def configure_by_yaml_string
+        # TODO import from yaml string.
+    end
+    
+    def save_yaml(path)
+        begin
+            File.open(path, "w") {|f| f.write(@config_hash.to_yaml) }
+        rescue Exception => e
+            Vizkit.error "A problem occured while trying to write configuration to '#{path}': \n#{e.message}"
+        end
     end
     
     def show_menu(flag)
@@ -82,7 +122,7 @@ end
 # Configuration model for one element of the CompoundDisplay.
 # You need one config object for each element.
 class CompoundDisplayConfig
-    attr_accessor :task, :port, :widget, :pull
+    attr_reader :task, :port, :widget, :pull
     
     def initialize(task, port, widget, pull)
         @task = task # string
