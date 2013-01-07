@@ -15,6 +15,8 @@ class CompoundDisplay < Qt::Widget
     
     # Config hash: {<position> => <config_object>}
     attr_reader :config_hash
+    # Flag whether to display the load / save configuration buttons.
+    attr_reader :show_menu
             
     def initialize(parent=nil)
         super
@@ -23,6 +25,7 @@ class CompoundDisplay < Qt::Widget
         layout = Qt::HBoxLayout.new
         set_layout(layout)
         @gui = Vizkit.load(File.join(File.dirname(__FILE__),'compound_display.ui'),self)
+        show_menu(true)
         layout.add_widget(@gui)
         @config_hash = Hash.new
         self
@@ -31,14 +34,17 @@ class CompoundDisplay < Qt::Widget
     def configure(pos, config)
         raise "Unsupported config format: #{config.class}. Expecting CompoundDisplayConfig." if not config.is_a? CompoundDisplayConfig
         @config_hash[pos] = config
-        connect(pos)
+        #connect(pos) # TODO COMMENT IN AGAIN!!!
     end
     
     def connect(pos)
         config = @config_hash[pos]
         Vizkit.info "Connecting #{config.task}.#{config.port} to #{config.widget} #{config.pull ? "config:pull" : ""}"
         widget = Vizkit.default_loader.send(config.widget)
-        widget.set_parent(@gui.send("widget_#{pos}")) # place widget at desired position
+        parentw = @gui.send("widget_#{pos}")
+        parentw.layout.add_widget(widget)
+        label = @gui.send("label_#{pos}")
+        label.set_text("#{port.task.name}.#{port.name}")
         Vizkit.info "Got widget #{widget}"
         widget.show
         Vizkit.connect_port_to(config.task, config.port, config.widget, :pull => config.pull)
@@ -51,6 +57,8 @@ class CompoundDisplay < Qt::Widget
         widget = Vizkit.default_loader.send(config.widget)
         parentw = @gui.send("widget_#{pos}")
         parentw.layout.add_widget(widget)
+        label = @gui.send("label_#{pos}")
+        label.set_text("#{port.task.name}.#{port.name}")
         widget.show
         port.connect_to(widget)
     end
@@ -61,6 +69,12 @@ class CompoundDisplay < Qt::Widget
     def set_widget(src, pos, widget=nil)
         puts "DEBUG: Displaying src: #{src} at position #{pos} in widget #{widget}"
         # TODO deprecated?
+    end
+    
+    def show_menu(flag)
+        @show_menu = flag
+        @gui.config_menu.set_visible(flag)
+        update
     end
 
 end
