@@ -4,17 +4,26 @@ require 'vizkit'
 # Grid 'layouts', i.e. specific position configurations, can be saved to and
 # restored from YAML files.
 #
+# Widget positions:
+#   0 1 2
+#   3 4 5
+#
 # @author Allan Conquest <allan.conquest@dfki.de>
 class CompoundDisplay < Qt::Widget
 
     slots 'save()', 'setWidget(int, QString, QWidget)'
-        
+    
     # Config hash: {<position> => <config_object>}
     attr_reader :config_hash
             
     def initialize(parent=nil)
         super
+        set_window_title("CompoundDisplay")
+        resize(600,400)
+        layout = Qt::HBoxLayout.new
+        set_layout(layout)
         @gui = Vizkit.load(File.join(File.dirname(__FILE__),'compound_display.ui'),self)
+        layout.add_widget(@gui)
         @config_hash = Hash.new
         self
     end
@@ -35,15 +44,23 @@ class CompoundDisplay < Qt::Widget
         Vizkit.connect_port_to(config.task, config.port, config.widget, :pull => config.pull)
     end
     
+    def connect_port_object(pos, port)
+        # TODO port is a real task context port object. may be problematic with qt slots.
+        #      only for debugging at the moment ...
+        config = @config_hash[pos]
+        widget = Vizkit.default_loader.send(config.widget)
+        parentw = @gui.send("widget_#{pos}")
+        parentw.layout.add_widget(widget)
+        widget.show
+        port.connect_to(widget)
+    end
     def save
         puts "DEBUG: Saving configuration"
     end
     
-    # position layout:
-    #   0 1 2
-    #   3 4 5
     def set_widget(src, pos, widget=nil)
         puts "DEBUG: Displaying src: #{src} at position #{pos} in widget #{widget}"
+        # TODO deprecated?
     end
 
 end
