@@ -2,10 +2,11 @@ require 'vizkit'
 require 'yaml'
 
 # Compound widget for displaying up to six visualization widgets in a 3x2 grid.
-# Grid 'layouts', i.e. specific position configurations, can be saved to and
-# restored from YAML files.
+# Specific position configurations, e.g. which port gets displayed in which widget
+# at which position) can be saved to and restored from YAML files. You need one 
+# configuration object for each element.
 #
-# Widget positions:
+# Widget position layout:
 #   0 1 2
 #   3 4 5
 #
@@ -70,12 +71,18 @@ class CompoundDisplay < Qt::Widget
         self
     end
     
+    # Selective configuration of one element at position +pos+.
+    # The connection is being established automatically with respect
+    # to the configuration.
+    #
+    # +config+ is a CompoundDisplayConfig object.
     def configure(pos, config)
         Kernel.raise "Unsupported config format: #{config.class}. Expecting CompoundDisplayConfig." unless config.is_a? CompoundDisplayConfig
         @config_hash[pos] = config
         connect(pos)
     end
     
+    # Establish a connection between the port and widget specified in config for element at +pos+.
     def connect(pos)
         config = @config_hash[pos]
         Vizkit.info "Connecting #{config.task}.#{config.port} to #{config.widget} #{config.pull ? "config:pull" : ""}"
@@ -100,30 +107,43 @@ class CompoundDisplay < Qt::Widget
         end
     end
     
+    # Close a connection between the port and widget specified in config for element at +pos+.
     def disconnect(pos)
         config = @config_hash[pos]
         Vizkit.disconnect_from config.task
+        
+        # Destroy old widget 
         @widget_hash[pos].set_parent(nil)
         @widget_hash[pos] = nil
     end
     
-    #def connect_port_object(pos, port)
-    #    # TODO port is a real task context port object. may be problematic with qt slots.
-    #    #      only for debugging at the moment ...
-    #    config = @config_hash[pos]
-    #    widget = Vizkit.default_loader.send(config.widget)
-    #    parentw = @gui.send("widget_#{pos}")
-    #    parentw.layout.add_widget(widget)
-    #    label = @gui.send("label_#{pos}")
-    #    label.set_text("#{port.task.name}.#{port.name}")
-    #    widget.show
-    #    port.connect_to(widget)
-    #end
-    
-    # Import yaml from file. Update all submitted elements at once (not necessarily every element of the CompoundDisplay).
-    # TODO specify format.
+    # Import configuration from YAML file located at +path+.
+    #
+    # TODO: Currently, the whole configuration will be replaced.
+    #
+    # The format of the yaml file is as follows:
+    #
+    #   ---
+    #   <pos>: !ruby/object:CompoundDisplayConfig
+    #     task: <task name>
+    #     port: <port name>
+    #     widget: <widget name>
+    #     pull: <pulled connection?>
+    #   
+    #   <pos>: !ruby/object:CompoundDisplayConfig
+    #     task: <task name>
+    #     ...
+    #
+    # Example for the 4th element (bottom center):
+    #   
+    #   ---
+    #   4: !ruby/object:CompoundDisplayConfig
+    #     task: front_camera
+    #     port: frame
+    #     widget: ImageView
+    #     pull: false
+    #
     def configure_by_yaml(path)
-        ctr = 0
         begin   
             # disconnect ports of old configuration     
             @config_hash.each do |idx,config|
@@ -145,14 +165,20 @@ class CompoundDisplay < Qt::Widget
     end
     
     
-    def configure_by_yaml_string
-        # TODO import from yaml string.
-    end
+    #def configure_by_yaml_string
+    #    # TODO import from yaml string.
+    #end
     
+    # Enables display of data from logs.
+    # +log_replay+ is the Orocos::Log::Replay object you get when you open a logfile.
+    #
+    # TODO Currently, there is no support for a mixed display of live and log data.
+    #
     def replay_mode(log_replay)
         @replayer = log_replay
     end
     
+    # Save complete configuration in YAML format to a file located at +path+.
     def save_yaml(path)
         begin
             File.open(path, "w") {|f| f.write(@config_hash.to_yaml) }
@@ -170,7 +196,6 @@ class CompoundDisplay < Qt::Widget
 end
 
 # Configuration model for one element of the CompoundDisplay.
-# You need one config object for each element.
 class CompoundDisplayConfig
     attr_reader :task, :port, :widget, :pull
     
