@@ -5,28 +5,16 @@ Orocos.initialize
 
 widget = Vizkit.default_loader.CompoundDisplay
 
-#[0,1,2,5].each do |num|
-#    widget.configure(num, CompoundDisplayConfig.new("front_camera", "frame", "ImageView", false))
-#end
-
-
-
-
-replay = Orocos::Log::Replay.open(ARGV[0])
-
-#task = Orocos.name_service.get 'front_camera'
-
-#widget.show_menu false
-widget.replay_mode(replay)
-
-#0.upto(5).each do |num|
-    widget.configure(0, CompoundDisplayConfig.new("camera", "frame", "ImageView", false))
-    widget.configure(1, CompoundDisplayConfig.new("uw_portal", "rigid_body_state", "OrientationView", false))
-    #debugger
-    #widget.connect_port_object(num, replay.tasks.first.frame) # TODO access task by string
-#end
-
-Vizkit.control replay
+if ARGV[0]
+    replay = Orocos::Log::Replay.open(ARGV[0])
+    widget.replay_mode(replay)
+    widget.configure_by_yaml("myconfig_avalon_obenlinks.yml")
+    widget.configure(0, CompoundDisplayConfig.new("front_camera", "frame", "ImageView", false))
+    #widget.configure(1, CompoundDisplayConfig.new("uw_portal", "rigid_body_state", "OrientationView", false))
+    Vizkit.control replay
+else
+    widget.configure(5, CompoundDisplayConfig.new("message_producer", "messages", "StructViewer", false))
+end    
 
 widget.show
 Vizkit.exec

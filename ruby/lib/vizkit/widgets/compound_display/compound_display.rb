@@ -76,31 +76,51 @@ class CompoundDisplay < Qt::Widget
             port.connect_to(widget)
         else
             puts "CompoundDisplay: Live mode."
-            Vizkit.connect_port_to(config.task, config.port, config.widget, :pull => config.pull)
+            task = Orocos.name_service.get(config.task)
+            port = task.port(config.port)
+            Vizkit.connect_port_to(task, port, config.widget, :pull => config.pull)
         end
     end
     
-    def connect_port_object(pos, port)
-        # TODO port is a real task context port object. may be problematic with qt slots.
-        #      only for debugging at the moment ...
+    def disconnect(pos)
         config = @config_hash[pos]
-        widget = Vizkit.default_loader.send(config.widget)
-        parentw = @gui.send("widget_#{pos}")
-        parentw.layout.add_widget(widget)
-        label = @gui.send("label_#{pos}")
-        label.set_text("#{port.task.name}.#{port.name}")
-        widget.show
-        port.connect_to(widget)
+        if @replayer
+            task = replayer.task(config.task)
+        else
+            task = Orocos.name_service.get(config.task)
+        end
+        port = task.port(config.port)
+        port.disconnect_all# TODO howto close conenction properly? disconnect_from config.widget ?
     end
+    
+    #def connect_port_object(pos, port)
+    #    # TODO port is a real task context port object. may be problematic with qt slots.
+    #    #      only for debugging at the moment ...
+    #    config = @config_hash[pos]
+    #    widget = Vizkit.default_loader.send(config.widget)
+    #    parentw = @gui.send("widget_#{pos}")
+    #    parentw.layout.add_widget(widget)
+    #    label = @gui.send("label_#{pos}")
+    #    label.set_text("#{port.task.name}.#{port.name}")
+    #    widget.show
+    #    port.connect_to(widget)
+    #end
     
     # Import yaml from file. Update all submitted elements at once (not necessarily every element of the CompoundDisplay).
     # TODO specify format.
     def configure_by_yaml(path)
         ctr = 0
-        begin        
-            @config_hash = YAML.load_stream(open(path))
+        begin   
+            # disconnect ports of old configuration     
+            #@config_hash.each do |idx,config|
+            #    disconnect idx
+            #end
+            
+            # update configuration
+            @config_hash = YAML.load(open(path))
+            
+            # connect ports of new configuration
             @config_hash.each do |idx,config|
-                #configure idx, config
                 connect idx
             end
         rescue Exception => e
