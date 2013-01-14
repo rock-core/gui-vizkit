@@ -20,10 +20,13 @@ class CompoundDisplay < Qt::Widget
     # Flag whether to display the load / save configuration buttons.
     attr_reader :show_menu
     
-    attr_reader :replayer
-            
     def initialize(parent=nil)
         super
+        
+        @widget_hash = {}
+        @disconnected = false
+        @replayer = nil
+        
         set_window_title("CompoundDisplay")
         resize(600,400)
         layout = Qt::HBoxLayout.new
@@ -48,6 +51,22 @@ class CompoundDisplay < Qt::Widget
             end
         end
         
+        @gui.disconnect_button.connect(SIGNAL :clicked) do
+            if not @disconnected
+                @config_hash.each do |idx,_|
+                    disconnect idx
+                end
+                @gui.disconnect_button.set_text("Reconnect all")
+                @disconnected = true
+            else
+                @config_hash.each do |idx,_|
+                    connect idx
+                end
+                @gui.disconnect_button.set_text("Disconnect all")
+                @disconnected = false
+            end
+        end
+        
         self
     end
     
@@ -62,6 +81,7 @@ class CompoundDisplay < Qt::Widget
         Vizkit.info "Connecting #{config.task}.#{config.port} to #{config.widget} #{config.pull ? "config:pull" : ""}"
         widget = Vizkit.default_loader.send(config.widget)
         parentw = @gui.send("widget_#{pos}")
+        @widget_hash[pos] = widget
         parentw.layout.add_widget(widget)
         label = @gui.send("label_#{pos}")
         label.set_text("#{config.task}.#{config.port}")
@@ -69,13 +89,11 @@ class CompoundDisplay < Qt::Widget
         widget.show
         
         if @replayer
-            puts "CompoundDisplay: Replay mode."
-            task = replayer.task(config.task)
+            task = @replayer.task(config.task)
             port = task.port(config.port)
             #Vizkit.connect_port_to(task, port, config.widget, :pull => config.pull)
             port.connect_to(widget)
         else
-            puts "CompoundDisplay: Live mode."
             task = Orocos.name_service.get(config.task)
             port = task.port(config.port)
             Vizkit.connect_port_to(task, port, config.widget, :pull => config.pull)
@@ -84,13 +102,9 @@ class CompoundDisplay < Qt::Widget
     
     def disconnect(pos)
         config = @config_hash[pos]
-        if @replayer
-            task = replayer.task(config.task)
-        else
-            task = Orocos.name_service.get(config.task)
-        end
-        port = task.port(config.port)
-        port.disconnect_all# TODO howto close conenction properly? disconnect_from config.widget ?
+        Vizkit.disconnect_from config.task
+        @widget_hash[pos].set_parent(nil)
+        @widget_hash[pos] = nil
     end
     
     #def connect_port_object(pos, port)
@@ -112,9 +126,9 @@ class CompoundDisplay < Qt::Widget
         ctr = 0
         begin   
             # disconnect ports of old configuration     
-            #@config_hash.each do |idx,config|
-            #    disconnect idx
-            #end
+            @config_hash.each do |idx,config|
+                disconnect idx
+            end
             
             # update configuration
             @config_hash = YAML.load(open(path))

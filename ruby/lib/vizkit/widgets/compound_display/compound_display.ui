@@ -70,6 +70,13 @@
          </widget>
         </item>
         <item>
+         <widget class="QPushButton" name="disconnect_button">
+          <property name="text">
+           <string>Disconnect all</string>
+          </property>
+         </widget>
+        </item>
+        <item>
          <spacer name="horizontalSpacer">
           <property name="orientation">
            <enum>Qt::Horizontal</enum>
