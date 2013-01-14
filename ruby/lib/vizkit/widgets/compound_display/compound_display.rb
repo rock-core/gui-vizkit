@@ -19,6 +19,8 @@ class CompoundDisplay < Qt::Widget
     
     # Flag whether to display the load / save configuration buttons.
     attr_reader :show_menu
+    
+    attr_reader :replayer
             
     def initialize(parent=nil)
         super
@@ -52,7 +54,7 @@ class CompoundDisplay < Qt::Widget
     def configure(pos, config)
         Kernel.raise "Unsupported config format: #{config.class}. Expecting CompoundDisplayConfig." unless config.is_a? CompoundDisplayConfig
         @config_hash[pos] = config
-        #connect(pos) # TODO COMMENT IN AGAIN!!!
+        connect(pos)
     end
     
     def connect(pos)
@@ -62,10 +64,20 @@ class CompoundDisplay < Qt::Widget
         parentw = @gui.send("widget_#{pos}")
         parentw.layout.add_widget(widget)
         label = @gui.send("label_#{pos}")
-        label.set_text("#{port.task.name}.#{port.name}")
+        label.set_text("#{config.task}.#{config.port}")
         Vizkit.info "Got widget #{widget}"
         widget.show
-        Vizkit.connect_port_to(config.task, config.port, config.widget, :pull => config.pull)
+        
+        if @replayer
+            puts "CompoundDisplay: Replay mode."
+            task = replayer.task(config.task)
+            port = task.port(config.port)
+            #Vizkit.connect_port_to(task, port, config.widget, :pull => config.pull)
+            port.connect_to(widget)
+        else
+            puts "CompoundDisplay: Live mode."
+            Vizkit.connect_port_to(config.task, config.port, config.widget, :pull => config.pull)
+        end
     end
     
     def connect_port_object(pos, port)
@@ -101,6 +113,10 @@ class CompoundDisplay < Qt::Widget
     
     def configure_by_yaml_string
         # TODO import from yaml string.
+    end
+    
+    def replay_mode(log_replay)
+        @replayer = log_replay
     end
     
     def save_yaml(path)
