@@ -1,4 +1,5 @@
 require '../vizkit'
+require 'utilrb/qt/variant/from_ruby.rb'
 
 module Vizkit
     class ContextMenu
@@ -50,7 +51,6 @@ module Vizkit
                     menu.add_action(Qt::Action.new(w, parent))
                 end
             end
-
 
             # Display context menu at cursor position.
             action = menu.exec(parent.viewport.map_to_global(pos))
@@ -105,10 +105,31 @@ module Vizkit
                 addItem(val.to_s)
             end
         end
-        # we cannot use user properties here 
+        # we cannot use user properties here
         # there is no way to define some on the ruby side
         def getData
             currentText
+        end
+    end
+
+    # buttons for cancel or acknowledge a custom property change
+    class AcknowledgeEditor < Qt::DialogButtonBox
+        def initialize(parent,data,delegate)
+            super(parent)
+            addButton("Apply",Qt::DialogButtonBox::AcceptRole)
+            addButton("Reject",Qt::DialogButtonBox::RejectRole)
+            setCenterButtons(true)
+            setAutoFillBackground(true)
+
+            self.connect SIGNAL('rejected()') do
+                data.parent.reset(data)
+                delegate.closeEditor(self)
+            end
+            self.connect SIGNAL('accepted()') do
+                data.parent.write(data)
+                delegate.commitData(self)
+                delegate.closeEditor(self)
+            end
         end
     end
 
@@ -118,10 +139,14 @@ module Vizkit
             data = index.data(Qt::EditRole)
             if data.type == Qt::Variant::StringList
                 Vizkit::EnumEditor.new(parent,data)
+            elsif data.to_ruby?
+                model = data.to_ruby
+                Vizkit::AcknowledgeEditor.new(parent,model,self)
             else
                 super
             end
         end
+
         def setModelData(editor,model,index)
             # we cannot use user properties here 
             # there is no way to define some on the ruby side
@@ -133,7 +158,7 @@ module Vizkit
         end
     end
 
-    # Typelib data model which is used by the item model to access the 
+    # Typelib data model which is used by the item model to access the
     # underlying data
     class TypelibDataModel
         class MetaData < Struct.new(:parent,:row,:field)
@@ -156,9 +181,19 @@ module Vizkit
         end
 
         attr_accessor :root
-        def initialize(root_item)
-            @root = root_item 
+        def initialize(root_item,editable=false,parent = nil)
+            @root = root_item
             @meta_data = Hash.new
+            @modified_by_user = false
+            @editable = editable
+            @parent = parent
+        end
+
+        # returns true if the model was modified by the user
+        # the modification flag will be deleted the next time
+        # update is called
+        def modified_by_user?
+            !!@modified_by_user
         end
 
         def context_menu(item,pos,parent)
@@ -208,17 +243,35 @@ module Vizkit
             end
         end
 
+        def parent=(parent)
+            @parent = parent
+        end
+
         def parent(item=@root)
+            if item.object_id == @root.object_id
+                return @parent
+            end
             data = @meta_data[item]
-            if data && data.parent.object_id != @root.object_id
-                data.parent
+            return nil unless data
+            if data.parent.object_id == @root.object_id
+                self
             else
-                nil
+                data.parent
             end
         end
 
-        def item_changed(item)
-            @on_change.call item if @on_change
+        def update(data)
+            @modified_by_user = false
+            Typelib.copy(@root,data)
+            item_changed
+        end
+
+        # indicates that an item has changed
+        def item_changed
+            number_of_elements = rows()-1
+            0.upto(number_of_elements) do |i|
+                @on_change.call child(i,@root)
+            end
         end
 
         def field_type(item)
@@ -250,7 +303,6 @@ module Vizkit
             data = @meta_data[item]
             return Qt::Variant.new unless data
             item_val = data.val
-            
             val = if role == Qt::DisplayRole
                       if item_val.is_a? Typelib::Type
                           item_val.class.name
@@ -260,6 +312,8 @@ module Vizkit
                               item_val
                           elsif item_val.is_a? Time
                               "#{item_val.strftime("%-d %b %Y %H:%M:%S")}.#{item_val.nsec.to_s}"
+                          elsif item_val.is_a? Array 
+                              data.field_type.name
                           else
                               item_val.to_s
                           end
@@ -311,27 +365,39 @@ module Vizkit
                   end
             return false unless val
             data.parent[data.field.first] = val
-            true
+            # set modified flag
+            @modified_by_user = true
         end
 
         def flags(item)
-            item_val = @meta_data[item].val
-            if !item_val.is_a?(Typelib::Type) && rows(item) == 0
-                Qt::ItemIsEnabled | Qt::ItemIsEditable
-            else
-                Qt::ItemIsEnabled
+            if @editable
+                item_val = @meta_data[item].val
+                if !item_val.is_a?(Typelib::Type) && rows(item) == 0
+                    Qt::ItemIsEnabled | Qt::ItemIsEditable
+                else
+                    Qt::ItemIsEnabled
+                end
             end
+        end
+
+        def stop_listening(item=nil)
         end
     end
 
     # used to embed n Data models
     class ProxyDataModel
-        attr_accessor :root
-        MetaData = Struct.new(:name,:value,:data)
-        def initialize()
+        attr_accessor :root,:editable
+        MetaData = Struct.new(:name,:value,:data,:listener)
+        def initialize(parent = nil)
             @root = Hash.new
             @item_to_model = Hash.new         # maps items to their model
             @meta_data = Hash.new
+            @parent = parent
+            @editable = false
+        end
+
+        def editable?
+            @editable
         end
 
         def on_change(&block)
@@ -339,20 +405,45 @@ module Vizkit
         end
 
         def item_changed(item)
-            @on_change.call item if @on_change
+            @on_change.call item if @on_change && item.object_id != @root.object_id
+            number_of_elements = rows(item)-1
+            0.upto(number_of_elements) do |i|
+                item_changed child(i,item)
+            end
         end
 
-        def add(model,name,value,data=nil)
+        def stop_listening(item=@root)
+            model = @item_to_model[item]
+            if model
+                model.stop_listening
+            else
+                if item == @root
+                    @meta_data.each_pair do |model,meta|
+                        if meta.listener
+                            meta.listener.stop
+                        end
+                        model.stop_listening
+                    end
+                else
+                    meta = @meta_data[item]
+                    if meta && meta.listener
+                        meta.listener.stop
+                    end
+                    item.stop_listening
+                end
+            end
+        end
+
+        def add(model,name,value,data=nil,listener=nil)
             raise "no model" until model
             raise "no name" until name
 
             model.on_change do |item|
                 @on_change.call(item) if @on_change
             end
-
+            model.parent = self
             @root[name] = model
-            @meta_data[model] = MetaData.new(name,value,data)
-
+            @meta_data[model] = MetaData.new(name,value,data,listener)
             @on_change.call(self) if @on_change
         end
 
@@ -394,11 +485,16 @@ module Vizkit
             end
         end
 
-        def parent(item)
+        def parent(item=@root)
+            return @parent if item == @root
             model = @item_to_model[item]
             if model
                 parent = model.parent(item)
-                parent ||= model
+                if parent.object_id == self.object_id || !parent
+                    model
+                else
+                    parent
+                end
             else
                 nil
             end
@@ -407,7 +503,7 @@ module Vizkit
         def field_type(item)
             model = @item_to_model[item]
             if model
-                model.field_type(item) 
+                model.field_type(item)
             end
         end
 
@@ -432,6 +528,8 @@ module Vizkit
         def raw_data(item)
             model = @item_to_model[item]
             if model
+                meta = @meta_data[model]
+                meta.listener.start if meta.listener && !meta.listener.listening?
                 model.raw_data(item)
             else
                 @meta_data[item].data
@@ -441,9 +539,17 @@ module Vizkit
         def data(item,role=Qt::DisplayRole)
             model = @item_to_model[item]
             if model
+                meta = @meta_data[model]
+                meta.listener.start if meta.listener && !meta.listener.listening?
                 model.data(item,role)
             else
-                Qt::Variant.new(@meta_data[item].value.to_s)
+                if role == Qt::EditRole
+                    Qt::Variant.from_ruby item
+                elsif role == Qt::DisplayRole && item.modified_by_user?
+                    Qt::Variant.new("modified --> double click to reject or apply")
+                else
+                    Qt::Variant.new(@meta_data[item].value.to_s)
+                end
             end
         end
 
@@ -461,7 +567,11 @@ module Vizkit
             if model
                 model.flags(item)
             else
-                Qt::ItemIsEnabled
+                if editable?
+                    Qt::ItemIsEnabled | Qt::ItemIsEditable
+                else
+                    Qt::ItemIsEnabled
+                end
             end
         end
 
@@ -471,24 +581,33 @@ module Vizkit
                 model.context_menu(item,pos,parent_widget)
             end
         end
+
+        def parent=(parent)
+            @parent = parent
+        end
+
+        def modified_by_user?
+            false
+        end
     end
 
     class InputPortsDataModel < ProxyDataModel
         def add(port)
             sample = port.new_sample
-            super(TypelibDataModel.new(sample),port.name,port.type_name,port)
+           # sample.zero!
+            super(TypelibDataModel.new(sample,false,self),port.name,port.type_name,port)
         end
     end
 
     class OutputPortsDataModel < ProxyDataModel
         def add(port)
             sample = port.new_sample
-            model = TypelibDataModel.new(sample)
-            super(model,port.name,port.type_name,port)
-            port.on_data do |data|
-                sample = Typelib.copy(sample,data)
-                item_changed(model)
+            model = TypelibDataModel.new(sample,false,self)
+            listener = port.on_data do |data|
+                model.update(data)
             end
+            listener.stop
+            super(model,port.name,port.type_name,port,listener)
         end
 
         def port_from_index(index)
@@ -527,39 +646,68 @@ module Vizkit
     end
 
     class PropertiesDataModel < ProxyDataModel
+
+        def initialize(parent = nil)
+            super
+            @editable = true
+        end
+
         def add(property)
+            raise ArgumentError, "no property given" unless property
             sample = property.read
-            super(TypelibDataModel.new(sample),property.name,property.type_name,property)
+
+            model = TypelibDataModel.new(sample,true,self)
+            property.on_change do |data|
+                if !model.modified_by_user?
+                    model.update data
+                end
+            end
+            super(model,property.name,property.type_name,property)
+        end
+
+        def write(model,&block)
+            meta = @meta_data[model] 
+            if meta
+                meta.data.write(model.root,&block)
+                model.update meta.data.last_sample
+            end
+        end
+
+        def reset(model)
+            meta = @meta_data[model] 
+            if meta
+                model.update meta.data.last_sample
+            end
         end
     end
 
     class TaskContextDataModel < ProxyDataModel
-        def initialize(task)
-            super()
-            @input_ports = InputPortsDataModel.new
-            @output_ports = OutputPortsDataModel.new
-            @properties = PropertiesDataModel.new
+        def initialize(task,parent = nil)
+            super(parent)
+            @input_ports = InputPortsDataModel.new(self)
+            @output_ports = OutputPortsDataModel.new(self)
+            @properties = PropertiesDataModel.new(self)
 
             add(@input_ports,"Input Ports","")
             add(@output_ports,"Output Ports","")
             add(@properties,"Properties","")
 
             task.on_port_reachable do |port_name|
-                @output_ports.add task.port(port_name)
+                @output_ports.add(task.port(port_name))
             end
 
             task.on_property_reachable do |property_name|
-                @properties.add task.property(property_name)
+                @properties.add(task.property(property_name))
             end
         end
     end
 
     class TaskContextsDataModel < ProxyDataModel
-        def initialize()
-            super()
+        def initialize(parent = nil)
+            super(parent)
         end
         def add(task)
-            model = TaskContextDataModel.new task
+            model = TaskContextDataModel.new task, self
             super(model,task.name,"",task)
             task.on_state_change do |state|
                 data_value(model,state.to_s)
@@ -578,7 +726,7 @@ module Vizkit
         end
     end
 
-    #Item Model for typelib types
+    #Item Model for vizkit types
     class VizkitItemModel < Qt::AbstractItemModel
         MAX_NUMBER_OF_CHILDS = 100
 
@@ -588,7 +736,7 @@ module Vizkit
             @data_model.on_change do |item|
                 index = @index[item]
                 if index
-                    emit dataChanged(index,index(index.row,1,index.parent)) 
+                    emit dataChanged(index,index(index.row,1,index.parent))
                 end
             end
 
@@ -598,12 +746,18 @@ module Vizkit
             @index = Hash.new
         end
 
+        def stop_listening(index)
+            item = itemFromIndex(index)
+            @data_model.stop_listening(item)
+        end
+
         def context_menu(index,pos,parent)
             item = itemFromIndex(index)
             @data_model.context_menu(item,pos,parent)
         end
 
         def update(data)
+
             #   data.root = Typelib.copy(data.root,data)
             #   emit dataChanged(index(0,1),index(rowCount,1))
         end
@@ -719,6 +873,14 @@ module Vizkit
         tree_view.connect(SIGNAL('customContextMenuRequested(const QPoint&)')) do |pos|
             index = tree_view.index_at(pos)
             index.model.context_menu(index,pos,tree_view)
+        end
+        def tree_view.setModel(model)
+            super
+            connect SIGNAL("collapsed(QModelIndex)") do |index|
+                model.stop_listening index
+            end
+            # no need for expand event
+            # auto reconnect if data field are accessed by the TreeView
         end
     end
 end
