@@ -135,6 +135,11 @@ module Vizkit
 
     # Delegate to select editor for editing tree view items
     class ItemDelegate < Qt::StyledItemDelegate
+        def initialize(tree_view,parent = nil)
+            super(parent)
+            @tree_view = tree_view
+        end
+
         def createEditor (parent, option,index)
             data = index.data(Qt::EditRole)
             if data.type == Qt::Variant::StringList
@@ -154,6 +159,19 @@ module Vizkit
                 model.setData(index,Qt::Variant.new(editor.getData),Qt::EditRole)
             else
                 super
+            end
+
+            # show reject and apply buttons if the parent has the options
+            # :accept => true
+            parent = index
+            while (parent = parent.parent).isValid
+                item = model.itemFromIndex(parent)
+                if item.respond_to?(:options) && !!item.options[:accept]
+                    index = parent.parent.child(parent.row,1)
+                    @tree_view.setCurrentIndex(index)
+                    @tree_view.edit(index)
+                    break
+                end
             end
         end
     end
@@ -181,12 +199,14 @@ module Vizkit
         end
 
         attr_accessor :root
-        def initialize(root_item,editable=false,parent = nil)
+        attr_accessor :options
+        # options :editable, :accept
+        def initialize(root_item,parent = nil, options=Hash.new)
             @root = root_item
             @meta_data = Hash.new
             @modified_by_user = false
-            @editable = editable
             @parent = parent
+            @options = options
         end
 
         # returns true if the model was modified by the user
@@ -370,7 +390,7 @@ module Vizkit
         end
 
         def flags(item)
-            if @editable
+            if @options[:editable]
                 item_val = @meta_data[item].val
                 if !item_val.is_a?(Typelib::Type) && rows(item) == 0
                     Qt::ItemIsEnabled | Qt::ItemIsEditable
@@ -387,6 +407,7 @@ module Vizkit
     # used to embed n Data models
     class ProxyDataModel
         attr_accessor :root,:editable
+        attr_accessor :options
         MetaData = Struct.new(:name,:value,:data,:listener)
         def initialize(parent = nil)
             @root = Hash.new
@@ -394,10 +415,7 @@ module Vizkit
             @meta_data = Hash.new
             @parent = parent
             @editable = false
-        end
-
-        def editable?
-            @editable
+            @options = Hash.new
         end
 
         def on_change(&block)
@@ -546,7 +564,7 @@ module Vizkit
                 if role == Qt::EditRole
                     Qt::Variant.from_ruby item
                 elsif role == Qt::DisplayRole && item.modified_by_user?
-                    Qt::Variant.new("modified --> double click to reject or apply")
+                    Qt::Variant.new(@meta_data[item].value.to_s + " (modified)")
                 else
                     Qt::Variant.new(@meta_data[item].value.to_s)
                 end
@@ -567,7 +585,7 @@ module Vizkit
             if model
                 model.flags(item)
             else
-                if editable?
+                if options[:editable]
                     Qt::ItemIsEnabled | Qt::ItemIsEditable
                 else
                     Qt::ItemIsEnabled
@@ -595,14 +613,14 @@ module Vizkit
         def add(port)
             sample = port.new_sample
            # sample.zero!
-            super(TypelibDataModel.new(sample,false,self),port.name,port.type_name,port)
+            super(TypelibDataModel.new(sample,self),port.name,port.type_name,port)
         end
     end
 
     class OutputPortsDataModel < ProxyDataModel
         def add(port)
             sample = port.new_sample
-            model = TypelibDataModel.new(sample,false,self)
+            model = TypelibDataModel.new(sample,self)
             listener = port.on_data do |data|
                 model.update(data)
             end
@@ -649,14 +667,14 @@ module Vizkit
 
         def initialize(parent = nil)
             super
-            @editable = true
+            options[:editable] = true
         end
 
         def add(property)
             raise ArgumentError, "no property given" unless property
             sample = property.read
 
-            model = TypelibDataModel.new(sample,true,self)
+            model = TypelibDataModel.new(sample,self,:editable => true,:accept => true)
             property.on_change do |data|
                 if !model.modified_by_user?
                     model.update data
@@ -757,7 +775,6 @@ module Vizkit
         end
 
         def update(data)
-
             #   data.root = Typelib.copy(data.root,data)
             #   emit dataChanged(index(0,1),index(rowCount,1))
         end
@@ -865,7 +882,7 @@ module Vizkit
     end
 
     def self.setup_tree_view(tree_view)
-        @delegator = ItemDelegate.new
+        @delegator = ItemDelegate.new(tree_view,nil)
         tree_view.setItemDelegate(@delegator)
         tree_view.setSortingEnabled true
         tree_view.setAlternatingRowColors(true)
@@ -874,6 +891,7 @@ module Vizkit
             index = tree_view.index_at(pos)
             index.model.context_menu(index,pos,tree_view)
         end
+
         def tree_view.setModel(model)
             super
             connect SIGNAL("collapsed(QModelIndex)") do |index|
