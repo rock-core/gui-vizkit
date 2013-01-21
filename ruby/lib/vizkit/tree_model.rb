@@ -1,4 +1,4 @@
-require '../vizkit'
+#require '../vizkit'
 require 'utilrb/qt/variant/from_ruby.rb'
 
 module Vizkit
@@ -176,19 +176,29 @@ module Vizkit
         end
     end
 
-    # Typelib data model which is used by the item model to access the
-    # underlying data
+    # Typelib data model which is used by the item model to display the
+    # underlying data. 
     class TypelibDataModel
+
+        # Internal structure to hold information about a subfield
         class MetaData < Struct.new(:parent,:row,:field)
+            # value of the field
             def val
                 parent[field.first]
             end
+
+            # type of the field
             def field_type
                 field.last
             end
+
+            # symbol or number to access the field from
+            # its parent
             def field_accessor
                 field.first
             end
+
+            # name of the field
             def field_name
                 if field.first.is_a? Fixnum
                     "[#{field.first}]"
@@ -200,18 +210,30 @@ module Vizkit
 
         attr_accessor :root
         attr_accessor :options
-        # options :editable, :accept
+
+        # A TypelibDataModel
+        #
+        # @param [Typelib::Type] root_item underlying Typelib data
+        # @param [ProxyDataModel] parent Parent of the Typelib type which should be set
+        #    if the Typelib type belongs to a more complex data structure build with the help
+        #    of ProxyDataModel
+        # @param [Hash] options The options
+        # @option options [TrueClass,FalseClass] :editable Indicates if the model can be modified by the user
+        # @option options [TrueClass,FalseClass] :enabled Indicates if the model is enabled
+        # @option options [TrueClass,FalseClass] :accept Indicates if the parent shall be called to accept changes
         def initialize(root_item,parent = nil, options=Hash.new)
             @root = root_item
             @meta_data = Hash.new
             @modified_by_user = false
             @parent = parent
-            @options = options
+            @options = Kernel::validate_options options,:enabled => true,:accept => false, :editable => false
         end
 
         # returns true if the model was modified by the user
         # the modification flag will be deleted the next time
         # update is called
+        #
+        # @return [TrueClass,FalseClass]
         def modified_by_user?
             !!@modified_by_user
         end
@@ -281,6 +303,7 @@ module Vizkit
         end
 
         def update(data)
+            return unless data
             @modified_by_user = false
             Typelib.copy(@root,data)
             item_changed
@@ -288,6 +311,7 @@ module Vizkit
 
         # indicates that an item has changed
         def item_changed
+            return unless @on_change
             number_of_elements = rows()-1
             0.upto(number_of_elements) do |i|
                 @on_change.call child(i,@root)
@@ -319,6 +343,7 @@ module Vizkit
             data.val if data
         end
 
+        # encodes the underlying data of the given item as Qt::Variant
         def data(item,role=Qt::DisplayRole)
             data = @meta_data[item]
             return Qt::Variant.new unless data
@@ -389,7 +414,9 @@ module Vizkit
             @modified_by_user = true
         end
 
-        def flags(item)
+        def flags(column,item)
+            return 0 if !@options[:enabled]
+            return Qt::ItemIsEnabled if column == 0
             if @options[:editable]
                 item_val = @meta_data[item].val
                 if !item_val.is_a?(Typelib::Type) && rows(item) == 0
@@ -397,6 +424,8 @@ module Vizkit
                 else
                     Qt::ItemIsEnabled
                 end
+            else
+                0
             end
         end
 
@@ -404,18 +433,25 @@ module Vizkit
         end
     end
 
-    # used to embed n Data models
+    # A ProxyDataModel is used to combine multiple TypelibDataModel into one
+    # model for tree view display. Thereby it is allowed to add a
+    # ProxyDataModel to another ProxyDataModel.
     class ProxyDataModel
-        attr_accessor :root,:editable
+        attr_accessor :root
         attr_accessor :options
         MetaData = Struct.new(:name,:value,:data,:listener)
+
+        # A ProxyDataModel
+        #
+        # @param [ProxyDataModel] parent Parent of the ProxyDataModel which should be set
+        #    if the ProxyDataModel type belongs to another ProxyDataModel
         def initialize(parent = nil)
             @root = Hash.new
             @item_to_model = Hash.new         # maps items to their model
             @meta_data = Hash.new
             @parent = parent
             @editable = false
-            @options = Hash.new
+            @options = {:enabled => true}
         end
 
         def on_change(&block)
@@ -430,6 +466,8 @@ module Vizkit
             end
         end
 
+        # calls stop_listening on all childs of the given item
+        # and stop on the listener belonging to item
         def stop_listening(item=@root)
             model = @item_to_model[item]
             if model
@@ -452,7 +490,15 @@ module Vizkit
             end
         end
 
+        # Adds a model to the ProxyDataModel
+        #
+        # @param [TypelibDataModel,ProxyDataModel] model The model
+        # @param [String] name The name which is displayed for the root node of the added model
+        # @param [#to_s] value The value which is displayed for the root node
+        # @param [Object] data underlying data object which is returned by raw_data
+        # @param [Orocos::Async::EventListener] listener Event listener which is updating the added model
         def add(model,name,value,data=nil,listener=nil)
+            return if @root.has_key? name
             raise "no model" until model
             raise "no name" until name
 
@@ -498,7 +544,7 @@ module Vizkit
                 if item.respond_to? :rows
                     item.rows()
                 else
-                    0
+                    raise ArgumentError, "cannot find given item #{item}"
                 end
             end
         end
@@ -526,6 +572,7 @@ module Vizkit
         end
 
         def field_name(item)
+            raise ArgumentError, "no item given" unless item
             model = @item_to_model[item]
             if model
                 model.field_name(item)
@@ -580,11 +627,13 @@ module Vizkit
             end
         end
 
-        def flags(item)
+        def flags(column,item)
+            return 0 if !@options[:enabled]
             model = @item_to_model[item]
             if model
-                model.flags(item)
+                model.flags(column,item)
             else
+                return 0 if !item.options[:enabled]
                 if options[:editable]
                     Qt::ItemIsEnabled | Qt::ItemIsEditable
                 else
@@ -619,13 +668,18 @@ module Vizkit
 
     class OutputPortsDataModel < ProxyDataModel
         def add(port)
-            sample = port.new_sample
-            model = TypelibDataModel.new(sample,self)
+            model = nil
+
             listener = port.on_data do |data|
                 model.update(data)
             end
             listener.stop
-            super(model,port.name,port.type_name,port,listener)
+
+            listener2 = port.on_reachable do
+                model = TypelibDataModel.new(port.new_sample,self)
+                super(model,port.name,port.type_name,port,listener)
+                listener2.stop
+            end
         end
 
         def port_from_index(index)
@@ -672,15 +726,16 @@ module Vizkit
 
         def add(property)
             raise ArgumentError, "no property given" unless property
-            sample = property.read
-
-            model = TypelibDataModel.new(sample,self,:editable => true,:accept => true)
+            model = nil
             property.on_change do |data|
+                unless model
+                    model = TypelibDataModel.new(data.dup,self,:enabled => true,:editable => true,:accept => true)
+                    super(model,property.name,data.class.name,property)
+                end
                 if !model.modified_by_user?
                     model.update data
                 end
             end
-            super(model,property.name,property.type_name,property)
         end
 
         def write(model,&block)
@@ -711,12 +766,27 @@ module Vizkit
             add(@properties,"Properties","")
 
             task.on_port_reachable do |port_name|
-                @output_ports.add(task.port(port_name))
+                port = task.port(port_name)
+                p = proc do
+                        if port.reachable?
+                            if port.input?
+                                @input_ports.add(port)
+                            elsif port.output?
+                                @output_ports.add(port)
+                            else
+                                raise "Port #{port} is neither an input nor an output port"
+                            end
+                        else
+                            Orocos::Async.event_loop.once 0.1,&p
+                        end
+                end
+                p.call
             end
 
             task.on_property_reachable do |property_name|
                 @properties.add(task.property(property_name))
             end
+            @task = task
         end
     end
 
@@ -730,6 +800,14 @@ module Vizkit
             task.on_state_change do |state|
                 data_value(model,state.to_s)
                 item_changed(model)
+            end
+            task.on_unreachable do
+                data_value(model,"UNREACHABLE")
+                model.options[:enabled] = false
+                item_changed(model)
+            end
+            task.on_reachable do
+                model.options[:enabled] = true
             end
         end
         def context_menu(item,pos,parent_widget)
@@ -840,13 +918,9 @@ module Vizkit
         end
 
         def flags(index)
-            if index.valid? 
-                if index.column == 0 
-                    Qt::ItemIsEnabled
-                else
-                    item = itemFromIndex(index)
-                    @data_model.flags(item)
-                end
+            if index.valid?
+                item = itemFromIndex(index)
+                @data_model.flags(index.column,item)
             else
                 0
             end
@@ -904,31 +978,31 @@ module Vizkit
 end
 
 
-Orocos.initialize
-Orocos.load_typekit "base"
-t = Types::Base::Samples::RigidBodyState.new
-#t = Types::Base::Samples::Frame::FramePair.new
-
-w = Qt::TreeView.new
-Vizkit.setup_tree_view(w)
-w.resize(640,480)
-
-t = Qt::Timer.new
-t.connect SIGNAL(:timeout) do 
-    #    w.reset
-end
-t.start 1000
-
-task = Orocos::Async::TaskContextProxy.new("camera",:wait => true)
-data = Vizkit::TaskContextsDataModel.new
-data.add(task)
-model = Vizkit::VizkitItemModel.new(data)
-w.setModel model
-
-#model = Vizkit::PortsItemModel.new
-#model.add_port task.port("frame")
-#proxy = Qt::SortFilterProxyModel.new
-#proxy.setSourceModel model
-
-w.show
-Vizkit.exec
+#Orocos.initialize
+#Orocos.load_typekit "base"
+#t = Types::Base::Samples::RigidBodyState.new
+##t = Types::Base::Samples::Frame::FramePair.new
+#
+#w = Qt::TreeView.new
+#Vizkit.setup_tree_view(w)
+#w.resize(640,480)
+#
+#t = Qt::Timer.new
+#t.connect SIGNAL(:timeout) do 
+#    #    w.reset
+#end
+#t.start 1000
+#
+#task = Orocos::Async::TaskContextProxy.new("camera",:wait => true)
+#data = Vizkit::TaskContextsDataModel.new
+#data.add(task)
+#model = Vizkit::VizkitItemModel.new(data)
+#w.setModel model
+#
+##model = Vizkit::PortsItemModel.new
+##model.add_port task.port("frame")
+##proxy = Qt::SortFilterProxyModel.new
+##proxy.setSourceModel model
+#
+#w.show
+#Vizkit.exec
