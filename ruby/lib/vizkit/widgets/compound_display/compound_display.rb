@@ -85,6 +85,7 @@ class CompoundDisplay < Qt::Widget
     # Establish a connection between the port and widget specified in config for element at +pos+.
     def connect(pos)
         config = @config_hash[pos]
+        return if config.invalid?
         Vizkit.info "Connecting #{config.task}.#{config.port} to #{config.widget} #{config.pull ? "config:pull" : ""}"
         widget = Vizkit.default_loader.send(config.widget)
         parentw = @gui.send("widget_#{pos}")
@@ -99,11 +100,11 @@ class CompoundDisplay < Qt::Widget
             task = @replayer.task(config.task)
             port = task.port(config.port)
             #Vizkit.connect_port_to(task, port, config.widget, :pull => config.pull)
-            port.connect_to(widget)
+            port.connect_to(widget) if task && port
         else
             task = Orocos.name_service.get(config.task)
             port = task.port(config.port)
-            Vizkit.connect_port_to(task, port, config.widget, :pull => config.pull)
+            Vizkit.connect_port_to(task, port, config.widget, :pull => config.pull) if task && port
         end
     end
     
@@ -113,8 +114,10 @@ class CompoundDisplay < Qt::Widget
         Vizkit.disconnect_from config.task
         
         # Destroy old widget 
-        @widget_hash[pos].set_parent(nil)
-        @widget_hash[pos] = nil
+        if widget = @widget_hash[pos]
+            @widget_hash[pos].set_parent(nil)
+            @widget_hash[pos] = nil
+        end
     end
     
     # Import configuration from YAML file located at +path+.
@@ -204,6 +207,10 @@ class CompoundDisplayConfig
         @port = port # string
         @widget = widget
         @pull = pull # bool
+    end
+    
+    def invalid?
+        return @task && @port && @widget && @pull && (not task.empty?) && (not port.empty?)
     end
 end
 
