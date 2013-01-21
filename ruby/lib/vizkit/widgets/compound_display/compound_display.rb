@@ -26,7 +26,6 @@ class CompoundDisplay < Qt::Widget
     def initialize(row_count = 3, col_count = 2, parent = nil)
         super(parent)
         
-        @widget_hash = {} # holds the content widgets
         @container_hash = {} # holds the container widgets
         @config_hash = {}
         @disconnected = false
@@ -103,7 +102,6 @@ class CompoundDisplay < Qt::Widget
         Vizkit.info "Connecting #{config.task}.#{config.port} to #{config.widget} #{config.pull ? "config:pull" : ""}"
         widget = Vizkit.default_loader.send(config.widget)
         container = @container_hash[pos]
-        @widget_hash[pos] = widget
         container.set_content_widget(widget)
         container.set_label_text("#{config.task}.#{config.port}")
         
@@ -120,14 +118,15 @@ class CompoundDisplay < Qt::Widget
     end
     
     # Close a connection between the port and widget specified in config for element at +pos+.
+    # The content widget gets destroyed but the configuration will remain save until it gets overriden by a new one.
     def disconnect(pos)
         config = @config_hash[pos]
         Vizkit.disconnect_from config.task
         
         # Destroy old widget 
-        if widget = @widget_hash[pos]
-            @widget_hash[pos].set_parent(nil)
-            @widget_hash[pos] = nil
+        if widget = @container_hash[pos].content_widget
+            widget.set_parent(nil)
+            widget = nil
         end
     end
     
@@ -158,16 +157,18 @@ class CompoundDisplay < Qt::Widget
             child = nil
         end
         
+        # Generate container widgets with label if not yet existent
         counter = 0
-        for row in 0..row_count do
-            for col in 0..col_count do
-                # Generate container widget with label
-                container = ContainerWidget.new
-                container.set_object_name("mywidget_#{counter}")
-                container.set_layout(Qt::VBoxLayout.new)
-                container.set_label_text("No input")
-                                
-                @container_hash[counter] = container
+        for row in 0..row_count-1 do
+            for col in 0..col_count-1 do
+                container = nil
+                if not @container_hash[counter]
+                    container = ContainerWidget.new
+                    container.set_label_text("No input")
+                    @container_hash[counter] = container
+                else
+                    container = @container_hash[counter]
+                end
                 
                 # Add parent widget to grid
                 @grid.add_widget(container, row, col) # TODO does this make @grid the parent of the widget?
@@ -175,16 +176,10 @@ class CompoundDisplay < Qt::Widget
                 counter = counter + 1
             end
         end
-
-        return unless @widget_hash
         
-        # Add existing widgets to grid
-        @widget_hash.each do |pos, widget|
-            parent = @container_hash[pos]
-            widget.set_parent(parent)
-            widget.show
-        end
-        
+        # Delete useless container widgets if any
+        @container_hash.delete_if {|pos, conatiner| pos >= counter}
+     
     end
     
     # Import configuration from YAML file located at +path+.
