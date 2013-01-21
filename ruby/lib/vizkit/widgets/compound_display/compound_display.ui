@@ -77,6 +77,13 @@
          </widget>
         </item>
         <item>
+         <widget class="QPushButton" name="reduce_rows_button">
+          <property name="text">
+           <string>Reduce rows</string>
+          </property>
+         </widget>
+        </item>
+        <item>
          <spacer name="horizontalSpacer">
           <property name="orientation">
            <enum>Qt::Horizontal</enum>
@@ -114,7 +121,7 @@
        <number>0</number>
       </property>
       <item>
-       <layout class="QGridLayout" name="gridLayout">
+       <layout class="QGridLayout" name="grid_layout">
         <property name="sizeConstraint">
          <enum>QLayout::SetMaximumSize</enum>
         </property>
@@ -127,7 +134,7 @@
            </sizepolicy>
           </property>
           <property name="text">
-           <string>TextLabel</string>
+           <string>No input</string>
           </property>
          </widget>
         </item>
@@ -158,7 +165,7 @@
            </sizepolicy>
           </property>
           <property name="text">
-           <string>TextLabel</string>
+           <string>No input</string>
           </property>
          </widget>
         </item>
@@ -180,7 +187,7 @@
            </sizepolicy>
           </property>
           <property name="text">
-           <string>TextLabel</string>
+           <string>No input</string>
           </property>
          </widget>
         </item>
@@ -193,7 +200,7 @@
            </sizepolicy>
           </property>
           <property name="text">
-           <string>TextLabel</string>
+           <string>No input</string>
           </property>
          </widget>
         </item>
@@ -206,7 +213,7 @@
            </sizepolicy>
           </property>
           <property name="text">
-           <string>TextLabel</string>
+           <string>No input</string>
           </property>
          </widget>
         </item>
@@ -219,7 +226,7 @@
            </sizepolicy>
           </property>
           <property name="text">
-           <string>TextLabel</string>
+           <string>No input</string>
           </property>
          </widget>
         </item>

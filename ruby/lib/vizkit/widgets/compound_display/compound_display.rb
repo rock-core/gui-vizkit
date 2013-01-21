@@ -1,10 +1,12 @@
 require 'vizkit'
 require 'yaml'
 
-# Compound widget for displaying up to six visualization widgets in a 3x2 grid.
-# Specific position configurations, e.g. which port gets displayed in which widget
-# at which position) can be saved to and restored from YAML files. You need one 
-# configuration object for each element.
+# Compound widget for displaying multiple visualization widgets in a grid layout
+# (default dimensions: 3x2). Specific position configurations, e.g. which port 
+# gets displayed in which widget at which position) can be saved to and restored
+# from YAML files. You need one configuration object for each element.
+# The grid will be a row_count x col_count matrix. The numbering sequence is 
+# left to right, top-down.
 #
 # Widget position layout:
 #   0 1 2
@@ -21,10 +23,12 @@ class CompoundDisplay < Qt::Widget
     # Flag whether to display the load / save configuration buttons.
     attr_reader :show_menu
     
-    def initialize(parent=nil)
-        super
+    def initialize(row_count = 3, col_count = 2, parent = nil)
+        super(parent)
         
-        @widget_hash = {}
+        @widget_hash = {} # holds the content widgets
+        @container_hash = {} # holds the container widgets
+        @config_hash = {}
         @disconnected = false
         @replayer = nil
         
@@ -33,9 +37,11 @@ class CompoundDisplay < Qt::Widget
         layout = Qt::HBoxLayout.new
         set_layout(layout)
         @gui = Vizkit.load(File.join(File.dirname(__FILE__),'compound_display.ui'),self)
+        @grid = @gui.grid_layout
         show_menu(true)
         layout.add_widget(@gui)
-        @config_hash = Hash.new
+
+        set_grid_dimensions(row_count, col_count)
         
         ## Configure configuration import / export
         @gui.load_button.connect(SIGNAL :clicked) do
@@ -68,6 +74,10 @@ class CompoundDisplay < Qt::Widget
             end
         end
         
+        @gui.reduce_rows_button.connect(SIGNAL :clicked) do
+            set_grid_dimensions(row_count-1, col_count)
+        end
+        
         self
     end
     
@@ -85,16 +95,17 @@ class CompoundDisplay < Qt::Widget
     # Establish a connection between the port and widget specified in config for element at +pos+.
     def connect(pos)
         config = @config_hash[pos]
-        return if config.invalid?
+        if config.invalid?
+            Vizkit.warn "Invalid configuration for position #{pos}."
+            return
+        end
+
         Vizkit.info "Connecting #{config.task}.#{config.port} to #{config.widget} #{config.pull ? "config:pull" : ""}"
         widget = Vizkit.default_loader.send(config.widget)
-        parentw = @gui.send("widget_#{pos}")
+        container = @container_hash[pos]
         @widget_hash[pos] = widget
-        parentw.layout.add_widget(widget)
-        label = @gui.send("label_#{pos}")
-        label.set_text("#{config.task}.#{config.port}")
-        Vizkit.info "Got widget #{widget}"
-        widget.show
+        container.set_content_widget(widget)
+        container.set_label_text("#{config.task}.#{config.port}")
         
         if @replayer
             task = @replayer.task(config.task)
@@ -118,6 +129,62 @@ class CompoundDisplay < Qt::Widget
             @widget_hash[pos].set_parent(nil)
             @widget_hash[pos] = nil
         end
+    end
+    
+    # Reconfigures the dimensions of the grid layout. The grid will be a 
+    # row_count x col_count matrix. The numbering sequence is left to right, top-down.
+    # 
+    # Examples:
+    #
+    # row_count: 4, col_count: 2:
+    #   0 1
+    #   2 3
+    #   4 5
+    #   6 7
+    #
+    # row_count: 2, col_count: 3
+    #   0 1 2
+    #   3 4 5
+    #   6 7 8
+    #  
+    def set_grid_dimensions(row_count, col_count)
+
+        # Remove all parent widgets from grid.
+        child = nil
+        while(child = @grid.take_at(0)) 
+            widget = child.widget
+            widget.set_parent(nil)
+            widget = nil
+            child = nil
+        end
+        
+        counter = 0
+        for row in 0..row_count do
+            for col in 0..col_count do
+                # Generate container widget with label
+                container = ContainerWidget.new
+                container.set_object_name("mywidget_#{counter}")
+                container.set_layout(Qt::VBoxLayout.new)
+                container.set_label_text("No input")
+                                
+                @container_hash[counter] = container
+                
+                # Add parent widget to grid
+                @grid.add_widget(container, row, col) # TODO does this make @grid the parent of the widget?
+                container.show
+                counter = counter + 1
+            end
+        end
+
+        return unless @widget_hash
+        
+        # Add existing widgets to grid
+        @widget_hash.each do |pos, widget|
+            parent = @container_hash[pos]
+            widget.set_parent(parent)
+            widget.show
+        end
+        
     end
     
     # Import configuration from YAML file located at +path+.
@@ -211,6 +278,41 @@ class CompoundDisplayConfig
     
     def invalid?
         return @task && @port && @widget && @pull && (not task.empty?) && (not port.empty?)
+    end
+end
+
+class ContainerWidget < Qt::Widget
+    attr_reader :label_text
+    attr_reader :content_widget
+    
+    def initialize(label_text = "", content_widget = nil, parent = nil)
+        super(parent)
+        set_size_policy(Qt::SizePolicy::Preferred, Qt::SizePolicy::Preferred)
+        @label_text = label_text
+        @layout = Qt::VBoxLayout.new(self)
+        
+        @label = Qt::Label.new(label_text)
+        @label.set_size_policy(Qt::SizePolicy::Preferred, Qt::SizePolicy::Maximum)
+        @layout.add_widget(@label)
+        
+        set_content_widget(content_widget) if content_widget
+        self
+    end
+    
+    def set_content_widget(widget)
+        if @content_widget
+            # Delete existing widget
+            @content_widget.set_parent(nil)
+            @content_widget = nil
+        end
+        @content_widget = widget
+        @layout.add_widget(@content_widget)
+        widget.show
+    end
+    
+    def set_label_text(text)
+        @label.set_text(text)
+        @label_text = text
     end
 end
 
