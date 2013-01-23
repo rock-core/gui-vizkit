@@ -1,4 +1,3 @@
-#require '../vizkit'
 require 'utilrb/qt/variant/from_ruby.rb'
 
 module Vizkit
@@ -12,6 +11,15 @@ module Vizkit
             widgets.each do |w|
                 menu.add_action(Qt::Action.new(w, parent))
             end
+            # Display context menu at cursor position.
+            action = menu.exec(parent.viewport.map_to_global(pos))
+            action.text if action
+        end
+
+        def self.config_name_service(name_service,parent,pos)
+            menu = Qt::Menu.new(parent)
+            menu.add_action(Qt::Action.new("set ip", parent))
+
             # Display context menu at cursor position.
             action = menu.exec(parent.viewport.map_to_global(pos))
             action.text if action
@@ -157,6 +165,8 @@ module Vizkit
             # there is no way to define some on the ruby side
             if editor.respond_to? :getData
                 model.setData(index,Qt::Variant.new(editor.getData),Qt::EditRole)
+            elsif editor.is_a? Qt::ComboBox
+                model.setData(index,Qt::Variant.new(editor.currentText),Qt::EditRole)
             else
                 super
             end
@@ -239,10 +249,15 @@ module Vizkit
         end
 
         def context_menu(item,pos,parent)
+            false
         end
 
-        def on_change(&block)
-            @on_change = block
+        def on_changed(&block)
+            @on_changed = block
+        end
+
+        def on_added(&block)
+            @on_added = block
         end
 
         def child(row,item = @root)
@@ -311,10 +326,10 @@ module Vizkit
 
         # indicates that an item has changed
         def item_changed
-            return unless @on_change
+            return unless @on_changed
             number_of_elements = rows()-1
             0.upto(number_of_elements) do |i|
-                @on_change.call child(i,@root)
+                @on_changed.call child(i,@root)
             end
         end
 
@@ -431,6 +446,9 @@ module Vizkit
 
         def stop_listening(item=nil)
         end
+
+        def sort(value = :ascending_order)
+        end
     end
 
     # A ProxyDataModel is used to combine multiple TypelibDataModel into one
@@ -454,15 +472,20 @@ module Vizkit
             @options = {:enabled => true}
         end
 
-        def on_change(&block)
-            @on_change = block
+        def on_changed(&block)
+            @on_changed = block
         end
 
+        def on_added(&block)
+            @on_added = block
+        end
+        
         def item_changed(item)
-            @on_change.call item if @on_change && item.object_id != @root.object_id
+            @on_changed.call item if @on_changed && item.object_id != @root.object_id
             number_of_elements = rows(item)-1
             0.upto(number_of_elements) do |i|
-                item_changed child(i,item)
+                c =  child(i,item)
+                item_changed c if c && c.is_a?(ProxyDataModel)
             end
         end
 
@@ -490,6 +513,22 @@ module Vizkit
             end
         end
 
+        def add?(name)
+            if @root.has_key? name
+                false
+            else
+                true
+            end
+        end
+
+        def sort(value=:ascending_order)
+            options[:sort] = value
+            @root.each_value do |model|
+                model.sort value
+                item_changed model
+            end
+        end
+
         # Adds a model to the ProxyDataModel
         #
         # @param [TypelibDataModel,ProxyDataModel] model The model
@@ -498,17 +537,26 @@ module Vizkit
         # @param [Object] data underlying data object which is returned by raw_data
         # @param [Orocos::Async::EventListener] listener Event listener which is updating the added model
         def add(model,name,value,data=nil,listener=nil)
-            return if @root.has_key? name
-            raise "no model" until model
+            return false unless add?(name)
             raise "no name" until name
+            model = if model
+                        model
+                    else
+                        ProxyDataModel.new self
+                    end
 
-            model.on_change do |item|
-                @on_change.call(item) if @on_change
+            model.on_changed do |item|
+                @on_changed.call(item) if @on_changed
+            end
+            model.on_added do |parent,row|
+                @on_added.call(parent,row) if @on_added
             end
             model.parent = self
             @root[name] = model
             @meta_data[model] = MetaData.new(name,value,data,listener)
-            @on_change.call(self) if @on_change
+            @on_changed.call(self) if @on_changed
+            @on_added.call(self,rows-1) if @on_added
+            true
         end
 
         def data_value(model,value)
@@ -523,7 +571,14 @@ module Vizkit
                 p
             else
                 if parent==@root
-                    @root[@root.keys[row]]
+                    case options[:sort]
+                    when :ascending_order
+                        @root[@root.keys.sort[row]]
+                    when :descending_order
+                        @root[@root.keys.sort.reverse[row]]
+                    else
+                        @root[@root.keys[row]]
+                    end
                 else
                     if parent.respond_to? :child
                         p = parent.child(row)
@@ -550,7 +605,7 @@ module Vizkit
         end
 
         def parent(item=@root)
-            return @parent if item == @root
+            return @parent if item.object_id == @root.object_id
             model = @item_to_model[item]
             if model
                 parent = model.parent(item)
@@ -612,8 +667,12 @@ module Vizkit
                     Qt::Variant.from_ruby item
                 elsif role == Qt::DisplayRole && item.modified_by_user?
                     Qt::Variant.new(@meta_data[item].value.to_s + " (modified)")
-                else
+                elsif role == Qt::BackgroundRole && item.modified_by_user?
+                    Qt::Variant.new(Qt::red)
+                elsif role == Qt::DisplayRole
                     Qt::Variant.new(@meta_data[item].value.to_s)
+                else
+                    Qt::Variant.new
                 end
             end
         end
@@ -634,7 +693,7 @@ module Vizkit
                 model.flags(column,item)
             else
                 return 0 if !item.options[:enabled]
-                if options[:editable]
+                if options[:editable] && column == 1
                     Qt::ItemIsEnabled | Qt::ItemIsEditable
                 else
                     Qt::ItemIsEnabled
@@ -646,6 +705,8 @@ module Vizkit
             model = @item_to_model[item]
             if model
                 model.context_menu(item,pos,parent_widget)
+            else
+                false
             end
         end
 
@@ -667,18 +728,22 @@ module Vizkit
     end
 
     class OutputPortsDataModel < ProxyDataModel
-        def add(port)
-            model = nil
+        def add(port,name=nil,value=nil,data=nil)
+            if port.is_a? Orocos::Async::PortProxy
+                return false unless add?(port.name)
+                model = nil
+                listener = port.on_data do |data|
+                    model.update(data)
+                end
+                listener.stop
 
-            listener = port.on_data do |data|
-                model.update(data)
-            end
-            listener.stop
-
-            listener2 = port.on_reachable do
-                model = TypelibDataModel.new(port.new_sample,self)
-                super(model,port.name,port.type_name,port,listener)
-                listener2.stop
+                listener2 = port.on_reachable do
+                    model = TypelibDataModel.new(port.new_sample,self)
+                    super(model,port.name,port.type_name,port,listener)
+                    listener2.stop
+                end
+            else
+                return super(port,name,value,data)
             end
         end
 
@@ -695,7 +760,7 @@ module Vizkit
 
         def context_menu(item,pos,parent_widget)
             port,subfield = port_from_index(item)
-            return unless port
+            return false unless port
             if port.output?
                 port_temp = if !subfield.empty?
                                 port.sub_port(subfield,field_type(item))
@@ -725,6 +790,7 @@ module Vizkit
         end
 
         def add(property)
+            return false unless add?(property.name)
             raise ArgumentError, "no property given" unless property
             model = nil
             property.on_change do |data|
@@ -747,7 +813,7 @@ module Vizkit
         end
 
         def reset(model)
-            meta = @meta_data[model] 
+            meta = @meta_data[model]
             if meta
                 model.update meta.data.last_sample
             end
@@ -788,36 +854,201 @@ module Vizkit
             end
             @task = task
         end
+
+        def write(model,&block)
+            if model == @properties
+                0.upto(@properties.rows) do |i|
+                    child = @properties.child(i)
+                    @properties.write child
+                end
+            end
+        end
+
+        def reset(model)
+            if model == @properties
+                0.upto(@properties.rows) do |i|
+                    child = @properties.child(i)
+                    @properties.reset child
+                end
+            end
+        end
+
+        def flags(column,item)
+            return 0 if !@options[:enabled]
+            model = @item_to_model[item]
+            if model
+                model.flags(column,item)
+            else
+                return 0 if !item.options[:enabled]
+                if item == @properties && column == 1
+                    Qt::ItemIsEnabled | Qt::ItemIsEditable
+                else
+                    Qt::ItemIsEnabled
+                end
+            end
+        end
     end
 
     class TaskContextsDataModel < ProxyDataModel
         def initialize(parent = nil)
             super(parent)
         end
-        def add(task)
-            model = TaskContextDataModel.new task, self
-            super(model,task.name,"",task)
-            task.on_state_change do |state|
-                data_value(model,state.to_s)
-                item_changed(model)
+        def add(model,name=nil,value=nil,data=nil)
+            if model.is_a? Orocos::Async::TaskContextProxy
+                task = model
+                return false unless add?(task.name)
+                model = TaskContextDataModel.new task, self
+                super(model,task.name,"",task)
+                task.on_state_change do |state|
+                    data_value(model,state.to_s)
+                    item_changed(model)
+                end
+                task.on_unreachable do
+                    data_value(model,"UNREACHABLE")
+                    model.options[:enabled] = false
+                    item_changed(model)
+                end
+                task.on_reachable do
+                    model.options[:enabled] = true
+                end
+            else
+                return super(model,name,value,data)
             end
-            task.on_unreachable do
-                data_value(model,"UNREACHABLE")
-                model.options[:enabled] = false
-                item_changed(model)
-            end
-            task.on_reachable do
-                model.options[:enabled] = true
-            end
+            true
         end
+
         def context_menu(item,pos,parent_widget)
-            return if super
+            return true if super
             model = @item_to_model[item]
             data = @meta_data[model]
             task = raw_data(item)
             if task
                 ContextMenu.task_state(task,parent_widget,pos)
                 true
+            end
+        end
+    end
+
+    class NameServiceDataModel < TaskContextsDataModel
+        def initialize(parent = nil,name_service)
+            super(parent)
+            name_service.on_task_added do |task_name|
+                add(name_service.proxy(task_name))
+            end
+        end
+    end
+
+    class NameServicesDataModel < TaskContextsDataModel
+        def initialize(parent = nil)
+            super(parent)
+        end
+        def add(name_service)
+            if name_service.is_a? Orocos::NameServiceBase
+                raise ArgumentError,"name_service #{name_service} is not a Orocos::Async::NameServiceBase"
+            elsif name_service.is_a? Orocos::Async::NameServiceBase
+                model = NameServiceDataModel.new name_service
+                name_service.on_error do |error|
+                    data_value(model,error.to_s)
+                    model.options[:enabled] = false
+                    item_changed model
+                end
+                super(model,name_service.name,"",name_service)
+            else
+                super
+            end
+        end
+        def context_menu(item,pos,parent_widget)
+            model = @item_to_model[item]
+            data = @meta_data[model]
+            obj = raw_data(item)
+            if obj.is_a? Orocos::Async::NameServiceBase
+                false
+            else
+                super
+            end
+        end
+    end
+
+    class LogAnnotationDataModel < ProxyDataModel
+        def initialize(annotation,parent = nil)
+            super parent
+            @samples = ProxyDataModel.new self
+            add(@samples,"Samples",annotation.samples.size,nil)
+        end
+    end
+
+    class GlobalMetaDataModel < ProxyDataModel
+        def initialize(log_replay,parent = nil)
+            super parent
+            log_replay.annotations.each do |annotation|
+                model = LogAnnotationDataModel.new annotation, self
+                add(model,annotation.stream.name,annotation.stream.type_name,model)
+            end
+        end
+    end
+
+    class LogOutputPortDataModel < ProxyDataModel
+        def initialize(port,parent = nil)
+            super parent
+            options[:enabled]= if port.number_of_samples == 0
+                                   false
+                               else
+                                   true
+                               end
+            @samples = ProxyDataModel.new self
+            @first_sample = ProxyDataModel.new self
+            @last_sample = ProxyDataModel.new self
+            @meta = ProxyDataModel.new self
+            port.metadata.each_pair do |key,value|
+                model = ProxyDataModel.new @meta
+                @meta.add(model,key,value,nil)
+            end
+            add(@meta,"Meta Data","",nil)
+            add(@samples,"Samples",port.number_of_samples,nil)
+            add(@first_sample,"First Sample",port.first_sample_pos,nil)
+            add(@last_sample,"Last Sample",port.last_sample_pos,nil)
+        end
+    end
+
+    class LogTaskDataModel < OutputPortsDataModel
+        def initialize(task,parent = nil)
+            super parent
+            options[:enabled] = false
+
+            add(nil,"Properties")
+            task.each_property do |prop|
+                #TODO
+                # convert to Orocos::Async::Property
+                model = TypelibDataModel.new port.read,self
+                port.on_change do |data|
+                    model.update(data)
+                end
+                add(model,prop.name,prop.type_name,prop)
+            end
+
+            task.each_port do |port|
+                model = LogOutputPortDataModel.new port,self
+                add(model,port.name,port.type_name,port)
+                options[:enabled] = true if port.number_of_samples > 0
+            end
+        end
+
+        def port_from_index(index)
+            #TODO
+            #convert to port proxy ? 
+            port,_ = super
+            [port,[]]
+        end
+    end
+
+    class LogReplayDataModel < ProxyDataModel
+        def initialize(log_replay,parent = nil)
+            super(parent)
+            @global_meta_data = GlobalMetaDataModel.new log_replay,self
+            add(@global_meta_data,"-Global Meta Data-","",@global_meta_data)
+            log_replay.tasks.each do |task|
+                model = LogTaskDataModel.new task,self
+                add(model,task.name,task.file_path,task)
             end
         end
     end
@@ -829,10 +1060,22 @@ module Vizkit
         def initialize(data,parent = nil)
             super(parent)
             @data_model = data
-            @data_model.on_change do |item|
+            @data_model.on_changed do |item|
                 index = @index[item]
                 if index
                     emit dataChanged(index,index(index.row,1,index.parent))
+                end
+            end
+            @data_model.on_added do |parent,row|
+                index = @index[parent]
+                index = if index
+                            index
+                        else
+                            Qt::ModelIndex.new
+                        end
+                if index.isValid || parent == @data_model
+                    beginInsertRows(index,row,row)
+                    endInsertRows()
                 end
             end
 
@@ -840,11 +1083,24 @@ module Vizkit
             # otherwise qt is complaining that two childs
             # of item have different parents
             @index = Hash.new
+            @header = ["Field","Value"]
+        end
+
+        def header(field1,field2)
+            @header = [field1,field2]
         end
 
         def stop_listening(index)
             item = itemFromIndex(index)
             @data_model.stop_listening(item)
+        end
+
+        def sort(column,order)
+            if order == Qt::AscendingOrder
+                @data_model.sort(:ascending_order)
+            else
+                @data_model.sort(:descending_order)
+            end
         end
 
         def context_menu(index,pos,parent)
@@ -870,12 +1126,14 @@ module Vizkit
         end
 
         def data(index,role)
-            if !index.valid? || role != Qt::DisplayRole && role != Qt::EditRole && role != Qt::ToolTipRole
-                return Qt::Variant.new
-            end
+            return Qt::Variant.new if !index.valid?
             item = itemFromIndex(index)
             val = if index.column == 0
-                      @data_model.field_name(item)
+                      if role == Qt::DisplayRole
+                          @data_model.field_name(item)
+                      else
+                          Qt::Variant.new
+                      end
                   else
                       @data_model.data(item,role)
                   end
@@ -929,9 +1187,9 @@ module Vizkit
         def headerData(section,orientation,role)
             return Qt::Variant.new if role != Qt::DisplayRole
             if section == 0
-                Qt::Variant.new("Field")
+                Qt::Variant.new(@header[0])
             else
-                Qt::Variant.new("Value")
+                Qt::Variant.new(@header[1])
             end
         end
 
@@ -963,10 +1221,11 @@ module Vizkit
         tree_view.setContextMenuPolicy(Qt::CustomContextMenu)
         tree_view.connect(SIGNAL('customContextMenuRequested(const QPoint&)')) do |pos|
             index = tree_view.index_at(pos)
-            index.model.context_menu(index,pos,tree_view)
+            index.model.context_menu(index,pos,tree_view) if index.model
         end
 
         def tree_view.setModel(model)
+            raise ArgumentError,"wrong model type" unless model.is_a? Qt::AbstractItemModel
             super
             connect SIGNAL("collapsed(QModelIndex)") do |index|
                 model.stop_listening index
@@ -976,33 +1235,3 @@ module Vizkit
         end
     end
 end
-
-
-#Orocos.initialize
-#Orocos.load_typekit "base"
-#t = Types::Base::Samples::RigidBodyState.new
-##t = Types::Base::Samples::Frame::FramePair.new
-#
-#w = Qt::TreeView.new
-#Vizkit.setup_tree_view(w)
-#w.resize(640,480)
-#
-#t = Qt::Timer.new
-#t.connect SIGNAL(:timeout) do 
-#    #    w.reset
-#end
-#t.start 1000
-#
-#task = Orocos::Async::TaskContextProxy.new("camera",:wait => true)
-#data = Vizkit::TaskContextsDataModel.new
-#data.add(task)
-#model = Vizkit::VizkitItemModel.new(data)
-#w.setModel model
-#
-##model = Vizkit::PortsItemModel.new
-##model.add_port task.port("frame")
-##proxy = Qt::SortFilterProxyModel.new
-##proxy.setSourceModel model
-#
-#w.show
-#Vizkit.exec

@@ -188,6 +188,7 @@ end
 
 describe Vizkit::ProxyDataModel do
     before do 
+        Orocos::Async.clear
         sample = Types::Base::Samples::Frame::Frame.new
         sample.zero!
         @model = Vizkit::TypelibDataModel.new sample
@@ -235,6 +236,7 @@ end
 
 describe Vizkit::TaskContextDataModel do
     before do
+        Orocos::Async.clear
         if !@model
             @task = Orocos::RubyTaskContext.new("test_task2")
             @task.create_property("prop1","/base/samples/RigidBodyState")
@@ -289,9 +291,39 @@ describe Vizkit::TaskContextDataModel do
     end
 end
 
+describe Vizkit::PropertiesDataModel do
+    before do
+        Orocos::Async.clear
+
+        if !@model
+            @task = Orocos::RubyTaskContext.new("test_task")
+            @task.create_property("prop1","/base/samples/RigidBodyState")
+
+            @task_proxy = Orocos::Async.proxy "test_task",:period => 0.1
+            Orocos::Async.wait_for do
+                @task_proxy.reachable?
+            end
+            @model = Vizkit::PropertiesDataModel.new
+            @model.add @task_proxy.property "prop1"
+        end
+    end
+
+    describe "method data" do
+        it "should report the propertie" do 
+            sleep 0.11
+            Orocos::Async.steps
+            sleep 0.11
+            Orocos::Async.steps
+            prop1 = @model.child(0)
+            data = @model.field_name(prop1)
+            assert_equal "prop1",data.toString
+        end
+    end
+end
 
 describe Vizkit::TaskContextsDataModel do
     before do
+        Orocos::Async.clear
         if !@model
             @task = Orocos::RubyTaskContext.new("test_task")
             @task_proxy = Orocos::Async.proxy "test_task",:period => 0.1
@@ -320,6 +352,70 @@ describe Vizkit::TaskContextsDataModel do
             Orocos::Async.steps
             data = @model.data(item)
             assert_equal "STOPPED",data.toString
+        end
+    end
+end
+
+describe Vizkit::NameServiceDataModel do
+    before do
+        Orocos::Async.clear
+
+        if !@model
+            @task1 = Orocos::RubyTaskContext.new("test_task1")
+            @task2 = Orocos::RubyTaskContext.new("test_task2")
+            ns = Orocos::Async::CORBA::NameService.new :period => 0.1
+            @model = Vizkit::NameServiceDataModel.new ns
+        end
+    end
+
+    describe "method data" do
+        it "should report all running tasks" do 
+            sleep 0.11
+            Orocos::Async.steps
+            sleep 0.11
+            Orocos::Async.steps
+            sleep 0.11
+            Orocos::Async.steps
+            assert_equal 2,@model.rows
+
+            item = @model.child(0)
+            name = @model.field_name(item)
+            assert_equal "/test_task1",name.toString
+
+            item = @model.child(1)
+            name = @model.field_name(item)
+            assert_equal "/test_task2",name.toString
+        end
+    end
+end
+
+describe Vizkit::NameServicesDataModel do
+    before do
+        Orocos::Async.clear
+        if !@model
+            @task1 = Orocos::RubyTaskContext.new("test_task1")
+            @task2 = Orocos::RubyTaskContext.new("test_task2")
+            ns1 = Orocos::Async::CORBA::NameService.new :period => 0.1,:namespace => "ns1"
+            ns2 = Orocos::Async::CORBA::NameService.new :period => 0.1,:namespace => "ns2"
+            @model = Vizkit::NameServicesDataModel.new
+            @model.add ns1
+            @model.add ns2
+        end
+    end
+
+    describe "method data" do
+        it "should report added name service" do 
+            sleep 0.11
+            Orocos::Async.steps
+            assert_equal 2,@model.rows
+
+            item = @model.child(0)
+            name = @model.field_name(item)
+            assert_equal "ns1",name.toString
+
+            item = @model.child(1)
+            name = @model.field_name(item)
+            assert_equal "ns2",name.toString
         end
     end
 end
