@@ -1,8 +1,5 @@
 module Orocos
-    class OutputPort
-        alias :org_connect_to :connect_to
-        #remove_method :connect_to
-
+    module QtOutputPort
         def connect_to(widget=nil, options = Hash.new,&block)
             widget,options = if widget.is_a?(Hash)
                                  [nil,widget]
@@ -74,6 +71,20 @@ module Orocos
                 end
             end
         end
+    end
+
+    class OutputPort
+        alias :org_connect_to :connect_to
+        remove_method :connect_to
+
+        include QtOutputPort
+    end
+
+    class Log::OutputPort
+        alias :org_connect_to :connect_to
+        remove_method :connect_to
+
+        include QtOutputPort
     end
 
     class Async::PortProxy

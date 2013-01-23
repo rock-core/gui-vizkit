@@ -179,7 +179,14 @@ module Vizkit
             widget, options = nil, widget
         end
         port = Orocos::Async.proxy(task_name).port(port_name)
-        port.connect_to widget,options,&block
+        l = port.on_reachable do
+            begin
+                port.connect_to widget,options,&block
+                l.stop # stop listener
+            rescue Exception => e
+                Vizkit.warn "error while connecting #{port.name} with widget: #{e}"
+            end
+        end
     end
 
     @vizkit_local_options = {:widget => nil,:reuse => true,:parent =>nil,:widget_type => :display}
