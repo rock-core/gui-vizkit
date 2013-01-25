@@ -98,7 +98,6 @@ module Vizkit
                 #if someone is pressing ctrl i show a debug window
                 if event.key == 73 && event.modifiers == Qt::ControlModifier
                     @vizkit_info_viewer ||= Vizkit.default_loader.VizkitInfoViewer
-                    @vizkit_info_viewer.auto_update(Vizkit.connections)
                     @vizkit_info_viewer.show
                 end
             end
