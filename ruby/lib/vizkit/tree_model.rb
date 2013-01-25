@@ -729,11 +729,11 @@ module Vizkit
 
     class OutputPortsDataModel < ProxyDataModel
         def add(port,name=nil,value=nil,data=nil)
-            if port.is_a? Orocos::Async::PortProxy
+            if !name
                 return false unless add?(port.name)
                 model = nil
                 listener = port.on_data do |data|
-                    model.update(data)
+                    model.update(data) if model
                 end
                 listener.stop
 
@@ -894,7 +894,7 @@ module Vizkit
             super(parent)
         end
         def add(model,name=nil,value=nil,data=nil)
-            if model.is_a? Orocos::Async::TaskContextProxy
+            if !name
                 task = model
                 return false unless add?(task.name)
                 model = TaskContextDataModel.new task, self
@@ -1034,9 +1034,11 @@ module Vizkit
         end
 
         def port_from_index(index)
-            #TODO
-            #convert to port proxy ? 
             port,_ = super
+            return [nil,nil] unless port
+            task = Orocos::Async::Log::TaskContext.new(port.task)
+            task = Orocos::Async::TaskContextProxy.new(task.name,:use => task,:wait => true)
+            port = task.port(port.name)
             [port,[]]
         end
     end
@@ -1101,6 +1103,8 @@ module Vizkit
             else
                 @data_model.sort(:descending_order)
             end
+            @index.clear
+            reset
         end
 
         def context_menu(index,pos,parent)
@@ -1214,8 +1218,8 @@ module Vizkit
     end
 
     def self.setup_tree_view(tree_view)
-        @delegator = ItemDelegate.new(tree_view,nil)
-        tree_view.setItemDelegate(@delegator)
+        delegator = ItemDelegate.new(tree_view,nil)
+        tree_view.setItemDelegate(delegator)
         tree_view.setSortingEnabled true
         tree_view.setAlternatingRowColors(true)
         tree_view.setContextMenuPolicy(Qt::CustomContextMenu)

@@ -7,8 +7,8 @@ module Orocos
                                  [widget,options]
                              end
 
-            # connection is to another orocos port
-            if widget.respond_to?(:to_orocos_port) || widget.respond_to?(:find_port)
+            # connection is to another orocos port or code block in the case of an Orocos Log Port
+            if widget.respond_to?(:to_orocos_port) || widget.respond_to?(:find_port) || (!widget && self.is_a?(Orocos::Log::OutputPort))
                 return org_connect_to widget,options,&block
             end
 
@@ -85,6 +85,13 @@ module Orocos
         remove_method :connect_to
 
         include QtOutputPort
+    end
+
+    class Async::Log::OutputPort
+        alias :org_connect_to :connect_to
+        remove_method :connect_to
+
+        include QtOrocos
     end
 
     class Async::PortProxy

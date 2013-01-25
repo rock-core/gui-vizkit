@@ -1,4 +1,4 @@
-require File.join(File.dirname(__FILE__), '../..', 'tree_modeler.rb')
+require "vizkit/tree_model.rb"
 
 class LogControl
   class StopAllTimer < Qt::Object
@@ -90,19 +90,12 @@ class LogControl
       index.setMaximum(@log_replay.size-1)
 
       #add replayed streams to tree view 
-      @tree_view = Vizkit::TreeModeler.new(treeView)
-      @tree_view.model.setHorizontalHeaderLabels(["Replayed Tasks","Information"])
-      @tree_view.update(@log_replay, nil)
+      Vizkit.setup_tree_view treeView
+      data_model = Vizkit::LogReplayDataModel.new @log_replay
+      model = Vizkit::VizkitItemModel.new data_model
+      treeView.setModel model
+      model.header("Replayed Tasks","Information")
       treeView.resizeColumnToContents(0)
-
-      treeView.connect(SIGNAL('expanded(const QModelIndex)')) do 
-        @tree_view.update(@log_replay, nil)
-      end
-
-
-
-      @brush = Qt::Brush.new(Qt::Color.new(200,200,200))
-      @widget_hash = Hash.new
 
       actionNone.connect(SIGNAL("triggered(bool)")) do |checked|
         if checked 
@@ -139,11 +132,22 @@ class LogControl
         setEnabled(true)
       end
 
+      @last_info = Time.now
+      @timer = Orocos::Async.event_loop.every 0.001,false do
+          if @log_replay.sync_step?
+              bplay_clicked if @log_replay.sample_index >= timeline.getEndMarkerIndex || !@log_replay.step
+              if Time.now - @last_info > 0.1
+                  @last_info = Time.now
+                  display_info      #we do not display the info every step to save cpu time
+                  timeline.setSliderIndex(@log_replay.sample_index)
+              end
+          end
+      end
       display_info
     end
 
     def playing?
-      @replay_on
+        @timer.running?
     end
 
     def display_info
@@ -155,7 +159,6 @@ class LogControl
       else
         timestamp.text = "0"
       end
-      @tree_view.update(@log_replay, nil)
     end
 
     def speed=(double)
@@ -169,21 +172,10 @@ class LogControl
     end
 
     def auto_replay
-      @replay_on = true
       @log_replay.reset_time_sync
-      last_warn = Time.now 
-      last_info = Time.now
-      while @replay_on 
-       bplay_clicked if @log_replay.sample_index >= timeline.getEndMarkerIndex || !@log_replay.step(true)
-       if Time.now - last_info > 0.1
-        last_info = Time.now
-        $qApp.processEvents
-        display_info      #we do not display the info every step to save cpu time
-        timeline.setSliderIndex(@log_replay.sample_index)
-       end
-      end
-      display_info        #display info --> otherwise info is maybe not up to date
+      display_info              #display info --> otherwise info is maybe not up to date
       timeline.setSliderIndex(@log_replay.sample_index)
+      @timer.start
     end
 
     def slider_released(index)
@@ -195,7 +187,7 @@ class LogControl
     
     def bnext_clicked
       return if !@log_replay.replay?
-      if @replay_on
+      if playing?
         #we cannot use speed= here because this would overwrite the 
         #user_speed which is the default speed for replay
         @log_replay.speed = @log_replay.speed*2
@@ -204,13 +196,17 @@ class LogControl
         if actionNone.isChecked
             @log_replay.step(false)
         else
-            port = @log_replay.current_port 
-            begin
-                @log_replay.step(false)
-                timeline.setSliderIndex(@log_replay.sample_index)
-                display_info
-                $qApp.processEvents
-            end while port && port != @log_replay.current_port
+            @port ||= @log_replay.current_port
+            @log_replay.step(false)
+            timeline.setSliderIndex(@log_replay.sample_index)
+            display_info
+            if @port != @log_replay.current_port
+                Orocos::Async.event_loop.once do 
+                    bnext_clicked
+                end
+            else
+                @port = nil
+            end
         end
       end
       timeline.setSliderIndex(@log_replay.sample_index)
@@ -219,29 +215,33 @@ class LogControl
 
     def bback_clicked 
       return if !@log_replay.replay?
-      if @replay_on
+      if playing?
         @log_replay.speed = @log_replay.speed*0.5
         @log_replay.reset_time_sync
       else
         if actionNone.isChecked
             @log_replay.step_back
         else
-            port = @log_replay.current_port 
-            begin
-                @log_replay.step_back
-                timeline.setSliderIndex(@log_replay.sample_index)
-                display_info
-                $qApp.processEvents
-            end while port && port != @log_replay.current_port
+            @port ||= @log_replay.current_port
+            @log_replay.step_back
+            timeline.setSliderIndex(@log_replay.sample_index)
+            display_info
+            if @port != @log_replay.current_port
+                Orocos::Async.event_loop.once do 
+                    bback_clicked
+                end
+            else
+                @port = nil
+            end
         end
       end
       timeline.setSliderIndex(@log_replay.sample_index)
       display_info
     end
     
-    def bstop_clicked 
+    def bstop_clicked
        return if !@log_replay.replay?
-       bplay_clicked if @replay_on
+       bplay_clicked if playing?
        if timeline.getStartMarkerIndex == 0
          @log_replay.rewind
        else
@@ -261,11 +261,11 @@ class LogControl
         slider_released(index)
     end
     
-    def bplay_clicked 
+    def bplay_clicked
       return if !@log_replay.replay?
-      if @replay_on
+      if playing?
         bplay.icon = @play_icon
-        @replay_on = false
+        @timer.cancel
       else
         bplay.icon = @pause_icon
         if(timeline.getSliderIndex < timeline.getStartMarkerIndex || timeline.getSliderIndex >= timeline.getEndMarkerIndex)

@@ -84,8 +84,6 @@ log.use_sample_time = use_sample_time
 #select only ports which are not filtered out
 log.track(true, @search_filter)
 
-Vizkit::ReaderWriterProxy.default_policy = {:port_proxy => nil}
-
 def replay(log)
     unless log.replay?
         if @search_filter.empty?
