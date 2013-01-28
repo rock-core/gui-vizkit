@@ -1,3 +1,4 @@
+require 'utilrb/qt/variant/from_ruby.rb'
 # Graphical user interface displaying information of a Utilrb::EventLoop
 # such as queued tasks and worker threads executing the tasks. The key
 # information is the task's time consumption. Completed tasks are no 
@@ -29,6 +30,9 @@ class VizkitInfoViewer
     
     # The position of the tab for log messages in the tab view
     LOG_TAB_INDEX = 1 if !defined? LOG_TAB_INDEX
+    
+    # Column in event timer tree view storing the data object
+    TIMER_DATA_COLUMN = 1
 
     module Functions
         def init(parent = nil, update_frequency = 500, time_threshold = 1000)
@@ -104,7 +108,8 @@ class VizkitInfoViewer
             event_tree.connect(SIGNAL('itemChanged(QTreeWidgetItem*, int)')) do |item, col|
                 # TODO The persistent editor does not get closed if the item's text does not change.
                 if col == 1
-                    timer = @item_hash[item]
+                    #timer = @item_hash[item]
+                    timer = item.data(TIMER_DATA_COLUMN, Qt::UserRole).to_ruby
                     timer.period = item.text(col).to_f
                     if end_edit(item)
                         event_tree.close_persistent_editor(item, col)
@@ -287,6 +292,8 @@ class VizkitInfoViewer
             data.size.times do |i|
                 item.set_text(i, data[i].to_s)
             end
+            # Store timer object representation at item for 'direct access' from context menu
+            item.set_data(TIMER_DATA_COLUMN, Qt::UserRole, Qt::Variant.from_ruby(timer))
             item
         end
         
