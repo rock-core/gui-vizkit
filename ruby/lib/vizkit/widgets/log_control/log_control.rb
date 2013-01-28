@@ -143,6 +143,7 @@ class LogControl
               end
           end
       end
+      @timer.doc = "Log::Replay"
       display_info
     end
 

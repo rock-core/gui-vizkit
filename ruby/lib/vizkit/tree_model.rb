@@ -41,7 +41,7 @@ module Vizkit
             menu.add_action(Qt::Action.new("Save Configuration", parent))
             menu.addSeparator
 
-            if task.state == :PRE_OPERATIONAL
+            if task.current_state == :PRE_OPERATIONAL
                 menu.add_action(Qt::Action.new("Configure Task", parent))
             elsif task.error?
                 menu.add_action(Qt::Action.new("Reset Exception", parent))
@@ -53,7 +53,7 @@ module Vizkit
             end
 
             #check if there are widgets for the task 
-            if task.model && task.__task
+            if task.model
                 menu.addSeparator
                 Vizkit.default_loader.find_all_plugin_names(:argument => task,:callback_type => :control,:flags => {:deprecated => false}).each do |w|
                     menu.add_action(Qt::Action.new(w, parent))
@@ -890,15 +890,23 @@ module Vizkit
     end
 
     class TaskContextsDataModel < ProxyDataModel
-        def initialize(parent = nil)
+        def initialize(parent = nil,options=Hash.new)
             super(parent)
+            options = Kernel.validate_options options,:use_basename => false
+            @options = @options.merge options
         end
+
         def add(model,name=nil,value=nil,data=nil)
             if !name
                 task = model
-                return false unless add?(task.name)
+                name = if @options[:use_basename]
+                           task.basename
+                       else
+                           task.name
+                       end
+                return false unless add?(name)
                 model = TaskContextDataModel.new task, self
-                super(model,task.name,"",task)
+                super(model,name,"",task)
                 task.on_state_change do |state|
                     data_value(model,state.to_s)
                     item_changed(model)
@@ -930,8 +938,8 @@ module Vizkit
     end
 
     class NameServiceDataModel < TaskContextsDataModel
-        def initialize(parent = nil,name_service)
-            super(parent)
+        def initialize(parent,name_service)
+            super(parent,:use_basename => true)
             name_service.on_task_added do |task_name|
                 add(name_service.proxy(task_name))
             end
@@ -946,7 +954,7 @@ module Vizkit
             if name_service.is_a? Orocos::NameServiceBase
                 raise ArgumentError,"name_service #{name_service} is not a Orocos::Async::NameServiceBase"
             elsif name_service.is_a? Orocos::Async::NameServiceBase
-                model = NameServiceDataModel.new name_service
+                model = NameServiceDataModel.new self,name_service
                 name_service.on_error do |error|
                     data_value(model,error.to_s)
                     model.options[:enabled] = false
@@ -1036,6 +1044,7 @@ module Vizkit
         def port_from_index(index)
             port,_ = super
             return [nil,nil] unless port
+            # we have to return a PortProxy here
             task = Orocos::Async::Log::TaskContext.new(port.task)
             task = Orocos::Async::TaskContextProxy.new(task.name,:use => task,:wait => true)
             port = task.port(port.name)

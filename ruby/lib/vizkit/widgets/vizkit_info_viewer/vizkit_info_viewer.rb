@@ -134,10 +134,10 @@ class VizkitInfoViewer
             # Display notification when new logs arrived
             # TODO use cleaner approach with 'validate/invalidate' operation
             # TODO reset notification on tab click
-            tabWidget.log_text_browser.connect(SIGNAL('textChanged()')) do
-                # Append '*' to the log tab's title
-                tabWidget.set_tab_text(LOG_TAB_INDEX,"#{tabWidget.tab_text(LOG_TAB_INDEX)}*")
-            end
+         #   tabWidget.log_text_browser.connect(SIGNAL('textChanged()')) do
+         #       # Append '*' to the log tab's title
+         #       tabWidget.set_tab_text(LOG_TAB_INDEX,"#{tabWidget.tab_text(LOG_TAB_INDEX)}*")
+         #   end
             
             update_tree_view
         end
@@ -265,10 +265,8 @@ class VizkitInfoViewer
         # Register for error messages
         def register_for_errors
             error_classes = [Orocos::CORBA::ComError, Orocos::NotFound]
-            error_classes.each do |klass|
-                @event_loop.on_error(klass) do
-                    log_text_browser.append "#{Time.now}: #{klass}"
-                end
+            @event_loop.on_errors(error_classes) do |e|
+                log_text_browser.append "#{Time.now}: #{e}"
             end
             @registered_for_errors = true
         end
