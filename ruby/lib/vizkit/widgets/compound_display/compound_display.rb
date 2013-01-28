@@ -84,10 +84,8 @@ class CompoundDisplay < Qt::Widget
     # The connection is being established automatically with respect
     # to the configuration.
     #
-    # +config+ is a CompoundDisplayConfig object.
-    def configure(pos, config)
-        Kernel.raise "Unsupported config format: #{config.class}. Expecting CompoundDisplayConfig." unless config.is_a? CompoundDisplayConfig
-        @config_hash[pos] = config
+    def configure(pos, task, port, widget, policy)
+        @config_hash[pos] = CompoundDisplayConfig.new(task, port, widget, policy)
         connect(pos)
     end
     
@@ -99,7 +97,7 @@ class CompoundDisplay < Qt::Widget
             return
         end
 
-        Vizkit.info "Connecting #{config.task}.#{config.port} to #{config.widget} #{config.pull ? "config:pull" : ""}"
+        Vizkit.info "Connecting #{config.task}.#{config.port} to #{config.widget}"
         widget = Vizkit.default_loader.send(config.widget)
         container = @container_hash[pos]
         container.set_content_widget(widget)
@@ -108,12 +106,11 @@ class CompoundDisplay < Qt::Widget
         if @replayer
             task = @replayer.task(config.task)
             port = task.port(config.port)
-            #Vizkit.connect_port_to(task, port, config.widget, :pull => config.pull)
             port.connect_to(widget) if task && port
         else
             task = Orocos.name_service.get(config.task)
             port = task.port(config.port)
-            Vizkit.connect_port_to(task, port, config.widget, :pull => config.pull) if task && port
+            Vizkit.connect_port_to(task, port, config.widget, config.connection_policy) if task && port
         end
     end
     
@@ -193,7 +190,7 @@ class CompoundDisplay < Qt::Widget
     #     task: <task name>
     #     port: <port name>
     #     widget: <widget name>
-    #     pull: <pulled connection?>
+    #     connection_policy: <option hash>
     #   
     #   <pos>: !ruby/object:CompoundDisplayConfig
     #     task: <task name>
@@ -206,7 +203,7 @@ class CompoundDisplay < Qt::Widget
     #     task: front_camera
     #     port: frame
     #     widget: ImageView
-    #     pull: false
+    #     connection_policy:
     #
     def configure_by_yaml(path)
         begin   
@@ -262,17 +259,17 @@ end
 
 # Configuration model for one element of the CompoundDisplay.
 class CompoundDisplayConfig
-    attr_reader :task, :port, :widget, :pull
+    attr_reader :task, :port, :widget, :connection_policy
     
-    def initialize(task, port, widget, pull)
+    def initialize(task, port, widget, policy)
         @task = task # string
         @port = port # string
         @widget = widget
-        @pull = pull # bool
+        @connection_policy = policy # hash
     end
     
     def invalid?
-        return @task && @port && @widget && @pull && (not task.empty?) && (not port.empty?)
+        return @task && @port && @widget && @connection_policy && (not task.empty?) && (not port.empty?)
     end
 end
 
