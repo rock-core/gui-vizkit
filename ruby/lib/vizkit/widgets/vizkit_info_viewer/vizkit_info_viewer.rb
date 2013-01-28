@@ -21,10 +21,6 @@ class VizkitInfoViewer
     # Tasks with runtimes shorter than this threshold are being ignored.
     attr_reader :time_threshold #ms
 
-    @event_loop = nil
-    @thread_pool = nil
-    @registered_for_errors = false
-    
     # Is a timer currently being edited by the user?
     @on_edit = false
     
@@ -35,9 +31,16 @@ class VizkitInfoViewer
     LOG_TAB_INDEX = 1 if !defined? LOG_TAB_INDEX
 
     module Functions
-        def init(parent=nil, update_frequency = 500, time_threshold = 1000)
+        def init(parent = nil, update_frequency = 500, time_threshold = 1000)
+            @event_loop = Orocos::Async.event_loop
+            Kernel.raise "No event loop available!" unless @event_loop
+            register_for_errors
+            
             @update_frequency = update_frequency
             @time_threshold = time_threshold
+            
+            @thread_pool = @event_loop.thread_pool
+            
             
             # References to the objects in the view
             @item_hash = Hash.new
@@ -48,7 +51,7 @@ class VizkitInfoViewer
 
             update_timer = Qt::Timer.new
             update_timer.connect(SIGNAL('timeout()')) do
-                update_helper
+                update
             end
             
             # Actions on tasks
@@ -126,7 +129,7 @@ class VizkitInfoViewer
                     end
                 end
             end
-            update(Orocos::Async.event_loop)
+            update
             
             # Other initializations
             update_timer.start(@update_frequency)
@@ -176,13 +179,7 @@ class VizkitInfoViewer
             update_helper
         end
 
-        def update(event_loop)
-            @event_loop = event_loop
-            register_for_errors if (not @registered_for_errors) && @event_loop
-            
-            pool = event_loop.thread_pool
-            @thread_pool = pool
-            
+        def update
             ## Update task tree
             
             # Remove all tasks from tree
@@ -197,7 +194,7 @@ class VizkitInfoViewer
             end
 
             # Add updated tasks to tree
-            pool.tasks.each do |task|
+            @thread_pool.tasks.each do |task|
                 item = nil
                 
                 # Ignore tasks which have not yet run long enough but are already started.
@@ -242,13 +239,13 @@ class VizkitInfoViewer
             end
             
             ## Update statistics view
-            label_threads_total.set_text(pool.spawned.to_s)
-            label_threads_waiting.set_text(pool.waiting.to_s)
-            label_threads_backlog.set_text(pool.backlog.to_s)
+            label_threads_total.set_text(@thread_pool.spawned.to_s)
+            label_threads_waiting.set_text(@thread_pool.waiting.to_s)
+            label_threads_backlog.set_text(@thread_pool.backlog.to_s)
             
             # Average run and wait times. Use UTC to avoid time zone handling.
-            label_execution_time.set_text(Time.at(pool.avg_run_time).utc.strftime("%Hh %Mm %Ss"))
-            label_waiting_time.set_text(Time.at(pool.avg_wait_time).utc.strftime("%Hh %Mm %Ss"))
+            label_execution_time.set_text(Time.at(@thread_pool.avg_run_time).utc.strftime("%Hh %Mm %Ss"))
+            label_waiting_time.set_text(Time.at(@thread_pool.avg_wait_time).utc.strftime("%Hh %Mm %Ss"))
             
             # Do this last! Minimize column width
             update_tree_view
@@ -268,7 +265,6 @@ class VizkitInfoViewer
             @event_loop.on_errors(error_classes) do |e|
                 log_text_browser.append "#{Time.now}: #{e}"
             end
-            @registered_for_errors = true
         end
         
         # Packs needed task information into an item for the tree.
@@ -314,15 +310,7 @@ class VizkitInfoViewer
             @on_edit = false
             true
         end
-        
-        def update_helper
-            if @event_loop
-                update(@event_loop)
-            else
-                Vizkit.warn "Event loop is nil"
-            end
-        end
-        
+
         def timer_cancelled? (timer)
             Kernel.raise "Not a timer object: #{timer}" if not timer.is_a?(Utilrb::EventLoop::Timer)
             not @cancelled_timers.find_index(timer).nil?
