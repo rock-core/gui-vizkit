@@ -191,16 +191,9 @@ class VizkitInfoViewer
             ## Update task tree
             
             # Remove all tasks from tree
-            @active_task_item.take_children
-            @waiting_task_item.take_children
+            #@active_task_item.take_children
+            #@waiting_task_item.take_children
             
-            if @on_edit
-                # Keep the event loop timers because they are being edited.
-                @item_hash.select! {|k,v| v.is_a? Utilrb::EventLoop::Timer}
-            else
-                @item_hash.clear
-            end
-
             # Add updated tasks to tree
             @thread_pool.tasks.each do |task|
                 item = nil
@@ -224,27 +217,69 @@ class VizkitInfoViewer
             ## Update event loop timer tree
             
             # Skip event update if a timer edit is happening.
-            if not @on_edit
-                # Remove all event timers from tree
-                event_tree.clear  
+            #if not @on_edit
+                
+                # Update current event timer items and remove obsolete items.
+                dirty_children = []
+                
+                # temp list
+                displayed_timers = @cancelled_timers # to be filled further. see below.
+                
+                root_item = event_tree.invisible_root_item
+                ctr = 0
+                
+                while ctr < root_item.child_count do
+                    child = root_item.child(ctr)
+                    
+                    list = (@event_loop.timers + @cancelled_timers)
+                    puts list.size
+                    if list.include? item_data(child).to_ruby
+                        # child represents a non-obsolete timer. update.
+                        update_timer_item(child)
+                        # add item's timer object to temp list
+                        displayed_timers << item_data(child).to_ruby
+                        
+                        # TODO handle items that are currently being edited
+                    else
+                        # Mark obsolete event timer items for removal
+                        dirty_children << child
+                    end
+                    ctr = ctr + 1
+                end
+                
+                # Remove obsolete event timer items
+                dirty_children.each do |child|
+                    ret = take_top_level_item(event_tree.index_of_child(child))
+                    Kernel.raise "Error during item deletion" unless ret
+                end
+                
+                # Check for new event timers
+                (@event_loop.timers - displayed_timers).each do |t|
+                    next if t.single_shot?
+                    
+                    # Add item to tree
+                    child = event_timer_data_item(t, false)
+                    event_tree.add_top_level_item(child)
+                end
+                
                 
                 # Add current timer information      
-                @event_loop.timers.each do |t|
-                    # Ignore non-periodic timers. Not necessary for cancelled 
-                    # timers (see below) because single shot timers never get displayed.
-                    next if t.single_shot? 
-                    child = event_timer_data_item(t, false)
-                    @item_hash[child] = t
-                    event_tree.add_top_level_item(child)
-                end
+                #@event_loop.timers.each do |t|
+                #    # Ignore non-periodic timers. Not necessary for cancelled 
+                #    # timers (see below) because single shot timers never get displayed.
+                #    next if t.single_shot? 
+                #    child = event_timer_data_item(t, false)
+                #    @item_hash[child] = t
+                #    event_tree.add_top_level_item(child)
+                #end
                 
                 # Add local copies of cancelled timers
-                @cancelled_timers.each do |timer|
-                    child = event_timer_data_item(timer, true)
-                    @item_hash[child] = timer
-                    event_tree.add_top_level_item(child)
-                end
-            end
+                #@cancelled_timers.each do |timer|
+                #    child = event_timer_data_item(timer, true)
+                #    @item_hash[child] = timer
+                #    event_tree.add_top_level_item(child)
+                #end
+            #end
             
             ## Update statistics view
             label_threads_total.set_text(@thread_pool.spawned.to_s)
@@ -290,16 +325,25 @@ class VizkitInfoViewer
         # Packs needed event timer information into an item for the tree.
         def event_timer_data_item(timer, cancelled = false)
             Kernel.raise "Not a timer type: #{timer}" if not timer.is_a? Utilrb::EventLoop::Timer
-            data = []
-            data << timer.doc << timer.period << (cancelled ? "cancelled" : "running")
             item = Qt::TreeWidgetItem.new
             item.set_flags(item.flags.to_i | Qt::ItemIsEditable.to_i)
-            data.size.times do |i|
-                item.set_text(i, data[i].to_s)
-            end
+            update_timer_item(item, timer, cancelled)
             # Store timer object representation at item for 'direct access' from context menu
             item.set_data(TIMER_DATA_COLUMN, Qt::UserRole, Qt::Variant.from_ruby(timer))
             item
+        end
+
+        def update_task_item(item, task = nil)
+            # TODO
+        end
+        
+        def update_timer_item(item, timer = nil, cancelled = false)
+            timer = item_data(item).to_ruby unless timer
+            data = []
+            data << timer.doc << timer.period << (cancelled ? "cancelled" : "running")
+            data.size.times do |i|
+                item.set_text(i, data[i].to_s)
+            end
         end
         
         def start_edit(obj)
@@ -330,6 +374,10 @@ class VizkitInfoViewer
         
         def column_editable?(col)
             return col == TIMER_DATA_COLUMN
+        end
+        
+        def item_data(item)
+            return item.data(TIMER_DATA_COLUMN, Qt::UserRole)
         end
     end
 
