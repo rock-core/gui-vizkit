@@ -81,6 +81,7 @@ class VizkitInfoViewer
             task_column_headers = ["Task", "Time elapsed", "State"]
             treeWidget.set_column_count(task_column_headers.size)
             treeWidget.set_header_labels(task_column_headers)
+            treeWidget.set_edit_triggers(Qt::AbstractItemView::NoEditTriggers)
 
             @active_task_item = Qt::TreeWidgetItem.new
             @active_task_item.set_text(0, "Active tasks")
@@ -96,23 +97,25 @@ class VizkitInfoViewer
             event_column_headers = ["Timer","Period","State"]
             event_tree.set_column_count(event_column_headers.size)
             event_tree.set_header_labels(event_column_headers)
+            event_tree.set_edit_triggers(Qt::AbstractItemView::NoEditTriggers)
             
             event_tree.connect(SIGNAL('itemDoubleClicked(QTreeWidgetItem*, int)')) do |item, col|
-                if col == 1
+                if column_editable?(col)
                     if start_edit(item)
-                        event_tree.open_persistent_editor(item, col)
+                        #event_tree.open_persistent_editor(item, col)
+                        event_tree.edit_item(item, col)
                     end
                 end
             end
             
             event_tree.connect(SIGNAL('itemChanged(QTreeWidgetItem*, int)')) do |item, col|
                 # TODO The persistent editor does not get closed if the item's text does not change.
-                if col == 1
+                if column_editable?(col)
                     #timer = @item_hash[item]
-                    timer = item.data(TIMER_DATA_COLUMN, Qt::UserRole).to_ruby
+                    timer = item.data(col, Qt::UserRole).to_ruby
                     timer.period = item.text(col).to_f
                     if end_edit(item)
-                        event_tree.close_persistent_editor(item, col)
+                        #event_tree.close_persistent_editor(item, col)
                     end
                 end
             end
@@ -277,6 +280,7 @@ class VizkitInfoViewer
             data = []
             data << task.description << Time.at(task.time_elapsed).utc.strftime("%Hh %Mm %Ss") << task.state
             item = Qt::TreeWidgetItem.new
+            item.set_flags(item.flags.to_i | Qt::ItemIsEditable.to_i)
             data.size.times do |i|
                 item.set_text(i, data[i].to_s)
             end
@@ -289,6 +293,7 @@ class VizkitInfoViewer
             data = []
             data << timer.doc << timer.period << (cancelled ? "cancelled" : "running")
             item = Qt::TreeWidgetItem.new
+            item.set_flags(item.flags.to_i | Qt::ItemIsEditable.to_i)
             data.size.times do |i|
                 item.set_text(i, data[i].to_s)
             end
@@ -321,6 +326,10 @@ class VizkitInfoViewer
         def timer_cancelled? (timer)
             Kernel.raise "Not a timer object: #{timer}" if not timer.is_a?(Utilrb::EventLoop::Timer)
             not @cancelled_timers.find_index(timer).nil?
+        end
+        
+        def column_editable?(col)
+            return col == TIMER_DATA_COLUMN
         end
     end
 
