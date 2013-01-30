@@ -189,7 +189,6 @@ module Vizkit
     # Typelib data model which is used by the item model to display the
     # underlying data. 
     class TypelibDataModel
-
         # Internal structure to hold information about a subfield
         class MetaData < Struct.new(:parent,:row,:field)
             # value of the field
@@ -281,6 +280,7 @@ module Vizkit
                 child = if child.is_a? Typelib::Type
                             child
                         else
+                            #this is fine because item will always have the same id
                             "#{item.object_id}_#{row}".to_sym
                         end
                 @meta_data[child] ||= MetaData.new(item,row,field)
@@ -450,6 +450,69 @@ module Vizkit
         def sort(value = :ascending_order)
         end
     end
+
+    class SimpleTypelibDataModel < TypelibDataModel
+        # Internal structure to hold information about a subfield
+        class MetaData < TypelibDataModel::MetaData
+            def val
+                v = Typelib.to_ruby parent
+                if parent.class.name == "/bool"
+                    if v == 0
+                        false
+                    else
+                        true
+                    end
+                else
+                    v
+                end
+            end
+        end
+
+        def set(item,value)
+            data = @meta_data[item]
+            return false if !data || !data.parent
+            item_val = data.val
+            val = if item_val.is_a? Integer
+                      value.to_i
+                  elsif item_val.is_a? Float
+                      value.to_f
+                  elsif item_val.is_a? String
+                      value.toString.to_s
+                  elsif item_val.is_a? Time
+                      Time.at(value.toDateTime.toTime_t)
+                  elsif item_val.is_a? Symbol
+                      value.toString.to_sym
+                  elsif item_val.is_a? TrueClass
+                    value.toString == "True"
+                  elsif item_val.is_a? FalseClass
+                    value.toString == "True"
+                  end
+            return false if val == nil
+            Typelib.copy(@root,Typelib.from_ruby(val,@root.class))
+
+            # set modified flag
+            @modified_by_user = true
+        end
+
+        def child(row,item = @root)
+            if row == 0 && item.object_id == @root.object_id
+                child = "#{@root.object_id}".to_sym
+                @meta_data[child] ||= MetaData.new(@root,row,[@root.class.name,@root.class])
+                child
+            else
+                nil
+            end
+        end
+
+        def rows(item=@root)
+            if item.object_id == @root.object_id
+                1
+            else
+                0
+            end
+        end
+    end
+
 
     # A ProxyDataModel is used to combine multiple TypelibDataModel into one
     # model for tree view display. Thereby it is allowed to add a
@@ -719,49 +782,6 @@ module Vizkit
         end
     end
 
-    class DataProducingObjectModel < ProxyDataModel
-        DIRECTLY_DISPLAYED_RUBY_TYPES = [String,Numeric,Symbol,Time]
-
-        def add(object,name=nil,value=nil,data=nil)
-            if name
-                return super(object,name,value,data)
-            end
-            return false unless add?(object.name)
-            
-            model = nil
-            listener = object.on_reachable do
-                message = object.type.name
-                begin
-                    sample = object.new_sample
-                    if DIRECTLY_DISPLAYED_RUBY_TYPES.any? { |rt| rt === sample }
-                        model = ProxyDataModel.new
-                    else
-                        sample = Typelib.from_ruby(sample, object.type)
-                        model = TypelibDataModel.new(sample, self)
-                    end
-                rescue Orocos::TypekitTypeNotFound => e
-                    # There is a port, but we can't display it
-                    message = e.message
-                end
-
-                super(model,object.name,message,object)
-                listener.stop
-            end
-            on_update(object) do |data|
-                update_from_data(model, data, object.type)
-            end
-        end
-
-        def update_from_data(model, data, type)
-            if DIRECTLY_DISPLAYED_RUBY_TYPES.any? { |rt| rt === data }
-                data_value(model,"#{data}")
-                item_changed model
-            elsif !model.modified_by_user?
-                model.update Typelib.from_ruby(data, type)
-            end
-        end
-    end
-
     class InputPortsDataModel < ProxyDataModel
         def add(port)
             sample = port.new_sample
@@ -771,7 +791,49 @@ module Vizkit
         end
     end
 
+
+    class DataProducingObjectModel < ProxyDataModel
+        DIRECTLY_DISPLAYED_RUBY_TYPES = [String,Numeric,Symbol,Time]
+        def add(object,name=nil,value=nil,data=nil)
+            if name
+                return super(object,name,value,data)
+            end
+            return false unless add?(object.name)
+            model = nil
+            listener = object.on_reachable do
+                message = object.type.name
+                begin
+                    sample = object.new_sample.zero!
+                    rb_sample = Typelib.to_ruby(sample)
+                    if DIRECTLY_DISPLAYED_RUBY_TYPES.any? { |rt| rt === rb_sample }
+                        model = SimpleTypelibDataModel.new(sample, self,@type_policy)
+                        on_update(object) do |data|
+                            data_value(model,data.to_s)
+                            model.update data
+                        end
+                    else
+                        model = TypelibDataModel.new(sample, self,@type_policy)
+                        on_update(object) do |data|
+                            model.update data
+                        end
+                    end
+                rescue Orocos::TypekitTypeNotFound => e
+                    # There is a port, but we can't display it
+                    message = e.message
+                end
+                super(model,object.name,message,object)
+                listener.stop
+            end
+        end
+    end
+
     class OutputPortsDataModel < DataProducingObjectModel
+
+        def initialize(parent = nil)
+            super
+            @type_policy = {:enabled => true,:editable => false}
+        end
+
         def on_update(object, &block)
             object.on_data(&block)
         end
@@ -812,9 +874,11 @@ module Vizkit
     end
 
     class PropertiesDataModel < DataProducingObjectModel
+
         def initialize(parent = nil)
             super
             options[:editable] = true
+            @type_policy = {:enabled => true,:editable => true,:accept => true}
         end
 
         def on_update(object, &block)
@@ -822,7 +886,7 @@ module Vizkit
         end
 
         def write(model,&block)
-            meta = @meta_data[model] 
+            meta = @meta_data[model]
             if meta
                 meta.data.write(model.root,&block)
                 model.update meta.data.last_sample
