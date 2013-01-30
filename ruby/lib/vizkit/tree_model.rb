@@ -320,7 +320,7 @@ module Vizkit
         def update(data)
             return unless data
             @modified_by_user = false
-            Typelib.copy(@root,data)
+            Typelib.copy(@root,Typelib.from_ruby(data,@root.class))
             item_changed
         end
 
@@ -719,32 +719,61 @@ module Vizkit
         end
     end
 
-    class InputPortsDataModel < ProxyDataModel
-        def add(port)
-            sample = port.new_sample
-           # sample.zero!
-            super(TypelibDataModel.new(sample,self),port.name,port.type_name,port)
+    class DataProducingObjectModel < ProxyDataModel
+        DIRECTLY_DISPLAYED_RUBY_TYPES = [String,Numeric,Symbol,Time]
+
+        def add(object,name=nil,value=nil,data=nil)
+            if name
+                return super(object,name,value,data)
+            end
+            return false unless add?(object.name)
+            
+            model = nil
+            listener = object.on_reachable do
+                message = object.type.name
+                begin
+                    sample = object.new_sample
+                    if DIRECTLY_DISPLAYED_RUBY_TYPES.any? { |rt| rt === sample }
+                        model = ProxyDataModel.new
+                    else
+                        sample = Typelib.from_ruby(sample, object.type)
+                        model = TypelibDataModel.new(sample, self)
+                    end
+                rescue Orocos::TypekitTypeNotFound => e
+                    # There is a port, but we can't display it
+                    message = e.message
+                end
+
+                super(model,object.name,message,object)
+                listener.stop
+            end
+            on_update(object) do |data|
+                update_from_data(model, data, object.type)
+            end
+        end
+
+        def update_from_data(model, data, type)
+            if DIRECTLY_DISPLAYED_RUBY_TYPES.any? { |rt| rt === data }
+                data_value(model,"#{data}")
+                item_changed model
+            elsif !model.modified_by_user?
+                model.update Typelib.from_ruby(data, type)
+            end
         end
     end
 
-    class OutputPortsDataModel < ProxyDataModel
-        def add(port,name=nil,value=nil,data=nil)
-            if !name
-                return false unless add?(port.name)
-                model = nil
-                listener = port.on_data do |data|
-                    model.update(data) if model
-                end
-                listener.stop
+    class InputPortsDataModel < ProxyDataModel
+        def add(port)
+            sample = port.new_sample
+            super(TypelibDataModel.new(sample,self),port.name,port.type_name,port)
+        rescue Orocos::TypekitTypeNotFound => e
+            super(nil,port.name,e.message,port)
+        end
+    end
 
-                listener2 = port.on_reachable do
-                    model = TypelibDataModel.new(port.new_sample,self)
-                    super(model,port.name,port.type_name,port,listener)
-                    listener2.stop
-                end
-            else
-                return super(port,name,value,data)
-            end
+    class OutputPortsDataModel < DataProducingObjectModel
+        def on_update(object, &block)
+            object.on_data(&block)
         end
 
         def port_from_index(index)
@@ -782,26 +811,14 @@ module Vizkit
         end
     end
 
-    class PropertiesDataModel < ProxyDataModel
-
+    class PropertiesDataModel < DataProducingObjectModel
         def initialize(parent = nil)
             super
             options[:editable] = true
         end
 
-        def add(property)
-            return false unless add?(property.name)
-            raise ArgumentError, "no property given" unless property
-            model = nil
-            property.on_change do |data|
-                unless model
-                    model = TypelibDataModel.new(data.dup,self,:enabled => true,:editable => true,:accept => true)
-                    super(model,property.name,data.class.name,property)
-                end
-                if !model.modified_by_user?
-                    model.update data
-                end
-            end
+        def on_update(object, &block)
+            object.on_change(&block)
         end
 
         def write(model,&block)
