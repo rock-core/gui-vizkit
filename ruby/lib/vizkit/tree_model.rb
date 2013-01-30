@@ -958,8 +958,12 @@ module Vizkit
         def initialize(parent,name_service)
             super(parent,:use_basename => true)
             name_service.on_task_added do |task_name|
-                add(name_service.proxy(task_name))
+                add(name_service.proxy(task_name)) if add?(task_name)
             end
+        end
+         
+        def add?(name)
+            super Orocos.name_service.basename(name)
         end
     end
 
