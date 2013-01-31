@@ -181,6 +181,8 @@ module Vizkit
                     # backtrace = caller
                     # backtrace = ["#{backtrace[0].gsub(/in `\w+'/, "exception from C++ method #{plugin_spec.plugin_name}::#{m.to_s}")}"] + backtrace[1..-1]
                     raise e, e.message, e.backtrace
+                rescue 
+                    [false,nil]
                 end
 
             if successful
