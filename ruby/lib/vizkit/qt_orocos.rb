@@ -1,3 +1,26 @@
+
+module Qt
+    module WidgetVizkitIntegration
+        def connect_to_task(task,options = Hash.new,&block)
+            task = if task.is_a? String
+                       Orocos::Async::TaskContextProxy.new task
+                   else
+                       task
+                   end
+            sandbox = Vizkit::WidgetTaskConnector.new(self,task,options)
+            sandbox.evaluate &block
+        end
+    end
+
+    class Widget
+        include WidgetVizkitIntegration
+    end
+
+    class MainWindow
+        include WidgetVizkitIntegration
+    end
+end
+
 module Orocos
     module QtOutputPort
         def connect_to(widget=nil, options = Hash.new,&block)
