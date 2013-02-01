@@ -16,7 +16,7 @@ module Vizkit
         attr_reader :qt_object
         attr_reader :method_info
 
-        MethodInfo = Struct.new :name, :signature, :return_type, :argument_types
+        MethodInfo = Struct.new :name, :signature, :return_type, :argument_types,:type
 	
 	def initialize(qt_object)
             @qt_object = qt_object
@@ -38,7 +38,8 @@ module Vizkit
                     name,
                     meta_method.signature,
                     return_type,
-                    meta_method.parameter_types)
+                    meta_method.parameter_types,
+                    meta_method.methodType)
             end
         end
 	
