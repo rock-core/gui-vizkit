@@ -27,7 +27,7 @@ describe Vizkit::TypelibQtAdapter do
     end
 
     describe "call methods with typelib type as argument and return value" do
-        it "it must be possible to call setFrame" do 
+        it "it must be possible to call setFrame and getFrame" do 
             sample = Types::Base::Samples::Frame::Frame.new
             sample.zero!
             sample.time = Time.now
