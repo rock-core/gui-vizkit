@@ -130,7 +130,7 @@ module Vizkit
                         TypelibQtAdapter.ruby_value_to_qt(cxx_typename, parameters[i])
                     break(nil) if !cxx_type
                     typelib_arguments << typelib_value
-                    cxx_argument_types << cxx_type.name
+                    cxx_argument_types << Typelib::Registry.rtt_typename(cxx_type)
 		end
                 next if !successful
                 if method_info.return_type
@@ -142,7 +142,7 @@ module Vizkit
                 end
 		
                 cxx_return_typename =
-                    if cxx_return_type then cxx_return_type.name
+                    if cxx_return_type then Typelib::Registry.rtt_typename(cxx_return_type)
                     end
                 begin
                     successful = adapter.callQtMethod(method_info.signature,
