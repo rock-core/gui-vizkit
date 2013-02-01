@@ -56,11 +56,6 @@ module Vizkit
 	    adapter
 	end
 
-        #Returns a list of all methods which can be invoked by the adapter 
-        def method_list
-            return method_info.map(&:signature)
-        end
-
         # Given a C++ type name registered in the signature of a Qt invokable
         # method, return the corresponding typelib type that should be used to
         # call it.
@@ -141,7 +136,7 @@ module Vizkit
                     else next
                     end
                 end
-		
+
                 cxx_return_typename =
                     if cxx_return_type then Typelib::Registry.rtt_typename(cxx_return_type)
                     end
@@ -164,9 +159,9 @@ module Vizkit
     end  
 
     module QtTypelibExtension
-        def method_list
+        def method_info
             @qt_object_adapter ||= Vizkit::TypelibQtAdapter.new(self) 
-            @qt_object_adapter.method_list
+            @qt_object_adapter.method_info
         end
 
         def method_missing(m, *args, &block)
