@@ -13,6 +13,7 @@ describe Vizkit::TypelibDataModel do
     describe "method initialize" do
         it "must raise if a wrong options is given" do 
             sample = Types::Base::Samples::Frame::Frame.new
+            sample.zero!
             assert_raises ArgumentError do 
                 Vizkit::TypelibDataModel.new sample,nil,:invalid => false
             end
@@ -64,7 +65,7 @@ describe Vizkit::TypelibDataModel do
             sample2.zero!
             model = Vizkit::TypelibDataModel.new sample
             result = nil
-            model.on_change do |item|
+            model.on_changed do |item|
                 result = item
             end
             model.update(sample2)
@@ -238,10 +239,15 @@ describe Vizkit::TaskContextDataModel do
     before do
         Orocos::Async.clear
         if !@model
+            # we have to initialize read only pointer for now
+            sample = Types::Base::Samples::Frame::Frame.new.zero!
+            sample2 = Types::Base::Samples::Frame::FramePair.new.zero!
             @task = Orocos::RubyTaskContext.new("test_task2")
             @task.create_property("prop1","/base/samples/RigidBodyState")
-            @task.create_property("prop2","/base/samples/frame/FramePair")
-            @task.create_output_port("frame","base/samples/frame/Frame")
+            p = @task.create_property("prop2","/base/samples/frame/FramePair")
+            p.write sample2
+            p = @task.create_output_port("frame","base/samples/frame/Frame")
+            p.write sample
             @task.create_output_port("data","/base/samples/RigidBodyState")
             @task.create_input_port("in_data","/base/samples/RigidBodyState")
 
@@ -359,12 +365,14 @@ end
 describe Vizkit::NameServiceDataModel do
     before do
         Orocos::Async.clear
+        Orocos::Async.step
+        Orocos::Async.clear
 
         if !@model
             @task1 = Orocos::RubyTaskContext.new("test_task1")
             @task2 = Orocos::RubyTaskContext.new("test_task2")
             ns = Orocos::Async::CORBA::NameService.new :period => 0.1
-            @model = Vizkit::NameServiceDataModel.new ns
+            @model = Vizkit::NameServiceDataModel.new nil,ns
         end
     end
 
@@ -376,15 +384,16 @@ describe Vizkit::NameServiceDataModel do
             Orocos::Async.steps
             sleep 0.11
             Orocos::Async.steps
-            assert_equal 2,@model.rows
+            assert 2 <= @model.rows
 
-            item = @model.child(0)
-            name = @model.field_name(item)
-            assert_equal "/test_task1",name.toString
+            names = []
+            @model.rows.times do |i|
+                item = @model.child(i)
+                names << @model.field_name(item).toString
+            end
 
-            item = @model.child(1)
-            name = @model.field_name(item)
-            assert_equal "/test_task2",name.toString
+            assert names.include? "test_task1"
+            assert names.include? "test_task2"
         end
     end
 end
@@ -411,11 +420,11 @@ describe Vizkit::NameServicesDataModel do
 
             item = @model.child(0)
             name = @model.field_name(item)
-            assert_equal "ns1",name.toString
+            assert_equal "CORBA:ns1",name.toString
 
             item = @model.child(1)
             name = @model.field_name(item)
-            assert_equal "ns2",name.toString
+            assert_equal "CORBA:ns2",name.toString
         end
     end
 end

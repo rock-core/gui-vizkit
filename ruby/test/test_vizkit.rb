@@ -1,192 +1,163 @@
-require File.join(File.dirname(__FILE__),"test_helper")
-start_simple_cov("test_vizkit")
-
+require 'minitest/spec'
 require 'vizkit'
-require 'test/unit'
+
+MiniTest::Unit.autorun
 Orocos.initialize
-Orocos.load_typekit "base"
 
-Vizkit.logger.level = Logger::INFO
-
-    
-class VizkitTest < Test::Unit::TestCase
-    class TestWidget < Qt::Object
-        attr_accessor :sample
-
-        def update(data,port_name)
-            @sample = data        
-        end
+class TestWidget < Qt::Object
+    attr_accessor :sample
+    def update(data,port_name)
+        @sample = data
     end
-    def setup
+end
+
+describe Vizkit do
+    before do
+        sleep 0.1
+        Orocos::Async.clear
+        Orocos::Async.step
+        Orocos::Async.clear
+
         Vizkit.instance_variable_set :@default_loader,nil
-        #generate log file 
-        @log_path = File.join(File.dirname(__FILE__),"test_log")
-        if !File.exist?(@log_path+".0.log")
-            output = Pocolog::Logfiles.create(@log_path,Orocos.registry)
-            Orocos.load_typekit_for("/base/Time")
-            stream_output = output.stream("test_task.time","/base/Time",true)
+        Vizkit.default_loader.register_plugin("TestWidget",:ruby_plugin,TestWidget.method(:new))
+        Vizkit.default_loader.register_plugin_for("TestWidget", "/base/samples/RigidBodyState",:display,nil,:update)
+    end
 
-            time = Time.now
-            0.upto 100 do |i|
-                stream_output.write(time+i,time+i,time+i)
+    describe "remote task is not reachable" do 
+        before do 
+            sleep 0.1
+            Orocos::Async.clear
+            Orocos::Async.step
+            Orocos::Async.clear
+        end
+
+        it "should create a proxy for a remote tasks" do
+            t = Vizkit.proxy "test"
+            t.must_be_kind_of Orocos::Async::TaskContextProxy
+        end
+
+        it "should raise Orocos::NotFound if a task context is requested" do
+            assert_raises(Orocos::NotFound) do
+                t = Vizkit.get "test"
             end
-            output.close
-        end
-    end
-
-    #test integration between Vizkit, TaskProxy and Replay
-    def test_1_vizkit_log_replay
-        #open log file
-        log = Orocos::Log::Replay.open(@log_path+".0.log")
-        assert(log)
-
-        Vizkit.connect_port_to "test_task","time" do |sample,_|
-            @sample = sample
         end
 
-        #create TaskProxy
-        task = Vizkit::TaskProxy.new("test_task")
-        assert(task)
-        port = task.port("time")
-        assert(port)
-        reader = port.reader
-        #check disconnect for log reader which is not initialized
-        reader.disconnect
-        assert(reader)
-
-        assert(!reader.read)
-        assert(!reader.connected?)
-        assert(!task.reachable?)
-        log.track(true)
-        log.align
-
-        #test type of the underlying objects
-        assert(task.__task.is_a?(Orocos::Log::TaskContext))
-        assert(port.task.__task.is_a?(Orocos::Log::TaskContext))
-        assert(port.__port.is_a?(Orocos::Log::OutputPort))
-        #test if task is reachable now
-
-        assert(task.reachable?)
-        assert(port.task.reachable?)
-        assert(reader.__reader_writer)
-        assert(reader.connected?)
-
-        assert(Vizkit.display task)
-        assert(Vizkit.control task)
-
-        #start replay 
-        sleep(0.2)
-        while $qApp.hasPendingEvents
-            $qApp.processEvents
+        it "should setup a connection between a port and code block" do
+            t = Vizkit.proxy "test"
+            con = t.port("bla").connect_to{|data,name|}
+            con.must_be_kind_of Orocos::Async::EventListener
         end
-        log.step
-        assert(reader.read)
-        sleep(0.2)
-        while $qApp.hasPendingEvents
-            $qApp.processEvents
-        end
-        assert(@sample)
-    end
 
-    def test_vizkit_display
-        log = Orocos::Log::Replay.open(@log_path+".0.log")
-        assert(log)
-    task = Vizkit::ReaderWriterProxy.default_policy[:port_proxy]
 
-        Orocos.run "rock_port_proxy" do 
-            task.start
-
-            connection = Types::PortProxy::ProxyConnection.new
-            connection.task_name = "task"
-            connection.port_name = "port"
-            connection.type_name = "/base/Time"
-            connection.periodicity = 0.1
-            connection.check_periodicity = 0.2
-            assert(task.createProxyConnection(connection))
-            assert(task.has_port?("out_task_port"))
-
-            pp Vizkit.default_loader.find_all_plugin_specs(:argument => task.out_task_port,:default => false)
-
-            widget = Vizkit.display task.out_task_port
-            assert(widget)
-            widget.close
-
-            widget = Vizkit.display log.test_task.time
-            assert(widget)
-            widget.close
-
-            task2 = Vizkit::TaskProxy.new("test_task")
-            #task does not exist 
-            assert_raise RuntimeError do 
-                widget = Vizkit.display task2.port("time22")
+        it "should setup a connection between a port and a method" do
+            def result(a,b)
             end
-            widget = Vizkit.display task2.time
-            assert(widget)
-            widget.close
+            t = Vizkit.proxy "test"
+            con = t.port("bla").connect_to method(:result)
+            con.must_be_kind_of Orocos::Async::EventListener
+        end
 
-            assert(Vizkit.display task)
-            assert(Vizkit.control task)
+        it "should raise if a connection is setup to widget but the type name is unknown" do
+            w = Vizkit.default_loader.StructViewer
+            t = Vizkit.proxy "test"
+            assert_raises Orocos::NotFound do
+                con = t.port("bla").connect_to w
+            end
+        end
+
+        it "should setup a connection between a port and a widget" do
+            w = Vizkit.default_loader.ImageView
+            t = Vizkit.proxy "test"
+            con = t.port("bla",:type => Types::Base::Samples::Frame::Frame).connect_to w
+            con.must_be_kind_of Orocos::Async::EventListener
         end
     end
 
-    def test_vizkit_control
-        task = Vizkit::ReaderWriterProxy.default_policy[:port_proxy]
+    describe "when remote task is reachable" do
+        #start virtual task
+        Orocos.load_typekit "base"
+        task = Orocos::RubyTaskContext.new("task")
+        task.configure
+        task.start
+        port = task.create_output_port("position","/base/samples/RigidBodyState")
+        sample = port.new_sample
+        sample.time = Time.now
 
-        Orocos.run "rock_port_proxy" do 
-            task.start
-            task.closeAllProxyConnections
-            sleep(1)
-            assert(!task.has_port?("out_task_port2"))
-            connection = Types::PortProxy::ProxyConnection.new
-            connection.task_name = "task"
-            connection.port_name = "port2"
-            connection.type_name = "/base/Angle"
-            connection.periodicity = 0.1
-            connection.check_periodicity = 0.2
-            assert_equal("/base/Angle",connection.type_name)
-            assert(task.createProxyConnection(connection))
-            assert(task.has_port?("out_task_port2"))
-            assert_equal("/base/Angle",task.out_task_port2.type_name)
-
-            widget = Vizkit.control task.out_task_port2.type_name
-            assert(widget)
-            widget.close
-
-            widget = Vizkit.control task.out_task_port2
-            assert(widget)
-            widget.close
-
-            widget = Vizkit.control task.out_task_port2.new_sample
-            assert(widget)
-            widget.close
+        it "should connect a port to a code block" do 
+            t = Vizkit.proxy "task"
+            data = nil
+            t.port("position").connect_to do |sample,_|
+                data = sample
+            end
+            5.times do
+                Vizkit.step
+                sleep 0.05
+            end
+            port.write sample
+            5.times do
+                Vizkit.step
+                sleep 0.05
+            end
+            assert data
+            (data.time-sample.time).must_be_within_delta 1e-6
         end
-        #process events otherwise qt is crashing
-        sleep(0.2)
-        while $qApp.hasPendingEvents
-            $qApp.processEvents
-        end
-    end
 
-    def test_vizkit_connect_port_to
-        log = Orocos::Log::Replay.open(@log_path+".0.log")
-        log.track(true)
-        log.align
-        assert(log)
-        time = nil
-        Vizkit.connect_port_to("test_task","time") do |sample, _|
-            time = sample
-            123
+        it "should connect a port to a widget" do 
+            widget = Vizkit.default_loader.TestWidget
+            t = Vizkit.proxy "task"
+            data = nil
+            l = t.port("position",:wait => true,:period => 0.05).connect_to widget
+            Orocos::Async.steps
+            port.write sample
+            sleep 0.1
+            Orocos::Async.steps
+            assert widget.sample
+            (widget.sample.time-sample.time).must_be_within_delta 1e-6
         end
-        log.step
-        sleep(0.5)
-        while $qApp.hasPendingEvents
-            $qApp.processEvents
+
+        it "should automatically find the right widget and connect it" do 
+            t1 = Vizkit.proxy("task",:retry_period => 0.08,:period => 0.1)
+            p = t1.port("position")
+
+            sleep 0.1
+            Orocos::Async.step
+            sleep 0.1
+            Orocos::Async.step
+            sleep 0.1
+            Orocos::Async.step
+
+            w = Vizkit.display p
+            w.must_be_instance_of Qt::Widget
         end
-        assert(time)
-        #test connect_port_to with an orocos task
-    end
 
-    def test_vizkit_disconnect
+        it "should emulate sub fields as sub ports" do 
+            t1 = Vizkit.proxy("task",:retry_period => 0.08,:period => 0.1,:wait=>true)
+            p = t1.port("position",:wait => true)
+            sub = p.sub_port(:position)
+            data = nil
+            sub.on_data do |sample|
+                data = sample
+            end
+            Orocos::Async.steps
+            port.write port.new_sample
+            sleep 0.1
+            Orocos::Async.steps
+            assert data
 
+            w = Vizkit.display sub
+            w.must_be_instance_of Qt::Widget
+        end
+
+        it "should connect to ports when reachable" do 
+            data = nil
+            Vizkit.connect_port_to "task","position" do |sample,_|
+                data = sample
+            end
+            Orocos::Async.steps
+            sleep 0.1
+            port.write port.new_sample
+            Orocos::Async.steps
+            assert data
+        end
     end
 end

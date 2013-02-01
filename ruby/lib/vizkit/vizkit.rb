@@ -5,7 +5,11 @@ module Vizkit
 
     #register mapping to find plugins for a specific object
     PluginHelper.register_map_obj("Orocos::Async::PortProxy","Orocos::Async::SubPortProxy","Orocos::InputPort", "Orocos::OutputPort") do |port|
-        PluginHelper.normalize_obj(port.type_name)-["Object","BasicObject"]
+        if port.respond_to? :type_name
+            PluginHelper.normalize_obj(port.type_name)-["Object","BasicObject"]
+        else
+            [port]
+        end
     end
     PluginHelper.register_map_obj("Orocos::TaskContext") do |task|
         PluginHelper.classes(task.model) if task.respond_to?(:model) && task.model
@@ -121,7 +125,6 @@ module Vizkit
         timer = Qt::Timer.new
         timer.connect SIGNAL("timeout()") do
             Orocos::Async.step
-            Thread.pass
         end
         timer.start 10
 

@@ -13,8 +13,6 @@ class WidgetTest < Test::Unit::TestCase
 
     #test integration between Vizkit, TaskProxy and Replay
     def test_task_inspector
-        widget = Vizkit.default_loader.task_inspector
-        assert(widget)
         widget = Vizkit.default_loader.TaskInspector
         assert(widget)
         assert(widget.plugin_spec)

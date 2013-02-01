@@ -32,7 +32,7 @@ class VizkitInfoViewer
     @edited_timer = nil
     
     # The position of the tab for log messages in the tab view
-    LOG_TAB_INDEX = 1
+    LOG_TAB_INDEX = 1 if !defined? LOG_TAB_INDEX
 
     module Functions
         def init(parent=nil, update_frequency = 500, time_threshold = 1000)

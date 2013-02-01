@@ -784,7 +784,7 @@ module Vizkit
 
     class InputPortsDataModel < ProxyDataModel
         def add(port)
-            sample = port.new_sample
+            sample = port.new_sample.zero!
             super(TypelibDataModel.new(sample,self),port.name,port.type_name,port)
         rescue Orocos::TypekitTypeNotFound => e
             super(nil,port.name,e.message,port)
