@@ -153,10 +153,22 @@ class VizkitInfoViewer
             # Display notification when new logs arrived
             # TODO use cleaner approach with 'validate/invalidate' operation
             # TODO reset notification on tab click
-         #   tabWidget.log_text_browser.connect(SIGNAL('textChanged()')) do
-         #       # Append '*' to the log tab's title
-         #       tabWidget.set_tab_text(LOG_TAB_INDEX,"#{tabWidget.tab_text(LOG_TAB_INDEX)}*")
-         #   end
+            tabWidget.log_text_browser.connect(SIGNAL('textChanged()')) do
+                # Append '*' to the log tab's title
+                text = tabWidget.tab_text(LOG_TAB_INDEX)
+                unless text.last_char.eql? '*'
+                    tabWidget.set_tab_text(LOG_TAB_INDEX,"#{text}*")
+                end
+            end
+            tabWidget.connect(SIGNAL('currentChanged(int)')) do |index|
+                if index == LOG_TAB_INDEX
+                    # Remove '*' from the log tab's title
+                    text = tabWidget.tab_text(LOG_TAB_INDEX)
+                    if last_char(text).eql? '*'
+                        text.chop!
+                    end
+                end
+            end
             
             update_tree_view
         end
@@ -395,6 +407,10 @@ class VizkitInfoViewer
         
         def item_data(item)
             return item.data(TIMER_DATA_COLUMN, Qt::UserRole)
+        end
+        
+        def last_char(str)
+            str.reverse.chr
         end
     end
 
