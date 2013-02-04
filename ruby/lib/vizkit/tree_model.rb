@@ -371,7 +371,7 @@ module Vizkit
                               item_val.is_a?(TrueClass) || item_val.is_a?(FalseClass)
                               item_val
                           elsif item_val.is_a? Time
-                              "#{item_val.strftime("%-d %b %Y %H:%M:%S")}.#{item_val.nsec.to_s}"
+                              "#{item_val.strftime("%-d %b %Y %H:%M:%S")}.#{item_val.usec.to_s}"
                           elsif item_val.is_a? Array 
                               data.field_type.name
                           else
@@ -1011,7 +1011,7 @@ module Vizkit
             model = @item_to_model[item]
             data = @meta_data[model]
             task = raw_data(item)
-            if task
+            if task.respond_to? :current_state
                 ContextMenu.task_state(task,parent_widget,pos)
                 true
             end
