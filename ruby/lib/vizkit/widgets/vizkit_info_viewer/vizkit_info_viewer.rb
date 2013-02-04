@@ -129,6 +129,11 @@ class VizkitInfoViewer
                 view.connect(SIGNAL('customContextMenuRequested(const QPoint&)')) do |pos|
                     item = view.item_at(pos)
                     next unless item
+                    
+                    # Forbid context menu on top level items of tree view
+                    # XXX. Better check if there is a valid QVariant data object.
+                    next if view == treeWidget && item.parent.nil?
+                    
                     object = item_data(item).to_ruby
                     if object
                         menu = case view
