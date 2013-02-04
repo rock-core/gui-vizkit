@@ -112,7 +112,7 @@ class VizkitInfoViewer
                 # TODO The persistent editor does not get closed if the item's text does not change.
                 if column_editable?(col)
                     #timer = @item_hash[item]
-                    timer = item.data(col, Qt::UserRole).to_ruby
+                    timer = item_data(item).to_ruby
                     timer.period = item.text(col).to_f
                     if end_edit(item)
                         #event_tree.close_persistent_editor(item, col)
@@ -126,7 +126,8 @@ class VizkitInfoViewer
             [treeWidget, event_tree].each do |view|
                 view.connect(SIGNAL('customContextMenuRequested(const QPoint&)')) do |pos|
                     item = view.item_at(pos)
-                    object = @item_hash[item]
+                    next unless item
+                    object = item_data(item).to_ruby
                     if object
                         menu = case view
                             when treeWidget then task_menu
@@ -184,7 +185,7 @@ class VizkitInfoViewer
                 else Kernel.raise "Unsupported action"
             end
             
-            update_helper
+            update
         end
 
         def update
@@ -223,7 +224,7 @@ class VizkitInfoViewer
                 dirty_children = []
                 
                 # temp list
-                displayed_timers = @cancelled_timers # to be filled further. see below.
+                displayed_timers = []
                 
                 root_item = event_tree.invisible_root_item
                 ctr = 0
@@ -232,10 +233,16 @@ class VizkitInfoViewer
                     child = root_item.child(ctr)
                     
                     list = (@event_loop.timers + @cancelled_timers)
-                    puts list.size
-                    if list.include? item_data(child).to_ruby
+                    timer = item_data(child).to_ruby
+                    if list.include? timer
+                        #debugger
                         # child represents a non-obsolete timer. update.
-                        update_timer_item(child)
+                        if @cancelled_timers.include? timer
+                            # display as cancelled
+                            update_timer_item(child, timer, true)
+                        else
+                            update_timer_item(child, timer, false)
+                        end
                         # add item's timer object to temp list
                         displayed_timers << item_data(child).to_ruby
                         
@@ -249,7 +256,7 @@ class VizkitInfoViewer
                 
                 # Remove obsolete event timer items
                 dirty_children.each do |child|
-                    ret = take_top_level_item(event_tree.index_of_child(child))
+                    ret = event_tree.take_top_level_item(event_tree.invisible_root_item.index_of_child(child))
                     Kernel.raise "Error during item deletion" unless ret
                 end
                 
