@@ -93,7 +93,7 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "ImageViewOld" do
       end
       if @options[:use_typelib_adapter]
         @typelib_adapter ||= Vizkit::TypelibQtAdapter.new(self)
-        if !@typelib_adapter.call_qt_method("addFrame",frame,nil)
+        if !@typelib_adapter.call_qt_method("addFrame",frame)
             Vizkit.warn "Cannot reach method addFrame. Disabling TypelibQtAdapter for widget #{self} and falling back to field access."
             @options[:use_typelib_adapter] = false
         end

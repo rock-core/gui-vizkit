@@ -38,7 +38,7 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "ImageView" do
       end
 
       @typelib_adapter ||= Vizkit::TypelibQtAdapter.new(self)
-      if !@typelib_adapter.call_qt_method("setFrame",frame,nil)
+      if !@typelib_adapter.call_qt_method("setFrame",frame)
           Vizkit.warn "Cannot reach method setFrame."
           Vizkit.warn "This happens if an old log file is replayed and the type has changed."
           Vizkit.warn "Call rock-convert to update the logfile."
