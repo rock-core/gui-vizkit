@@ -15,8 +15,6 @@ require 'utilrb/qt/variant/from_ruby.rb'
 class VizkitInfoViewer
 
     # The number of ms after which the trees are being updated.
-    # Note: Do not set this value too low because that could
-    #       make double-click interactions impossible.
     attr_reader :update_frequency #ms
     
     # Tasks with runtimes shorter than this threshold are being ignored.
@@ -46,7 +44,7 @@ class VizkitInfoViewer
             @thread_pool = @event_loop.thread_pool
             
             
-            # References to the objects in the view
+            # References to the objects in the view. Saves them from garbage collection.
             @item_hash = Hash.new
             
             # Local keep-alive references of cancelled timers. 
@@ -118,6 +116,10 @@ class VizkitInfoViewer
                         #event_tree.close_persistent_editor(item, col)
                     end
                 end
+            end
+            
+            event_tree.item_delegate.connect(SIGNAL('closeEditor(QWidget*, QAbstractItemDelegate::EndEditHint)')) do |editor|
+                end_edit
             end
 
             event_tree.expand_to_depth 1
@@ -191,11 +193,31 @@ class VizkitInfoViewer
         def update
             ## Update task tree
             
-            # Remove all tasks from tree
-            #@active_task_item.take_children
-            #@waiting_task_item.take_children
+            displayed_tasks = []
+            dirty_tasks = []
             
-            # Add updated tasks to tree
+            # Update currently displayed tasks
+            [@active_task_item, @waiting_task_item].each do |item|
+                ctr = 0
+                while ctr < item.child_count do
+                    child = item.child(ctr)
+                    if @thread_pool.tasks.include? item_data(child).to_ruby
+                        update_task_item(child)
+                    else
+                        dirty_tasks << child
+                    end
+                    ctr = ctr + 1
+                end
+            end
+            
+            # Remove obsolete task items
+            dirty_tasks.each do |child|
+                @item_hash.delete(item_data(child).to_ruby)
+                ret = child.parent.take_child(child.parent.index_of_child(child))
+                Kernel.raise "Error during item deletion" unless ret
+            end
+            
+            # Add new tasks to tree
             @thread_pool.tasks.each do |task|
                 item = nil
                 
@@ -212,81 +234,60 @@ class VizkitInfoViewer
                 item.add_child(child)
 
                 # Make task accessible for context menu
-                @item_hash[child] = task
+                @item_hash[task] = child
             end
             
             ## Update event loop timer tree
             
-            # Skip event update if a timer edit is happening.
-            #if not @on_edit
+            # Update current event timer items and remove obsolete items.
+            dirty_timers = []
+            
+            # temp list
+            displayed_timers = []
+
+            root_item = event_tree.invisible_root_item
+            ctr = 0
+            
+            while ctr < root_item.child_count do
+                child = root_item.child(ctr)
                 
-                # Update current event timer items and remove obsolete items.
-                dirty_children = []
-                
-                # temp list
-                displayed_timers = []
-                
-                root_item = event_tree.invisible_root_item
-                ctr = 0
-                
-                while ctr < root_item.child_count do
-                    child = root_item.child(ctr)
-                    
-                    list = (@event_loop.timers + @cancelled_timers)
-                    timer = item_data(child).to_ruby
-                    if list.include? timer
-                        #debugger
-                        # child represents a non-obsolete timer. update.
-                        if @cancelled_timers.include? timer
-                            # display as cancelled
-                            update_timer_item(child, timer, true)
-                        else
-                            update_timer_item(child, timer, false)
-                        end
-                        # add item's timer object to temp list
-                        displayed_timers << item_data(child).to_ruby
-                        
-                        # TODO handle items that are currently being edited
+                list = (@event_loop.timers + @cancelled_timers)
+                timer = item_data(child).to_ruby
+                if list.include? timer
+                    # child represents a non-obsolete timer. update.
+                    if @cancelled_timers.include? timer
+                        # display as cancelled
+                        update_timer_item(child, timer, true)
                     else
-                        # Mark obsolete event timer items for removal
-                        dirty_children << child
+                        update_timer_item(child, timer, false)
                     end
-                    ctr = ctr + 1
+                    # add item's timer object to temp list
+                    displayed_timers << item_data(child).to_ruby
+                else
+                    # Mark obsolete event timer items for removal
+                    dirty_timers << child
                 end
+                ctr = ctr + 1
+            end
+            
+            # Remove obsolete event timer items
+            dirty_timers.each do |child|
+                @item_hash.delete child
+                ret = event_tree.take_top_level_item(event_tree.invisible_root_item.index_of_child(child))
+                Kernel.raise "Error during item deletion" unless ret
+            end
+            
+            # Check for new event timers
+            (@event_loop.timers - displayed_timers).each do |t|
+                next if t.single_shot?
                 
-                # Remove obsolete event timer items
-                dirty_children.each do |child|
-                    ret = event_tree.take_top_level_item(event_tree.invisible_root_item.index_of_child(child))
-                    Kernel.raise "Error during item deletion" unless ret
-                end
+                # Add item to tree
+                child = event_timer_data_item(t, false)
                 
-                # Check for new event timers
-                (@event_loop.timers - displayed_timers).each do |t|
-                    next if t.single_shot?
-                    
-                    # Add item to tree
-                    child = event_timer_data_item(t, false)
-                    event_tree.add_top_level_item(child)
-                end
+                @item_hash[t] = child
                 
-                
-                # Add current timer information      
-                #@event_loop.timers.each do |t|
-                #    # Ignore non-periodic timers. Not necessary for cancelled 
-                #    # timers (see below) because single shot timers never get displayed.
-                #    next if t.single_shot? 
-                #    child = event_timer_data_item(t, false)
-                #    @item_hash[child] = t
-                #    event_tree.add_top_level_item(child)
-                #end
-                
-                # Add local copies of cancelled timers
-                #@cancelled_timers.each do |timer|
-                #    child = event_timer_data_item(timer, true)
-                #    @item_hash[child] = timer
-                #    event_tree.add_top_level_item(child)
-                #end
-            #end
+                event_tree.add_top_level_item(child)
+            end
             
             ## Update statistics view
             label_threads_total.set_text(@thread_pool.spawned.to_s)
@@ -319,13 +320,12 @@ class VizkitInfoViewer
         
         # Packs needed task information into an item for the tree.
         def task_data_item(task)
-            data = []
-            data << task.description << Time.at(task.time_elapsed).utc.strftime("%Hh %Mm %Ss") << task.state
+            Kernel.raise "Not a task type: #{task}" if not task.is_a? Utilrb::ThreadPool::Task
             item = Qt::TreeWidgetItem.new
             item.set_flags(item.flags.to_i | Qt::ItemIsEditable.to_i)
-            data.size.times do |i|
-                item.set_text(i, data[i].to_s)
-            end
+            update_task_item(item, task)
+            # Store timer object representation at item for 'direct access' from context menu
+            item.set_data(TIMER_DATA_COLUMN, Qt::UserRole, Qt::Variant.from_ruby(task))
             item
         end
         
@@ -341,7 +341,12 @@ class VizkitInfoViewer
         end
 
         def update_task_item(item, task = nil)
-            # TODO
+            task = item_data(item).to_ruby unless task
+            data = []
+            data << task.description << Time.at(task.time_elapsed).utc.strftime("%Hh %Mm %Ss") << task.state
+            data.size.times do |i|
+                item.set_text(i, data[i].to_s)
+            end
         end
         
         def update_timer_item(item, timer = nil, cancelled = false)
@@ -363,7 +368,7 @@ class VizkitInfoViewer
             true
         end
         
-        def end_edit(obj)
+        def end_edit(obj = @edited_object)
             if not @on_edit
                 Vizkit.warn "You cannot end editing an object before starting."
                 return false
