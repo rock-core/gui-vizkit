@@ -1,5 +1,5 @@
 require File.join(File.dirname(__FILE__),"test_helper")
-start_simple_cov("test_typelib_qt_adapter")
+start_simple_cov("test_widget_task_connector")
 
 require 'vizkit'
 require 'minitest/spec'
@@ -11,7 +11,7 @@ MiniTest::Unit.autorun
 include Vizkit
 
 describe WidgetTaskConnector do
-    class SandBox < MiniTest::Spec
+    class SandBoxWidgetTaskConnector < MiniTest::Spec
         def self.prepare
             @@widget = Vizkit.default_loader.TestVizkitWidget
             @@widget.extend Vizkit::QtTypelibExtension
@@ -41,186 +41,6 @@ describe WidgetTaskConnector do
             Vizkit.process_events
         end
 
-        describe WidgetTaskConnector::ConnectorSlot do
-            describe "initialize" do 
-                it "must raise if the slot is unknown" do 
-                    assert_raises ArgumentError do 
-                        WidgetTaskConnector::ConnectorSlot.new(@@widget,"bla")
-                    end
-                end
-
-                it "must raise if the slot signature is wrong" do 
-                    assert_raises ArgumentError do 
-                        WidgetTaskConnector::ConnectorSlot.new(@@widget,"setFrame()")
-                    end
-                end
-
-                it "must raise if the slot is a signal" do 
-                    assert_raises ArgumentError do 
-                        WidgetTaskConnector::ConnectorSlot.new(@@widget,"frameChanged")
-                    end
-                end
-
-                it "must accept different signature styles" do 
-                    assert WidgetTaskConnector::ConnectorSlot.new(@@widget,"setFrame")
-                    assert WidgetTaskConnector::ConnectorSlot.new(@@widget,"void setFrame")
-                    assert WidgetTaskConnector::ConnectorSlot.new(@@widget,"setFrame(const base::samples::frame::Frame &)")
-                    assert WidgetTaskConnector::ConnectorSlot.new(@@widget,"ruby_method")
-                end
-            end
-
-            describe "arity" do 
-                it "must return the right number of parameters" do 
-                    assert_equal 1, WidgetTaskConnector::ConnectorSlot.new(@@widget,"setFrame").arity
-                    assert_equal 2, WidgetTaskConnector::ConnectorSlot.new(@@widget,"set2Int").arity
-                end
-            end
-
-            describe "arity?" do 
-                it "must return true if the method supports the given arity" do 
-                    assert WidgetTaskConnector::ConnectorSlot.new(@@widget,"setFrame").arity?(1)
-                    assert WidgetTaskConnector::ConnectorSlot.new(@@widget,"set2Int").arity?(2)
-                end
-            end
-
-            describe "argument_types?" do 
-                it "must return true if the right argument is given" do 
-                    assert WidgetTaskConnector::ConnectorSlot.new(@@widget,"setFrame").argument_types?("base::samples::frame::Frame")
-                    assert WidgetTaskConnector::ConnectorSlot.new(@@widget,"set2Int").argument_types?("int","int")
-                end
-            end
-
-            describe "write" do 
-                it "must write a value to the slot" do
-                    sample = Types::Base::Samples::Frame::Frame.new.zero!
-                    sample.time = Time.now
-                    obj = WidgetTaskConnector::ConnectorSlot.new(@@widget,"setFrame")
-                    obj.write Hash.new,sample
-                    assert_equal sample.time.usec, @@widget.getFrame.time.usec
-                end
-
-                it "must write a value if the slot is a ruby method" do
-                    sample = Types::Base::Samples::Frame::Frame.new.zero!
-                    sample.time = Time.now
-                    obj = WidgetTaskConnector::ConnectorSlot.new(@@widget,"ruby_method")
-                    obj.write Hash.new,sample
-                    assert_equal sample.time.usec, @@widget.instance_variable_get(:@ruby_value).time.usec
-                end
-
-                it "must write a value with a given block" do
-                    sample = Types::Base::Samples::Frame::Frame.new.zero!
-                    sample.time = Time.now
-                    obj = WidgetTaskConnector::ConnectorSlot.new(@@widget,"setFrame")
-                    a = nil
-                    obj.write Hash.new,sample do 
-                        a = :called
-                    end
-                    assert_equal :called,a
-                    assert_equal sample.time.usec, @@widget.getFrame.time.usec
-                end
-            end
-
-            describe "read" do 
-                it "must read from a slot" do
-                    sample = Types::Base::Samples::Frame::Frame.new.zero!
-                    sample.time = Time.now
-                    @@widget.setFrame sample
-                    obj = WidgetTaskConnector::ConnectorSlot.new(@@widget,"getFrame")
-                    assert_equal sample.time.usec, obj.read(Hash.new).time.usec
-                end
-            end
-        end
-
-        describe WidgetTaskConnector::ConnectorSignal do
-            describe "initialize" do 
-                it "must raise if the signal is unknown" do 
-                    assert_raises ArgumentError do 
-                        WidgetTaskConnector::ConnectorSignal.new(@@widget,"bla")
-                    end
-                end
-
-                it "must raise if the signal signature is wrong" do 
-                    assert_raises ArgumentError do 
-                        WidgetTaskConnector::ConnectorSignal.new(@@widget,"frameChanged(int)")
-                    end
-                end
-
-                it "must raise if the signal is a slot" do 
-                    assert_raises ArgumentError do 
-                        WidgetTaskConnector::ConnectorSignal.new(@@widget,"setFrame")
-                    end
-                end
-
-                it "must accept different signature styles" do 
-                    assert WidgetTaskConnector::ConnectorSignal.new(@@widget,"void int2Changed(int,int)")
-                    assert WidgetTaskConnector::ConnectorSignal.new(@@widget,"void int2Changed")
-                    assert WidgetTaskConnector::ConnectorSignal.new(@@widget,"int2Changed(int,int)")
-                    assert WidgetTaskConnector::ConnectorSignal.new(@@widget,"int2Changed")
-                end
-            end
-
-            describe "write" do 
-                it "must reemit the signal if write is called" do
-                    value = nil
-                    @@widget.connect SIGNAL("intChanged(int)") do |val|
-                        value = val
-                    end
-                    obj = WidgetTaskConnector::ConnectorSignal.new(@@widget,"intChanged")
-                    obj.write Hash.new,2
-                    assert_equal 2,value
-                end
-            end
-
-            describe "on_data" do 
-                it "must call given block each time the signal is emitted" do
-                    obj = WidgetTaskConnector::ConnectorSignal.new(@@widget,"intChanged")
-                    value = nil
-                    obj.on_data Hash.new do |val|
-                        value = val
-                    end
-                    3.times do |val|
-                        @@widget.intChanged val
-                        assert_equal val,value
-                    end
-                end
-            end
-        end
-
-        describe WidgetTaskConnector::ConnectorPort do
-            describe "initialize" do
-            end
-
-            describe "read" do 
-                it "must read from a port" do
-                end
-            end
-
-            describe "write" do 
-            end
-
-            describe "on_data" do 
-            end
-        end
-
-        describe WidgetTaskConnector::ConnectorOperation do
-            describe "initialize" do
-            end
-
-            describe "read" do 
-                it "must read from a port" do
-                end
-            end
-
-            describe "write" do 
-            end
-
-            describe "on_data" do 
-            end
-        end
-
-        describe "connect_to" do 
-        end
-
         describe "resolve" do
             describe "SIGNAL" do
                 it "raises if signal is unknown" do 
@@ -230,11 +50,11 @@ describe WidgetTaskConnector do
                 end
 
                 it "returns ConnectorSlot" do 
-                    @@connector.send(:resolve,@@connector.SIGNAL("intChanged(int)")).must_be_kind_of WidgetTaskConnector::ConnectorSignal
+                    @@connector.send(:resolve,@@connector.SIGNAL("intChanged(int)")).must_be_kind_of ConnectorSignal
                 end
 
                 it "returns :signal" do 
-                    @@connector.send(:resolve,@@connector.SIGNAL("intChanged")).must_be_kind_of WidgetTaskConnector::ConnectorSignal
+                    @@connector.send(:resolve,@@connector.SIGNAL("intChanged")).must_be_kind_of ConnectorSignal
                 end
             end
 
@@ -246,7 +66,7 @@ describe WidgetTaskConnector do
                 end
 
                 it "returns the :slot" do 
-                    @@connector.send(:resolve,@@connector.SLOT("setFrame")).must_be_kind_of WidgetTaskConnector::ConnectorSlot
+                    @@connector.send(:resolve,@@connector.SLOT("setFrame")).must_be_kind_of ConnectorSlot
                 end
             end
         end
@@ -290,12 +110,6 @@ describe WidgetTaskConnector do
                 Vizkit.process_events
                 Orocos::Async.steps
                 assert_equal sample.time.usec,@@ruby_task.frame.read_new.time.usec
-            end
-
-            it "raises if there is no getter and the signal is not passing a parameter" do
-                assert_raises ArgumentError do 
-                    @@connector.connect @@connector.SIGNAL("frameChanged"),@@connector.PORT("frame"),:getter => nil
-                end
             end
 
             it "connect a port to slot" do 
