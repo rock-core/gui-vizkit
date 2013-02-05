@@ -243,7 +243,7 @@ module Vizkit
             args = normalize_qt_args *args
             s = spec(false)
             result = @widget.send(s.name,*args)
-            block.call(*result) if block
+            block.call(result) if block
             result
         end
 
