@@ -62,7 +62,11 @@ module Vizkit
                 when 7
                     ConnectorEvent.new(@task,$2,options)
                 else
-                    raise ArgumentError,"#{signature} has an invalid type identifyer #{$1}"
+                    if signature.is_a? Symbol
+                        ConnectorSlot.new(@widget,signature.to_s,options)
+                    else
+                        raise ArgumentError,"#{signature} has an invalid type identifyer #{$1}"
+                    end
                 end
         end
     end
