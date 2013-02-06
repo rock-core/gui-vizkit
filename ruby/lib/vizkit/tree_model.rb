@@ -805,23 +805,23 @@ module Vizkit
                 begin
                     sample = object.new_sample.zero!
                     rb_sample = Typelib.to_ruby(sample)
-                    if DIRECTLY_DISPLAYED_RUBY_TYPES.any? { |rt| rt === rb_sample }
-                        model = SimpleTypelibDataModel.new(sample, self,@type_policy)
-                        on_update(object) do |data|
-                            data_value(model,data.to_s)
-                            model.update data
-                        end
-                    else
-                        model = TypelibDataModel.new(sample, self,@type_policy)
-                        on_update(object) do |data|
-                            model.update data
-                        end
-                    end
+                    listener2 = if DIRECTLY_DISPLAYED_RUBY_TYPES.any? { |rt| rt === rb_sample }
+                                    model = SimpleTypelibDataModel.new(sample, self,@type_policy)
+                                    on_update(object) do |data|
+                                        data_value(model,data.to_s)
+                                        model.update data
+                                    end
+                                else
+                                    model = TypelibDataModel.new(sample, self,@type_policy)
+                                    on_update(object) do |data|
+                                        model.update data
+                                    end
+                                end
+                    listener2.stop
                 rescue Orocos::TypekitTypeNotFound => e
-                    # There is a port, but we can't display it
                     message = e.message
                 end
-                super(model,object.name,message,object)
+                super(model,object.name,message,object,listener2)
                 listener.stop
             end
         end
