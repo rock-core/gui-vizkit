@@ -343,7 +343,13 @@ module Vizkit
 
         def write(options,*args,&block)
             raise ArgumentError,"got #{args.size} number of arguments. Ports only support one argument for writing" unless args.size == 1
-            @port.write args.first,&block
+            arg = args.first
+            arg = if arg.is_a?(Qt::Variant) && arg.to_ruby?
+                      arg.to_ruby
+                  else
+                      arg
+                  end
+            @port.write arg,&block
         end
 
         def on_data(options,&block)
