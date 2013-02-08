@@ -18,15 +18,17 @@ describe WidgetTaskConnector do
             @@task = Orocos::Async.proxy "test_task"
             @@connector = Vizkit::WidgetTaskConnector.new(@@widget,@@task)
             @@ruby_task = Orocos::RubyTaskContext.new("test_task")
-            @@ruby_task.create_property("prop1","/base/samples/RigidBodyState")
+            @@ruby_task.create_property("prop1","/base/samples/frame/Frame")
+            sample = Types::Base::Samples::Frame::Frame.new.zero!
+            @@ruby_task.prop1 = sample
             @@ruby_task.create_input_port("int_port","int")
             @@ruby_task.create_input_port("frame","/base/samples/frame/Frame")
             @@ruby_task.create_output_port("oframe","/base/samples/frame/Frame")
             #make sure the task and port is connected
-            @@task.wait
             @@task.port("int_port").wait
             @@task.port("frame").wait
             @@task.port("oframe").wait
+            @@task.property("prop1").wait
             def @@widget.ruby_method(value)
                 @ruby_value = value
             end
@@ -112,6 +114,18 @@ describe WidgetTaskConnector do
                 assert_equal sample.time.usec,@@ruby_task.frame.read_new.time.usec
             end
 
+            it "connect a property to slot" do 
+                @@connector.connect @@connector.PROPERTY(:prop1),@@connector.SLOT("setFrame")
+                Orocos::Async.steps
+
+                sample = Types::Base::Samples::Frame::Frame.new.zero!
+                sample.time = Time.now
+                @@ruby_task.prop1 = sample
+                sleep 0.11
+                Orocos::Async.steps
+                assert_equal sample.time.usec,@@widget.getFrame.time.usec
+            end
+
             it "connect a port to slot" do 
                 @@connector.connect @@connector.PORT("oframe"),@@connector.SLOT("setFrame")
                 Orocos::Async.steps
@@ -123,6 +137,20 @@ describe WidgetTaskConnector do
                 Orocos::Async.steps
                 assert_equal sample.time.usec,@@widget.getFrame.time.usec
             end
+
+            it "connect a signal to a property" do
+                @@connector.connect @@connector.SIGNAL(:frameChanged),@@connector.PROPERTY("prop1"),:getter => SLOT("getFrame")
+                Orocos::Async.steps
+
+                sample = Types::Base::Samples::Frame::Frame.new.zero!
+                sample.time = Time.now
+                @@widget.setFrame sample
+                @@widget.frameChanged
+                sleep 0.11
+                Orocos::Async.steps
+                assert_equal sample.time.usec,@@ruby_task.prop1.time.usec
+            end
+
 
             it "raises if types are not compatible" do 
             #    @@connector.send(:connect_signal_to_port,"intChanged(int)","int_port",Hash.new)

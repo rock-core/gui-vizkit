@@ -61,6 +61,8 @@ module Vizkit
                     ConnectorOperation.new(@task,$2,options)
                 when 7
                     ConnectorEvent.new(@task,$2,options)
+                when 8
+                    ConnectorProperty.new(@task,$2,options)
                 else
                     if signature.is_a? Symbol
                         ConnectorSlot.new(@widget,signature.to_s,options)

@@ -311,7 +311,6 @@ module Vizkit
 
     class ConnectorPort < ConnectorObject
         def initialize(task,signature,options)
-            @task = task
             @port = task.port(signature)
         end
 
@@ -357,6 +356,47 @@ module Vizkit
         end
     end
 
+    class ConnectorProperty < ConnectorObject
+        def initialize(task,signature,options)
+            @property = task.property(signature)
+        end
+
+        def arity=(value)
+            raise ArgumentError "only an arity of one is supported for ports" unless value == 1
+        end
+
+        def arity?(value)
+            value == 1
+        end
+
+        def argument_types?(*value)
+        end
+
+        def argument_types=(*value)
+        end
+
+        def argument_types
+        end
+
+        def name
+            @property.name
+        end
+
+        def read(options,*args,&block)
+            raise ArgumentError,"wrong number of arguments" unless args.size == 0
+            @property.read options,&block
+        end
+
+        def write(options,*args,&block)
+            raise ArgumentError,"got #{args.size} number of arguments. Ports only support one argument for writing" unless args.size == 1
+            @property.write args.first,&block
+        end
+
+        def on_data(options,&block)
+            @property.on_change options, &block
+        end
+    end
+
     class ConnectorEvent < ConnectorObject
         def initialize(task,signature,options)
             @task = task
@@ -375,6 +415,7 @@ module Vizkit
             @task.on_event @name.to_sym,&block
         end
     end
+
 end
 
 
