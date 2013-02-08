@@ -821,7 +821,7 @@ module Vizkit
                 rescue Orocos::TypekitTypeNotFound => e
                     message = e.message
                 end
-                super(model,object.name,message,object,listener2)
+                ProxyDataModel.instance_method(:add).bind(self).call(model,object.name,message,object,listener2)
                 listener.stop
             end
         end
