@@ -1112,8 +1112,8 @@ module Vizkit
             task.each_property do |prop|
                 #TODO
                 # convert to Orocos::Async::Property
-                model = TypelibDataModel.new port.read,self
-                port.on_change do |data|
+                model = TypelibDataModel.new prop.read,self
+                prop.on_change do |data|
                     model.update(data)
                 end
                 add(model,prop.name,prop.type_name,prop)
