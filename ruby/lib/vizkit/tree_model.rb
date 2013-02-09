@@ -1143,6 +1143,7 @@ module Vizkit
             @global_meta_data = GlobalMetaDataModel.new log_replay,self
             add(@global_meta_data,"-Global Meta Data-","",@global_meta_data)
             log_replay.tasks.each do |task|
+                task = Orocos::Async::Log::TaskContext.new(task)
                 model = LogTaskDataModel.new task,self
                 add(model,task.name,task.file_path,task)
             end

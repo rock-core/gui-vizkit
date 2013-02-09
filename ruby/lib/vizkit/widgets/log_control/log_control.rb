@@ -1,4 +1,5 @@
 require "vizkit/tree_model.rb"
+require 'orocos/async/log/task_context'
 
 class LogControl
   class StopAllTimer < Qt::Object
