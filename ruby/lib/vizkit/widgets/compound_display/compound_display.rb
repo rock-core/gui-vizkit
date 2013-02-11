@@ -39,7 +39,7 @@ class CompoundDisplay < Qt::Widget
         @grid = @gui.grid_layout
         show_menu(true)
         layout.add_widget(@gui)
-
+        
         set_grid_dimensions(row_count, col_count)
         
         ## Configure configuration import / export
@@ -160,8 +160,14 @@ class CompoundDisplay < Qt::Widget
             for col in 0..col_count-1 do
                 container = nil
                 if not @container_hash[counter]
-                    container = ContainerWidget.new
-                    container.set_label_text("No input")
+                    widget_pos = (row * col_count) + col
+                    container = ContainerWidget.new(widget_pos, "#{widget_pos}: No input")
+                    
+                    container.connect(SIGNAL('changed(int, QString, QString, QString)')) do |pos, task, port, widget|
+                        puts "Got changed() signal!"
+                        configure(pos, task, port, widget) 
+                    end
+                    
                     @container_hash[counter] = container
                 else
                     container = @container_hash[counter]
@@ -276,10 +282,14 @@ end
 class ContainerWidget < Qt::Widget
     attr_reader :label_text
     attr_reader :content_widget
+    attr_reader :position
     
-    def initialize(label_text = "", content_widget = nil, parent = nil)
+    signals "changed(int, QString, QString, QString)"
+    
+    def initialize(pos, label_text = "", content_widget = nil, parent = nil)
         super(parent)
         set_size_policy(Qt::SizePolicy::Preferred, Qt::SizePolicy::Preferred)
+        @position = pos
         @label_text = label_text
         @layout = Qt::VBoxLayout.new(self)
         
@@ -287,7 +297,10 @@ class ContainerWidget < Qt::Widget
         @label.set_size_policy(Qt::SizePolicy::Preferred, Qt::SizePolicy::Maximum)
         @layout.add_widget(@label)
         
+        set_accept_drops(true)
+
         set_content_widget(content_widget) if content_widget
+        
         self
     end
     
@@ -305,6 +318,63 @@ class ContainerWidget < Qt::Widget
     def set_label_text(text)
         @label.set_text(text)
         @label_text = text
+    end
+    
+    def set_position(pos)
+        @position = pos
+    end
+    
+    def widget_selection(pos, type_name)
+        menu = Qt::Menu.new(self)
+
+        # Determine applicable widgets for the output port
+        widgets = Vizkit.default_loader.find_all_plugin_names(:argument=>type_name, :callback_type => :display,:flags => {:deprecated => false})
+
+        widgets.uniq!
+        widgets.each do |w|
+            menu.add_action(Qt::Action.new(w, parent))
+        end
+        # Display context menu at cursor position.
+        action = menu.exec(pos)
+
+        puts "Chose widget '#{action.text}'" if action
+        action.text if action
+
+    end
+    
+    ## reimplemented methods
+    
+    def dragEnterEvent(event)
+        puts "DRAG ENTER EVENT!"
+        event.accept_proposed_action
+        if event.mime_data.has_format("text/plain")
+            event.accept_proposed_action
+        else
+            puts "Bad format ..."
+            event.ignore
+        end
+        nil
+    end
+    
+    def dropEvent(event)
+        puts "DROP EVENT!"
+        text = event.mime_data.text
+        puts "RECEIVED DROPPED TEXT: '#{text}'"
+        event.accept_proposed_action
+        
+        # Get type name for specified task and port:
+        task_name = text.split(".",2).first
+        port_name = text.split(".",2).last
+        
+        task = Orocos.name_service.get(task_name)
+        port = task.port(port_name)
+        type_name = port.type_name
+        
+        # Display context menu at drop point to choose from available display widgets
+        widget_name = widget_selection(map_to_global(event.pos), type_name)
+        
+        emit changed(@position, task_name, port_name, widget_name)
+        nil
     end
 end
 

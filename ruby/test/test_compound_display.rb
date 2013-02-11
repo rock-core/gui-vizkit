@@ -10,12 +10,11 @@ if ARGV[0]
     replay = Orocos::Log::Replay.open(ARGV[0])
     widget.replay_mode(replay)
     #widget.configure_by_yaml("myconfig_avalon_obenlinks.yml")
-    widget.configure(0, "front_camera", "frame", "ImageView", nil)
+    widget.configure(0, "front_camera", "frame", "ImageView")
     Vizkit.control replay
 else
-    widget.configure(5, "message_producer", "messages", "StructViewer", nil)
+    widget.configure(5, "message_producer", "messages", "StructViewer")
 end    
 
 widget.show
 Vizkit.exec
-
