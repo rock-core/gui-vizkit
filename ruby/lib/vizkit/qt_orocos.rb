@@ -51,6 +51,7 @@ module Orocos
 
     module QtOrocos
         def connect_to(widget=nil, options = Hash.new,&block)
+            raise ArgumentError,"cannot connect port #{full_name} to a string #{widget}" if widget.is_a? String
             widget,options = if widget.is_a?(Hash)
                                  [nil,widget]
                              else
@@ -86,7 +87,7 @@ module Orocos
                 nil
             else
                 callback ||= block
-                raise ArgumentError, "cannot connect. no code block." if !callback
+                raise ArgumentError, "cannot connect. no code block or callback for widget #{widget}." if !callback
 
                 Vizkit.info "Create new Connection for #{name} and #{widget || callback}"
                 on_data do |data|

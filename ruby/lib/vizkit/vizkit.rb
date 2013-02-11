@@ -180,6 +180,11 @@ module Vizkit
         if widget.kind_of?(Hash)
             widget, options = nil, widget
         end
+        widget = if widget.respond_to? :to_str
+                     default_loader.create_plugin(widget.to_str)
+                 else
+                     widget
+                 end
         port = Orocos::Async.proxy(task_name).port(port_name)
         l = port.on_reachable do
             begin
