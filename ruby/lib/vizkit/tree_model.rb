@@ -230,12 +230,13 @@ module Vizkit
         # @option options [TrueClass,FalseClass] :editable Indicates if the model can be modified by the user
         # @option options [TrueClass,FalseClass] :enabled Indicates if the model is enabled
         # @option options [TrueClass,FalseClass] :accept Indicates if the parent shall be called to accept changes
+        # @option options [TrueClass,FalseClass] :no_data Indicates if the model has valid data 
         def initialize(root_item,parent = nil, options=Hash.new)
             @root = root_item
             @meta_data = Hash.new
             @modified_by_user = false
             @parent = parent
-            @options = Kernel::validate_options options,:enabled => true,:accept => false, :editable => false
+            @options = Kernel::validate_options options,:enabled => true,:accept => false, :editable => false,:no_data => false
         end
 
         # returns true if the model was modified by the user
@@ -319,6 +320,7 @@ module Vizkit
 
         def update(data)
             return unless data
+            @options[:no_data] = false
             @modified_by_user = false
             Typelib.copy(@root,Typelib.from_ruby(data,@root.class))
             item_changed
@@ -364,6 +366,7 @@ module Vizkit
             return Qt::Variant.new unless data
             item_val = data.val
             val = if role == Qt::DisplayRole
+                      return Qt::Variant.new("no data") if @options[:no_data]
                       if item_val.is_a? Typelib::Type
                           item_val.class.name
                       else
@@ -785,7 +788,7 @@ module Vizkit
     class InputPortsDataModel < ProxyDataModel
         def add(port)
             sample = port.new_sample.zero!
-            super(TypelibDataModel.new(sample,self),port.name,port.type_name,port)
+            super(TypelibDataModel.new(sample,self,:no_data => true),port.name,port.type_name,port)
         rescue Orocos::TypekitTypeNotFound => e
             super(nil,port.name,e.message,port)
         end
@@ -831,7 +834,7 @@ module Vizkit
 
         def initialize(parent = nil)
             super
-            @type_policy = {:enabled => true,:editable => false}
+            @type_policy = {:enabled => true,:editable => false,:no_data => true}
         end
 
         def on_update(object, &block)
@@ -1112,7 +1115,7 @@ module Vizkit
             task.each_property do |prop|
                 #TODO
                 # convert to Orocos::Async::Property
-                model = TypelibDataModel.new port.read,self
+                model = TypelibDataModel.new port.read,self,:no_data => true
                 port.on_change do |data|
                     model.update(data)
                 end
