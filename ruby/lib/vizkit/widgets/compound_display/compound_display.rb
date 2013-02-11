@@ -26,8 +26,8 @@ class CompoundDisplay < Qt::Widget
     def initialize(row_count = 3, col_count = 2, parent = nil)
         super(parent)
         
-        @container_hash = {} # holds the container widgets
-        @config_hash = {}
+        @container_hash = Hash.new # holds the container widgets
+        @config_hash = Hash.new
         @disconnected = false
         @replayer = nil
         
@@ -84,7 +84,7 @@ class CompoundDisplay < Qt::Widget
     # The connection is being established automatically with respect
     # to the configuration.
     #
-    def configure(pos, task, port, widget, policy)
+    def configure(pos, task, port, widget, policy = Hash.new)
         @config_hash[pos] = CompoundDisplayConfig.new(task, port, widget, policy)
         connect(pos)
     end
@@ -269,7 +269,7 @@ class CompoundDisplayConfig
     end
     
     def invalid?
-        return @task && @port && @widget && @connection_policy && (not task.empty?) && (not port.empty?)
+        return @task.nil? || @port.nil? || @widget.nil? || @connection_policy.nil? || @task.empty? || @port.empty?
     end
 end
 
