@@ -98,7 +98,7 @@ class CompoundDisplay < Qt::Widget
         end
 
         Vizkit.info "Connecting #{config.task}.#{config.port} to #{config.widget}"
-        widget = Vizkit.default_loader.send(config.widget)
+        widget = Vizkit.default_loader.create_plugin(config.widget)
         container = @container_hash[pos]
         container.set_content_widget(widget)
         container.set_label_text("#{config.task}.#{config.port}")
@@ -110,7 +110,7 @@ class CompoundDisplay < Qt::Widget
         #else
             #task = Orocos::Async.proxy(config.task)
             #port = task.port(config.port)
-            Vizkit.connect_port_to(config.task, config.port, config.widget, config.connection_policy)
+        Vizkit.connect_port_to(config.task, config.port, widget, config.connection_policy)
         #end
     end
     
