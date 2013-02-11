@@ -1112,20 +1112,22 @@ module Vizkit
             options[:enabled] = false
 
             add(nil,"Properties")
-            task.each_property do |prop|
-                #TODO
-                # convert to Orocos::Async::Property
-                model = TypelibDataModel.new port.read,self,:no_data => true
-                prop.on_change do |data|
-                    model.update(data)
+            task.each_property do |props|
+                props.each do |prop|
+                    model = TypelibDataModel.new prop.read,self,:no_data => true
+                    prop.on_change do |data|
+                        model.update(data)
+                    end
+                    add(model,prop.name,prop.type_name,prop)
                 end
-                add(model,prop.name,prop.type_name,prop)
             end
 
-            task.each_port do |port|
-                model = LogOutputPortDataModel.new port,self
-                add(model,port.name,port.type_name,port)
-                options[:enabled] = true if port.number_of_samples > 0
+            task.each_port do |ports|
+                ports.each do |port|
+                    model = LogOutputPortDataModel.new port,self
+                    add(model,port.name,port.type_name,port)
+                    options[:enabled] = true if port.number_of_samples > 0
+                end
             end
         end
 
