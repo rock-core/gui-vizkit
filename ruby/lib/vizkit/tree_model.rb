@@ -824,7 +824,7 @@ module Vizkit
                 rescue Orocos::TypekitTypeNotFound => e
                     message = e.message
                 end
-                super(model,object.name,message,object,listener2)
+                ProxyDataModel.instance_method(:add).bind(self).call(model,object.name,message,object,listener2)
                 listener.stop
             end
         end
@@ -1116,7 +1116,7 @@ module Vizkit
                 #TODO
                 # convert to Orocos::Async::Property
                 model = TypelibDataModel.new port.read,self,:no_data => true
-                port.on_change do |data|
+                prop.on_change do |data|
                     model.update(data)
                 end
                 add(model,prop.name,prop.type_name,prop)
@@ -1146,6 +1146,7 @@ module Vizkit
             @global_meta_data = GlobalMetaDataModel.new log_replay,self
             add(@global_meta_data,"-Global Meta Data-","",@global_meta_data)
             log_replay.tasks.each do |task|
+                task = Orocos::Async::Log::TaskContext.new(task)
                 model = LogTaskDataModel.new task,self
                 add(model,task.name,task.file_path,task)
             end
