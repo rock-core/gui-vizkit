@@ -434,7 +434,7 @@ module Vizkit
 
         def flags(column,item)
             return 0 if !@options[:enabled]
-            return Qt::ItemIsEnabled if column == 0
+            return Qt::ItemIsEnabled | Qt::ItemIsSelectable | Qt::ItemIsDragEnabled if column == 0
             if @options[:editable]
                 item_val = @meta_data[item].val
                 if !item_val.is_a?(Typelib::Type) && rows(item) == 0
@@ -451,6 +451,10 @@ module Vizkit
         end
 
         def sort(value = :ascending_order)
+        end
+
+        def mime_data(item)
+            0
         end
     end
 
@@ -776,6 +780,15 @@ module Vizkit
             end
         end
 
+        def mime_data(item)
+            model = @item_to_model[item]
+            if model
+                model.mime_data(item)
+            else
+                0
+            end
+        end
+
         def parent=(parent)
             @parent = parent
         end
@@ -852,6 +865,23 @@ module Vizkit
             [nil,[]]
         end
 
+        def mime_data(item)
+            port,subfield = port_from_index(item)
+            text = if port
+                       if !subfield.empty?
+                           "#{port.full_name}.#{subfield.join(".")}"
+                       else
+                           port.full_name
+                       end
+                   else
+                       nil
+                   end
+            return 0 unless text
+            m = Qt::MimeData.new
+            m.setText text
+            m
+        end
+
         def context_menu(item,pos,parent_widget)
             port,subfield = port_from_index(item)
             return false unless port
@@ -873,6 +903,14 @@ module Vizkit
                 end
             end
             true
+        end
+
+        def flags(column,item)
+            if column != 0 || !@options[:enabled] || @item_to_model[item]
+                super
+            else
+                Qt::ItemIsEnabled | Qt::ItemIsSelectable | Qt::ItemIsDragEnabled
+            end
         end
     end
 
@@ -1186,6 +1224,7 @@ module Vizkit
             # of item have different parents
             @index = Hash.new
             @header = ["Field","Value"]
+            setSupportedDragActions(Qt::CopyAction)
         end
 
         def header(field1,field2)
@@ -1315,6 +1354,22 @@ module Vizkit
         def columnCount(index)
             2
         end
+
+        def mimeData(indexes)
+            return 0 if indexes.empty? || !indexes.first.valid?
+            item = itemFromIndex(indexes.first)
+            if item
+                #store mime data otherwise it gets collected
+                #this object will be deleted by qt
+                @mime_data = @data_model.mime_data(item)
+            else
+                0
+            end
+        end
+
+        def mimeTypes
+            ["text/plain"]
+        end
     end
 
     def self.setup_tree_view(tree_view)
@@ -1323,6 +1378,7 @@ module Vizkit
         tree_view.setSortingEnabled true
         tree_view.setAlternatingRowColors(true)
         tree_view.setContextMenuPolicy(Qt::CustomContextMenu)
+        tree_view.setDragEnabled(true)
         tree_view.connect(SIGNAL('customContextMenuRequested(const QPoint&)')) do |pos|
             index = tree_view.index_at(pos)
             index.model.context_menu(index,pos,tree_view) if index.model
