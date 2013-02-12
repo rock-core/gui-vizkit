@@ -1,4 +1,5 @@
 require 'utilrb/qt/variant/from_ruby.rb'
+require 'utilrb/qt/mime_data/mime_data.rb'
 
 module Vizkit
     class ContextMenu
@@ -194,6 +195,9 @@ module Vizkit
             # value of the field
             def val
                 parent[field.first]
+            rescue TypeError
+                Vizkit.warn "got a TypeError for #{field.last}"
+                "TypeError"
             end
 
             # type of the field
@@ -867,19 +871,13 @@ module Vizkit
 
         def mime_data(item)
             port,subfield = port_from_index(item)
-            text = if port
-                       if !subfield.empty?
-                           "#{port.full_name}.#{subfield.join(".")}"
-                       else
-                           port.full_name
-                       end
+            port = if port && !subfield.empty?
+                       port.sub_port(subfield)
                    else
-                       nil
+                       port
                    end
-            return 0 unless text
-            m = Qt::MimeData.new
-            m.setText text
-            m
+            return 0 unless port
+            Vizkit.to_mime_data(port)
         end
 
         def context_menu(item,pos,parent_widget)
@@ -1361,7 +1359,7 @@ module Vizkit
             if item
                 #store mime data otherwise it gets collected
                 #this object will be deleted by qt
-                @mime_data = @data_model.mime_data(item)
+                @data_model.mime_data(item)
             else
                 0
             end
