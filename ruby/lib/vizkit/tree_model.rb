@@ -1,5 +1,6 @@
 require 'utilrb/qt/variant/from_ruby.rb'
 require 'utilrb/qt/mime_data/mime_data.rb'
+require 'orocos/uri'
 
 module Vizkit
     class ContextMenu
@@ -877,7 +878,9 @@ module Vizkit
                        port
                    end
             return 0 unless port
-            Vizkit.to_mime_data(port)
+            val = Qt::MimeData.new
+            val.setText URI::Orocos.from_port(port).to_s
+            val
         end
 
         def context_menu(item,pos,parent_widget)
@@ -1078,6 +1081,7 @@ module Vizkit
             if name_service.is_a? Orocos::NameServiceBase
                 raise ArgumentError,"name_service #{name_service} is not a Orocos::Async::NameServiceBase"
             elsif name_service.is_a? Orocos::Async::NameServiceBase
+                return false unless add? name_service.name
                 model = NameServiceDataModel.new self,name_service
                 name_service.on_error do |error|
                     data_value(model,error.to_s)
