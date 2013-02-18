@@ -59,25 +59,27 @@ class CompoundDisplay < Qt::Widget
             end
         end
         
-        @gui.disconnect_button.connect(SIGNAL :clicked) do
-            if not @disconnected
-                @config_hash.each do |idx,_|
-                    disconnect idx
-                end
-                @gui.disconnect_button.set_text("Reconnect all")
-                @disconnected = true
-            else
-                @config_hash.each do |idx,_|
-                    connect idx
-                end
-                @gui.disconnect_button.set_text("Disconnect all")
-                @disconnected = false
-            end
-        end
+        @gui.disconnect_button.hide # TODO disconnect not fully working.
+        #@gui.disconnect_button.connect(SIGNAL :clicked) do
+        #    if not @disconnected
+        #        @config_hash.each do |idx,_|
+        #            disconnect idx
+        #        end
+        #        @gui.disconnect_button.set_text("Reconnect all")
+        #        @disconnected = true
+        #    else
+        #        @config_hash.each do |idx,_|
+        #            connect idx
+        #        end
+        #        @gui.disconnect_button.set_text("Disconnect all")
+        #        @disconnected = false
+        #    end
+        #end
         
-        @gui.reduce_rows_button.connect(SIGNAL :clicked) do
-            set_grid_dimensions(row_count-1, col_count)
-        end
+        @gui.reduce_rows_button.hide # TODO grid resize at runtime is buggy
+        #@gui.reduce_rows_button.connect(SIGNAL :clicked) do
+        #    set_grid_dimensions(row_count-1, col_count)
+        #end
         
         self
     end
@@ -101,7 +103,7 @@ class CompoundDisplay < Qt::Widget
         
         disconnect pos
 
-        Vizkit.info "Connecting #{config.task}.#{config.port} to #{config.widget}"
+        puts "Connecting #{config.task}.#{config.port} to #{config.widget}"
         widget = Vizkit.default_loader.create_plugin(config.widget)
         container = @container_hash[pos]
         container.set_content_widget(widget)
