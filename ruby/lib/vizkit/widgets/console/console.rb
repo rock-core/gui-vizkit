@@ -101,7 +101,7 @@ module Vizkit
         end
 
         def add_obj(obj,options)
-            name = obj.name.downcase
+            name = obj.basename.downcase
             if @console_context.respond_to? name
                 insert_text "Cannot Add #{name}(#{obj.class.name}). #{name} is already defined."
             else

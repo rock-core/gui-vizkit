@@ -1,4 +1,6 @@
 require 'utilrb/qt/variant/from_ruby.rb'
+require 'utilrb/qt/mime_data/mime_data.rb'
+require 'orocos/uri'
 
 module Vizkit
     class ContextMenu
@@ -194,6 +196,9 @@ module Vizkit
             # value of the field
             def val
                 parent[field.first]
+            rescue TypeError
+                Vizkit.warn "got a TypeError for #{field.last}"
+                "TypeError"
             end
 
             # type of the field
@@ -434,7 +439,7 @@ module Vizkit
 
         def flags(column,item)
             return 0 if !@options[:enabled]
-            return Qt::ItemIsEnabled if column == 0
+            return Qt::ItemIsEnabled | Qt::ItemIsSelectable | Qt::ItemIsDragEnabled if column == 0
             if @options[:editable]
                 item_val = @meta_data[item].val
                 if !item_val.is_a?(Typelib::Type) && rows(item) == 0
@@ -451,6 +456,10 @@ module Vizkit
         end
 
         def sort(value = :ascending_order)
+        end
+
+        def mime_data(item)
+            0
         end
     end
 
@@ -776,6 +785,15 @@ module Vizkit
             end
         end
 
+        def mime_data(item)
+            model = @item_to_model[item]
+            if model
+                model.mime_data(item)
+            else
+                0
+            end
+        end
+
         def parent=(parent)
             @parent = parent
         end
@@ -796,14 +814,16 @@ module Vizkit
 
 
     class DataProducingObjectModel < ProxyDataModel
+        attr_accessor :type_policy
+
         DIRECTLY_DISPLAYED_RUBY_TYPES = [String,Numeric,Symbol,Time]
         def add(object,name=nil,value=nil,data=nil)
             if name
                 return super(object,name,value,data)
             end
             return false unless add?(object.name)
-            model = nil
             listener = object.on_reachable do
+                model = nil
                 message = object.type.name
                 begin
                     sample = object.new_sample.zero!
@@ -811,7 +831,7 @@ module Vizkit
                     listener2 = if DIRECTLY_DISPLAYED_RUBY_TYPES.any? { |rt| rt === rb_sample }
                                     model = SimpleTypelibDataModel.new(sample, self,@type_policy)
                                     on_update(object) do |data|
-                                        data_value(model,data.to_s)
+                                    #    data_value(model,data.to_s)
                                         model.update data
                                     end
                                 else
@@ -852,6 +872,19 @@ module Vizkit
             [nil,[]]
         end
 
+        def mime_data(item)
+            port,subfield = port_from_index(item)
+            port = if port && !subfield.empty?
+                       port.sub_port(subfield)
+                   else
+                       port
+                   end
+            return 0 unless port
+            val = Qt::MimeData.new
+            val.setText URI::Orocos.from_port(port).to_s
+            val
+        end
+
         def context_menu(item,pos,parent_widget)
             port,subfield = port_from_index(item)
             return false unless port
@@ -874,6 +907,14 @@ module Vizkit
             end
             true
         end
+
+        def flags(column,item)
+            if column != 0 || !@options[:enabled] || @item_to_model[item]
+                super
+            else
+                Qt::ItemIsEnabled | Qt::ItemIsSelectable | Qt::ItemIsDragEnabled
+            end
+        end
     end
 
     class PropertiesDataModel < DataProducingObjectModel
@@ -881,7 +922,7 @@ module Vizkit
         def initialize(parent = nil)
             super
             options[:editable] = true
-            @type_policy = {:enabled => true,:editable => true,:accept => true}
+            @type_policy = {:enabled => true,:editable => true,:accept => true,:no_data => true}
         end
 
         def on_update(object, &block)
@@ -1042,6 +1083,7 @@ module Vizkit
             if name_service.is_a? Orocos::NameServiceBase
                 raise ArgumentError,"name_service #{name_service} is not a Orocos::Async::NameServiceBase"
             elsif name_service.is_a? Orocos::Async::NameServiceBase
+                return false unless add? name_service.name
                 model = NameServiceDataModel.new self,name_service
                 name_service.on_error do |error|
                     data_value(model,error.to_s)
@@ -1106,39 +1148,55 @@ module Vizkit
         end
     end
 
-    class LogTaskDataModel < OutputPortsDataModel
+    class LogTaskDataModel < ProxyDataModel
         def initialize(task,parent = nil)
             super parent
             options[:enabled] = false
 
-            add(nil,"Properties")
-            task.each_property do |props|
-                props.each do |prop|
-                    model = TypelibDataModel.new prop.read,self,:no_data => true
-                    prop.on_change do |data|
-                        model.update(data)
-                    end
-                    add(model,prop.name,prop.type_name,prop)
-                end
+            props = PropertiesDataModel.new(self)
+            props.options[:editable] = false
+            props.type_policy = {:no_data => true,:enabled => true,:editable => false,:accept => false}
+            add(props,"Properties","")
+
+            task.on_property_reachable do |property_name|
+                prop = task.property(property_name)
+                options[:enabled] = true if prop.number_of_samples > 0
+                props.add(prop)
             end
 
-            task.each_port do |ports|
-                ports.each do |port|
-                    model = LogOutputPortDataModel.new port,self
-                    add(model,port.name,port.type_name,port)
-                    options[:enabled] = true if port.number_of_samples > 0
-                end
+            task.on_port_reachable do |port_name|
+                port = task.port(port_name)
+                model = LogOutputPortDataModel.new port,self
+                add(model,port.name,port.type_name,port)
+                options[:enabled] = true if port.number_of_samples > 0
             end
         end
 
+        def context_menu(item,pos,parent_widget)
+            port,subfield = port_from_index(item)
+            return false unless port
+            port_temp = if !subfield.empty?
+                            port.sub_port(subfield,field_type(item))
+                        else
+                            port
+                        end
+            widget_name = Vizkit::ContextMenu.widget_for(port_temp.type_name,parent_widget,pos)
+            if widget_name
+                widget = Vizkit.display(port_temp, :widget => widget_name)
+                widget.setAttribute(Qt::WA_QuitOnClose, false) if widget.is_a? Qt::Widget
+            end
+            true
+        end
+
         def port_from_index(index)
-            port,_ = super
-            return [nil,nil] unless port
-            # we have to return a PortProxy here
-            task = Orocos::Async::Log::TaskContext.new(port.task)
-            task = Orocos::Async::TaskContextProxy.new(task.name,:use => task,:wait => true)
-            port = task.port(port.name)
-            [port,[]]
+            a = []
+            while index
+                data = raw_data(index)
+                return data,a.reverse if data.respond_to?(:on_data)
+                a << field_accessor(index)
+                index = parent(index)
+            end
+            [nil,[]]
         end
     end
 
@@ -1186,6 +1244,7 @@ module Vizkit
             # of item have different parents
             @index = Hash.new
             @header = ["Field","Value"]
+            setSupportedDragActions(Qt::CopyAction)
         end
 
         def header(field1,field2)
@@ -1315,6 +1374,22 @@ module Vizkit
         def columnCount(index)
             2
         end
+
+        def mimeData(indexes)
+            return 0 if indexes.empty? || !indexes.first.valid?
+            item = itemFromIndex(indexes.first)
+            if item
+                #store mime data otherwise it gets collected
+                #this object will be deleted by qt
+                @data_model.mime_data(item)
+            else
+                0
+            end
+        end
+
+        def mimeTypes
+            ["text/plain"]
+        end
     end
 
     def self.setup_tree_view(tree_view)
@@ -1323,6 +1398,7 @@ module Vizkit
         tree_view.setSortingEnabled true
         tree_view.setAlternatingRowColors(true)
         tree_view.setContextMenuPolicy(Qt::CustomContextMenu)
+        tree_view.setDragEnabled(true)
         tree_view.connect(SIGNAL('customContextMenuRequested(const QPoint&)')) do |pos|
             index = tree_view.index_at(pos)
             index.model.context_menu(index,pos,tree_view) if index.model
