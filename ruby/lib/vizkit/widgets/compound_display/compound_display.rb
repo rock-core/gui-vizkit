@@ -1,5 +1,6 @@
 require 'vizkit'
 require 'yaml'
+require 'orocos/uri'
 
 # Compound widget for displaying multiple visualization widgets in a grid layout
 # (default dimensions: 3x2). Specific position configurations, e.g. which port 
@@ -360,20 +361,31 @@ class ContainerWidget < Qt::Widget
         puts "DROP EVENT!"
         text = event.mime_data.text
         puts "RECEIVED DROPPED TEXT: '#{text}'"
-        event.accept_proposed_action
         
-        # Get type name for specified task and port:
-        task_name = text.split(".",2).first
-        port_name = text.split(".",2).last
+        #begin
+            # Get type name for specified task and port:
+            #task_name = text.split(".",2).first
+            #port_name = text.split(".",2).last
+            uri = URI.parse(text)
+            
+            #task = Orocos.name_service.get(task_name)
+            #port = task.port(port_name)
+            #type_name = port.type_name
+            
+            # Display context menu at drop point to choose from available display widgets
+            widget_name = widget_selection(map_to_global(event.pos), uri.port_proxy.type_name)
+            
+            emit changed(@position, uri.task_name, uri.port_name, widget_name)
+
+            event.accept_proposed_action
+        #rescue ArgumentError => e
+        #    Vizkit.warn "Bad drop text"
+        #    puts e.message
+        #rescue InvalidURIError => e
+        #    Vizkit.warn "Bad drop text"
+        #    puts e.message
+        #end
         
-        task = Orocos.name_service.get(task_name)
-        port = task.port(port_name)
-        type_name = port.type_name
-        
-        # Display context menu at drop point to choose from available display widgets
-        widget_name = widget_selection(map_to_global(event.pos), type_name)
-        
-        emit changed(@position, task_name, port_name, widget_name)
         nil
     end
 end
