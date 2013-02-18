@@ -374,8 +374,12 @@ class ContainerWidget < Qt::Widget
             
             # Display context menu at drop point to choose from available display widgets
             widget_name = widget_selection(map_to_global(event.pos), uri.port_proxy.type_name)
+            widget = Vizkit.default_loader.create_plugin widget_name,self
+            widget.show
+            port = uri.port_proxy
+            port.connect_to widget
             
-            emit changed(@position, uri.task_name, uri.port_name, widget_name)
+         #   emit changed(@position, uri.task_name, uri.port_name, widget_name)
 
             event.accept_proposed_action
         #rescue ArgumentError => e
