@@ -29,6 +29,7 @@ class CompoundDisplay < Qt::Widget
         
         @container_hash = Hash.new # holds the container widgets
         @config_hash = Hash.new
+        @listener_hash = Hash.new # holds the port listeners for each position
         @disconnected = false
         @replayer = nil
         
@@ -97,6 +98,8 @@ class CompoundDisplay < Qt::Widget
             Vizkit.warn "Invalid configuration for position #{pos}."
             return
         end
+        
+        disconnect pos
 
         Vizkit.info "Connecting #{config.task}.#{config.port} to #{config.widget}"
         widget = Vizkit.default_loader.create_plugin(config.widget)
@@ -111,15 +114,18 @@ class CompoundDisplay < Qt::Widget
         #else
             #task = Orocos::Async.proxy(config.task)
             #port = task.port(config.port)
-        Vizkit.connect_port_to(config.task, config.port, widget, config.connection_policy)
+        @listener_hash[pos].stop if @listener_hash[pos]
+        @listener_hash[pos] = Vizkit.connect_port_to(config.task, config.port, widget, config.connection_policy) #port.connect_to(widget) if task && port
         #end
     end
     
     # Close a connection between the port and widget specified in config for element at +pos+.
     # The content widget gets destroyed but the configuration will remain save until it gets overriden by a new one.
     def disconnect(pos)
-        config = @config_hash[pos]
-        Vizkit.disconnect_from config.task
+        #config = @config_hash[pos]
+        #Vizkit.disconnect_from config.task
+        @listener_hash[pos].stop if @listener_hash[pos]
+        @listener_hash[pos] = nil
         
         # Destroy old widget 
         if widget = @container_hash[pos].content_widget
