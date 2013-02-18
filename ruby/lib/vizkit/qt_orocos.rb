@@ -50,45 +50,53 @@ module Orocos
     end
 
     module QtOrocos
-        def connect_to(widget=nil, options = Hash.new,&block)
-            raise ArgumentError,"cannot connect port #{full_name} to a string #{widget}" if widget.is_a? String
-            widget,options = if widget.is_a?(Hash)
-                                 [nil,widget]
+
+        def self.callback_for(widget,type_name)
+            fct = widget.plugin_spec.find_callback!  :argument => type_name, :callback_type => :display
+            if fct
+                fct.bind(widget)
+            else
+                raise Orocos::NotFound,"#{widget.class_name} has no callback for #{type_name}"
+            end
+        end
+
+        def connect_to(obj=nil, options = Hash.new,&block)
+            obj,options = if obj.is_a?(Hash)
+                                 [nil,obj]
                              else
-                                 [widget,options]
+                                 [obj,options]
                              end
+            raise ArgumentError,"cannot connect port #{full_name} to a string #{obj}" if obj.is_a? String
+            raise ArgumentError,"cannot connect port #{full_name} to#{obj} and code block at the same time" if obj && block
 
             # connection is to another orocos port
-            if widget.respond_to?(:to_orocos_port) || widget.respond_to?(:find_port)
-                return org_connect_to widget,options,&block
+            if obj.respond_to?(:to_orocos_port) || obj.respond_to?(:find_port)
+                return org_connect_to obj,options,&block
             end
-
-            # connection is to a widget,method or code block
-            callback,widget = if widget.respond_to?(:plugin_spec)
-                                  fct = widget.plugin_spec.find_callback!  :argument => type_name, :callback_type => :display
-                                  if fct
-                                      [fct.bind(widget),widget]
+            widget,callback = if !obj
+                                  [nil,block]
+                              elsif obj.respond_to?(:call)
+                                  if obj.respond_to?(:receiver)
+                                      [obj.receiver,obj]
                                   else
-                                      [nil,widget]
+                                      [nil,nil]
                                   end
-                              elsif widget.respond_to?(:call)
-                                  if widget.respond_to?(:receiver)
-                                      [widget,widget.receiver]
-                                  else
-                                      [widget,nil]
-                                  end
+                              else
+                                  [obj,nil]
                               end
-
-            raise ArgumentError, "cannot connect to widget #{widget.class_name} and code block at the same time." if callback && block
-            raise ArgumentError, "cannot connect to widget #{widget.class_name}. no callback for #{type_name}" if !callback && widget
 
             if(widget.respond_to?(:config) && widget.config(self,options,&block) == :do_not_connect)
                 Vizkit.info "Disable auto connect for widget #{widget} because config returned :do_not_connect"
                 nil
             else
-                callback ||= block
-                raise ArgumentError, "cannot connect. no code block or callback for widget #{widget}." if !callback
-
+                callback ||= if type?
+                                 QtOrocos.callback_for(widget,type_name)
+                             else
+                                 listener = on_reachable do
+                                     callback = QtOrocos.callback_for(widget,type_name)
+                                     listener.stop
+                                 end
+                             end
                 Vizkit.info "Create new Connection for #{name} and #{widget || callback}"
                 on_data do |data|
                     callback.call data,full_name

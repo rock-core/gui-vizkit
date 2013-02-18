@@ -57,14 +57,6 @@ describe Vizkit do
             con.must_be_kind_of Orocos::Async::EventListener
         end
 
-        it "should raise if a connection is setup to widget but the type name is unknown" do
-            w = Vizkit.default_loader.StructViewer
-            t = Vizkit.proxy "test"
-            assert_raises Orocos::NotFound do
-                con = t.port("bla").connect_to w
-            end
-        end
-
         it "should setup a connection between a port and a widget" do
             w = Vizkit.default_loader.ImageView
             t = Vizkit.proxy "test"
@@ -79,6 +71,7 @@ describe Vizkit do
         task = Orocos::RubyTaskContext.new("task")
         task.configure
         task.start
+        port_time = task.create_output_port("time","/base/Time")
         port = task.create_output_port("position","/base/samples/RigidBodyState")
         sample = port.new_sample
         sample.time = Time.now
@@ -128,6 +121,42 @@ describe Vizkit do
 
             w = Vizkit.display p
             w.must_be_instance_of Qt::Widget
+        end
+
+        it "should automatically find the right slot of a given widget" do 
+            widget = Vizkit.default_loader.TestWidget
+            t1 = Vizkit.proxy("task",:retry_period => 0.08,:period => 0.1)
+            t1.unreachable!
+            p = t1.port("position")
+            assert !p.type?
+
+            p.connect_to widget
+            p.wait
+            assert p.type?
+            port.write port.new_sample
+
+            sleep 0.1
+            Orocos::Async.steps
+            assert widget.sample
+        end
+
+        it "should raise if the right slot of a given widget cannot be found after the type is known" do 
+            widget = Vizkit.default_loader.TestWidget
+            t1 = Vizkit.proxy("task",:retry_period => 0.08,:period => 0.1)
+            t1.unreachable!
+            p = t1.port("time")
+            assert !p.type?
+            p.connect_to widget
+            p.wait
+            assert p.type?
+            port_time.write Time.now
+            sleep 0.1
+            assert_raises Orocos::NotFound do 
+                Orocos::Async.steps
+            end
+            assert_raises Orocos::NotFound do
+                p.connect_to widget
+            end
         end
 
         it "should emulate sub fields as sub ports" do 
