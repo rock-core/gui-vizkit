@@ -1198,6 +1198,22 @@ module Vizkit
             end
             [nil,[]]
         end
+
+        def mime_data(item)
+            port,subfield = port_from_index(item)
+            return 0 unless port
+            val = Qt::MimeData.new
+            val.setText URI::Orocos.from_port(port).to_s
+            val
+        end
+
+        def flags(column,item)
+            if column != 0 || !@options[:enabled] || @item_to_model[item]
+                super
+            else
+                Qt::ItemIsEnabled | Qt::ItemIsSelectable | Qt::ItemIsDragEnabled
+            end
+        end
     end
 
     class LogReplayDataModel < ProxyDataModel
