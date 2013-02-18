@@ -107,11 +107,11 @@ class CompoundDisplay < Qt::Widget
         container.set_content_widget(widget)
         container.set_label_text("#{config.task}.#{config.port}")
 
-        #task = Orocos::Async.proxy(config.task)
-        #port = task.port(config.port)
+        task = Orocos::Async.proxy(config.task)
+        port = task.port(config.port)
         
         @listener_hash[pos].stop if @listener_hash[pos]
-        @listener_hash[pos] = Vizkit.connect_port_to(config.task, config.port, widget, config.connection_policy) #port.connect_to(widget) if task && port
+        @listener_hash[pos] = port.connect_to(widget) if task && port #Vizkit.connect_port_to(config.task, config.port, widget, config.connection_policy) #port.connect_to(widget) if task && port
     end
     
     # Close a connection between the port and widget specified in config for element at +pos+.
