@@ -262,7 +262,15 @@ class CompoundDisplay < Qt::Widget
         @gui.config_menu.set_visible(flag)
         update
     end
-
+    
+    def sizeHint
+        return Qt::Size.new(700,700)
+    end
+    
+    def resizeEvent(event)
+        #puts "Resized to #{event.size.width},#{event.size.height}"
+    end
+    
 end
 
 # Configuration model for one element of the CompoundDisplay.
@@ -290,7 +298,8 @@ class ContainerWidget < Qt::Widget
     
     def initialize(pos, label_text = "", content_widget = nil, parent = nil)
         super(parent)
-        set_size_policy(Qt::SizePolicy::Preferred, Qt::SizePolicy::Preferred)
+        #set_size_policy(Qt::SizePolicy::Expanding, Qt::SizePolicy::Expanding)
+        set_size_policy(Qt::SizePolicy::MinimumExpanding, Qt::SizePolicy::MinimumExpanding)
         @position = pos
         @label_text = label_text
         @layout = Qt::VBoxLayout.new(self)
@@ -345,6 +354,15 @@ class ContainerWidget < Qt::Widget
     end
     
     ## reimplemented methods
+    
+    def sizeHint
+        #if @content_widget
+        #    @content_widget.size_hint
+        #else 
+        #    Qt::Size.new(100, 100)
+        #end
+        Qt::Size.new(100, 100)
+    end
     
     def dragEnterEvent(event)
         puts "DRAG ENTER EVENT!"
