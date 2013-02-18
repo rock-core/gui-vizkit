@@ -9,7 +9,7 @@ require 'orocos/uri'
 # The grid will be a row_count x col_count matrix. The numbering sequence is 
 # left to right, top-down.
 #
-# Widget position layout:
+# Example of a 3x2 widget position layout:
 #   0 1 2
 #   3 4 5
 #
@@ -106,17 +106,12 @@ class CompoundDisplay < Qt::Widget
         container = @container_hash[pos]
         container.set_content_widget(widget)
         container.set_label_text("#{config.task}.#{config.port}")
+
+        #task = Orocos::Async.proxy(config.task)
+        #port = task.port(config.port)
         
-        #if @replayer
-        #    task = @replayer.task(config.task)
-        #    port = task.port(config.port)
-        #    port.connect_to(widget) if task && port
-        #else
-            #task = Orocos::Async.proxy(config.task)
-            #port = task.port(config.port)
         @listener_hash[pos].stop if @listener_hash[pos]
         @listener_hash[pos] = Vizkit.connect_port_to(config.task, config.port, widget, config.connection_policy) #port.connect_to(widget) if task && port
-        #end
     end
     
     # Close a connection between the port and widget specified in config for element at +pos+.
