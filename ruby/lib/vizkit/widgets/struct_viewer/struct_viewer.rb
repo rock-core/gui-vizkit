@@ -15,6 +15,8 @@ class StructViewer
 
         def config(port,options=Hash.new)
             @data_model.add port
+            treeView.resizeColumnToContents 0
+            treeView.resizeColumnToContents 1
             # data handling is done by the data model
             :do_not_connect
         end
