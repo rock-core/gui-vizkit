@@ -164,13 +164,13 @@
     <addaction name="separator"/>
     <addaction name="actionAdd_name_service"/>
    </widget>
-   <widget class="QMenu" name="menuSettings">
+   <widget class="QMenu" name="menuWidgets">
     <property name="title">
-     <string>Settings</string>
+     <string>Widgets</string>
     </property>
    </widget>
    <addaction name="menuNameServices"/>
-   <addaction name="menuSettings"/>
+   <addaction name="menuWidgets"/>
   </widget>
   <action name="actionAdd_name_service">
    <property name="text">

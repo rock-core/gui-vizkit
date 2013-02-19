@@ -15,6 +15,18 @@ class TaskInspector
         form.actionAdd_name_service.connect SIGNAL("triggered()") do 
             corba_dialog.show
         end
+
+        #populate widget menu
+        Vizkit.default_loader.plugin_specs.keys.sort.each do |name|
+            # do not add qt base widgets
+            next if name[0] == "Q" && Qt.const_defined?(name[1..-1])
+            action = form.menuWidgets.addAction(name)
+            action.connect SIGNAL("triggered()") do
+                w = Vizkit.default_loader.create_plugin name
+                w.show
+            end
+        end
+
         form
     end
 
