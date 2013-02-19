@@ -1375,7 +1375,7 @@ module Vizkit
         def parent(index)
             item = itemFromIndex(index)
             parent = @data_model.parent(item)
-            if parent
+            if parent && @index[parent]
                 @index[parent]
             else
                 Qt::ModelIndex.new
