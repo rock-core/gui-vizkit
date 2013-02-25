@@ -177,8 +177,28 @@ class CompoundDisplay < Qt::Widget
     #
     def configure_by_yaml(path)
         begin   
+            # Load configuration from YAML
+            hash = YAML.load(open(path))
+            
+            # Sanity checks:
+            error = nil
+            
+            if hash.keys.max > @container_hash.keys.max
+                error = "Higher position value in file than #containers available."
+            elsif hash.size < @container_hash.size
+                error = "More config items in file than containers available."
+            end
+            
+            if error
+                msg_box = Qt::MessageBox.new
+                msg_box.set_text("Problem with YAML import:")
+                msg_box.set_informative_text(error)
+                msg_box.exec
+                return
+            end
+            
             # Disconnect, update configuration and connect for each container
-            YAML.load(open(path)).each do |pos, config|
+            hash.each do |pos, config|
                 container = @container_hash[pos]
                 container.disconnect
                 container.configure_by_obj(config)
