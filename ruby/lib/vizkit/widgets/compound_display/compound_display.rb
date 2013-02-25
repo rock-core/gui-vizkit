@@ -379,20 +379,32 @@ class ContainerWidget < Qt::Widget
     end
     
     def dropEvent(event)
-        puts "DROP EVENT!"
         text = event.mime_data.text
-        puts "RECEIVED DROPPED TEXT: '#{text}'"
+        unless text
+            Vizkit.warn "No text dropped"
+            return
+        end
         
-        #begin
+        begin
+            msg_box = Qt::MessageBox.new
+            msg_box.set_text("Bad drop text!")
+            msg_box.set_standard_buttons(Qt::MessageBox::Ok)
+        
             # Get type name for specified task and port:
             #task_name = text.split(".",2).first
             #port_name = text.split(".",2).last
             uri = URI.parse(text)
+
+            unless uri.is_a? URI::Orocos
+                msg_box.set_informative_text("Not a valid Orocos URI: '#{text}'")
+                msg_box.exec
+                return
+            end
             
             #task = Orocos.name_service.get(task_name)
             #port = task.port(port_name)
             #type_name = port.type_name
-            
+
             # Display context menu at drop point to choose from available display widgets
             widget_name = widget_selection(map_to_global(event.pos), uri.port_proxy.type_name)
             #widget = Vizkit.default_loader.create_plugin widget_name,self
@@ -405,13 +417,15 @@ class ContainerWidget < Qt::Widget
             emit changed(@position, uri.task_name, uri.port_name, widget_name)
 
             event.accept_proposed_action
-        #rescue ArgumentError => e
-        #    Vizkit.warn "Bad drop text"
-        #    puts e.message
-        #rescue InvalidURIError => e
-        #    Vizkit.warn "Bad drop text"
-        #    puts e.message
-        #end
+        rescue ArgumentError => e
+            msg_box.set_informative_text("Received an ArgumentError while parsing URI '#{text}'")
+            msg_box.set_detailed_text("Error message: #{e.message}")
+            msg_box.exec
+        rescue URI::InvalidURIError => e
+            msg_box.set_informative_text("Invalid URI: '#{text}'")
+            msg_box.set_detailed_text("Error message: #{e.message}")
+            msg_box.exec
+        end
         
         nil
     end
