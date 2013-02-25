@@ -2,14 +2,13 @@ require 'vizkit'
 require 'yaml'
 require 'orocos/uri'
 
-# Compound widget for displaying multiple visualization widgets in a grid layout
+# Compound widget for displaying multiple data visualization widgets in a grid layout
 # (default dimensions: 3x2). Specific position configurations, e.g. which port 
 # gets displayed in which widget at which position) can be saved to and restored
-# from YAML files. You need one configuration object for each element.
-# The grid will be a row_count x col_count matrix. The numbering sequence is 
-# left to right, top-down.
+# from YAML files. The grid will be a row_count x col_count matrix. The numbering 
+# sequence is left to right, top-down.
 #
-# Example of a 3x2 widget position layout:
+# Example of a 2x3 widget position layout:
 #   0 1 2
 #   3 4 5
 #
@@ -18,9 +17,6 @@ class CompoundDisplay < Qt::Widget
 
     slots 'configure_by_yaml(QString)', 'save_yaml(QString)'
 
-    # Config hash: {<position> => <config_object>}
-    attr_reader :config_hash
-    
     # Flag whether to display the load / save configuration buttons.
     attr_reader :show_menu
     
@@ -28,10 +24,7 @@ class CompoundDisplay < Qt::Widget
         super(parent)
         
         @container_hash = Hash.new # holds the container widgets
-        @config_hash = Hash.new
-        @listener_hash = Hash.new # holds the port listeners for each position
         @disconnected = false
-        @replayer = nil
         
         set_window_title("CompoundDisplay")
         resize(600,400)
@@ -87,52 +80,25 @@ class CompoundDisplay < Qt::Widget
     # Selective configuration of one element at position +pos+.
     # The connection is being established automatically with respect
     # to the configuration.
-    #
     def configure(pos, task, port, widget, policy = Hash.new)
-        @config_hash[pos] = CompoundDisplayConfig.new(task, port, widget, policy)
-        connect(pos)
+        @container_hash[pos].configure(task, port, widget, policy)
     end
     
     # Establish a connection between the port and widget specified in config for element at +pos+.
     def connect(pos)
-        config = @config_hash[pos]
-        if config.invalid?
-            Vizkit.warn "Invalid configuration for position #{pos}."
-            return
-        end
-        
-        disconnect pos
-
-        puts "Connecting #{config.task}.#{config.port} to #{config.widget}"
-        widget = Vizkit.default_loader.create_plugin(config.widget)
-        container = @container_hash[pos]
-        container.set_content_widget(widget)
-        container.set_label_text("#{config.task}.#{config.port}")
-
-        task = Orocos::Async.proxy(config.task)
-        port = task.port(config.port)
-        
-        @listener_hash[pos].stop if @listener_hash[pos]
-        @listener_hash[pos] = port.connect_to(widget) if task && port #Vizkit.connect_port_to(config.task, config.port, widget, config.connection_policy) #port.connect_to(widget) if task && port
+        @container_hash[pos].connect
     end
     
     # Close a connection between the port and widget specified in config for element at +pos+.
     # The content widget gets destroyed but the configuration will remain save until it gets overriden by a new one.
     def disconnect(pos)
-        #config = @config_hash[pos]
-        #Vizkit.disconnect_from config.task
-        @listener_hash[pos].stop if @listener_hash[pos]
-        @listener_hash[pos] = nil
-        
-        # Destroy old widget 
-        if widget = @container_hash[pos].content_widget
-            widget.set_parent(nil)
-            widget = nil
-        end
+        @container_hash[pos].disconnect
     end
     
-    # Reconfigures the dimensions of the grid layout. The grid will be a 
+    # Configures the dimensions of the grid layout. The grid will be a 
     # row_count x col_count matrix. The numbering sequence is left to right, top-down.
+    #
+    # TODO: Does not work reliably at runtime! => Configure once at startup.
     # 
     # Examples:
     #
@@ -142,7 +108,7 @@ class CompoundDisplay < Qt::Widget
     #   4 5
     #   6 7
     #
-    # row_count: 2, col_count: 3
+    # row_count: 3, col_count: 3
     #   0 1 2
     #   3 4 5
     #   6 7 8
@@ -165,13 +131,7 @@ class CompoundDisplay < Qt::Widget
                 container = nil
                 if not @container_hash[counter]
                     widget_pos = (row * col_count) + col
-                    container = ContainerWidget.new(widget_pos, "#{widget_pos}: No input")
-                    
-                    container.connect(SIGNAL('changed(int, QString, QString, QString)')) do |pos, task, port, widget|
-                        puts "Got changed() signal!"
-                        configure(pos, task, port, widget) 
-                    end
-                    
+                    container = ContainerWidget.new(widget_pos)
                     @container_hash[counter] = container
                 else
                     container = @container_hash[counter]
@@ -217,21 +177,15 @@ class CompoundDisplay < Qt::Widget
     #
     def configure_by_yaml(path)
         begin   
-            # disconnect ports of old configuration     
-            @config_hash.each do |idx,config|
-                disconnect idx
-            end
-            
-            # update configuration
-            @config_hash = YAML.load(open(path))
-            
-            # connect ports of new configuration
-            @config_hash.each do |idx,config|
-                connect idx
+            # Disconnect, update configuration and connect for each container
+            YAML.load(open(path)).each do |pos, config|
+                container = @container_hash[pos]
+                container.disconnect
+                container.configure_by_obj(config)
+                container.connect if config
             end
         rescue Exception => e
             Vizkit.error "A problem occured while trying to open '#{path}': \n#{e.message}"
-            
             Vizkit.error e.backtrace.inspect  
         end
     end
@@ -240,20 +194,15 @@ class CompoundDisplay < Qt::Widget
     #def configure_by_yaml_string
     #    # TODO import from yaml string.
     #end
-    
-    # Enables display of data from logs.
-    # +log_replay+ is the Orocos::Log::Replay object you get when you open a logfile.
-    #
-    # TODO Currently, there is no support for a mixed display of live and log data.
-    #
-    def replay_mode(log_replay)
-        @replayer = log_replay
-    end
-    
+
     # Save complete configuration in YAML format to a file located at +path+.
     def save_yaml(path)
         begin
-            File.open(path, "w") {|f| f.write(@config_hash.to_yaml) }
+            config_hash = Hash.new
+            @container_hash.each do |pos, container|
+                config_hash[pos] = container.config
+            end
+            File.open(path, "w") {|f| f.write(config_hash.to_yaml) }
         rescue Exception => e
             Vizkit.error "A problem occured while trying to write configuration to '#{path}': \n#{e.message}"
         end
@@ -279,10 +228,10 @@ end
 class CompoundDisplayConfig
     attr_reader :task, :port, :widget, :connection_policy
     
-    def initialize(task, port, widget, policy)
+    def initialize(task = nil, port = nil, widget = nil, policy = Hash.new)
         @task = task # string
         @port = port # string
-        @widget = widget
+        @widget = widget # string
         @connection_policy = policy # hash
     end
     
@@ -295,15 +244,19 @@ class ContainerWidget < Qt::Widget
     attr_reader :label_text
     attr_reader :content_widget
     attr_reader :position
+    attr_reader :config
     
-    signals "changed(int, QString, QString, QString)"
-    
-    def initialize(pos, label_text = "", content_widget = nil, parent = nil)
+    def initialize(pos, config=nil, parent = nil)
         super(parent)
+        @config = config
         #set_size_policy(Qt::SizePolicy::Expanding, Qt::SizePolicy::Expanding)
         set_size_policy(Qt::SizePolicy::MinimumExpanding, Qt::SizePolicy::MinimumExpanding)
         @position = pos
-        @label_text = label_text
+        
+        @listener = nil
+        
+        @label_text = "#{@position}: No input"
+        
         @layout = Qt::VBoxLayout.new(self)
         
         @label = Qt::Label.new(label_text)
@@ -317,14 +270,49 @@ class ContainerWidget < Qt::Widget
         self
     end
     
-    def set_content_widget(widget)
-        if @content_widget
-            # Delete existing widget
-            @content_widget.set_parent(nil)
-            @content_widget = nil
+    def configure(task, port, widget, policy = Hash.new)
+        @config = CompoundDisplayConfig.new(task, port, widget, policy)
+    end
+    
+    def configure_by_obj(config)
+        @config = config
+    end
+    
+    def connect
+        if @config.invalid?
+            Vizkit.error "Invalid configuration for position #{@position}: #{@config}"
+            return
         end
+        
+        disconnect
+
+        puts "Connecting #{@config.task}.#{@config.port} to #{@config.widget}"
+        widget = Vizkit.default_loader.create_plugin(@config.widget)
+        set_content_widget(widget)
+
+        task = Orocos::Async.proxy(@config.task)
+        port = task.port(@config.port)
+        
+        @listener.stop if @listener
+        @listener = port.connect_to(widget) if task && port #Vizkit.connect_port_to(config.task, config.port, widget, config.connection_policy) #port.connect_to(widget) if task && port
+        set_label_text("#{@config.task}.#{@config.port}")
+    end
+    
+    def disconnect
+        @listener.stop if @listener
+        @listener = nil
+        
+        # Destroy old widget if any
+        if widget = @content_widget
+            widget.set_parent(nil)
+            widget = nil
+        end
+    end
+    
+    def set_content_widget(widget)
+        disconnect
         @content_widget = widget
-        @layout.add_widget(@content_widget)
+        @layout.add_widget(widget)
         widget.show
     end
     
@@ -349,10 +337,7 @@ class ContainerWidget < Qt::Widget
         end
         # Display context menu at cursor position.
         action = menu.exec(pos)
-
-        puts "Chose widget '#{action.text}'" if action
         action.text if action
-
     end
     
     ## reimplemented methods
@@ -367,12 +352,14 @@ class ContainerWidget < Qt::Widget
     end
     
     def dragEnterEvent(event)
-        puts "DRAG ENTER EVENT!"
         event.accept_proposed_action
         if event.mime_data.has_format("text/plain")
             event.accept_proposed_action
         else
-            puts "Bad format ..."
+            msg_box = Qt::MessageBox.new
+            msg_box.set_text("Bad format!")
+            msg_box.set_standard_buttons(Qt::MessageBox::Ok)
+            msg_box.set_informative_text("The only supported format is text/plain. Submit a valid Orocos URI.")
             event.ignore
         end
         nil
@@ -389,10 +376,7 @@ class ContainerWidget < Qt::Widget
             msg_box = Qt::MessageBox.new
             msg_box.set_text("Bad drop text!")
             msg_box.set_standard_buttons(Qt::MessageBox::Ok)
-        
-            # Get type name for specified task and port:
-            #task_name = text.split(".",2).first
-            #port_name = text.split(".",2).last
+
             uri = URI.parse(text)
 
             unless uri.is_a? URI::Orocos
@@ -401,20 +385,12 @@ class ContainerWidget < Qt::Widget
                 return
             end
             
-            #task = Orocos.name_service.get(task_name)
-            #port = task.port(port_name)
-            #type_name = port.type_name
-
             # Display context menu at drop point to choose from available display widgets
             widget_name = widget_selection(map_to_global(event.pos), uri.port_proxy.type_name)
-            #widget = Vizkit.default_loader.create_plugin widget_name,self
-            #widget.show
-            #port = uri.port_proxy
-            #port.connect_to widget
+            return unless widget_name
             
-            # TODO Do port connection in here for simplicity
-            
-            emit changed(@position, uri.task_name, uri.port_name, widget_name)
+            configure(uri.task_name, uri.port_name, widget_name)
+            connect
 
             event.accept_proposed_action
         rescue ArgumentError => e
