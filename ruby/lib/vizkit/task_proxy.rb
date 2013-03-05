@@ -535,6 +535,11 @@ module Vizkit
             @__task_name
         end
 
+        def basename
+            _,name = Orocos::Namespace.split_name @__task_name
+            name
+        end
+
         def __reconnect()
             __disconnect
             ping
