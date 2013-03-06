@@ -65,10 +65,10 @@ module Vizkit
         def modified!(value = true, items = [],update_parent = true)
             return if value == @modified
             @modified = value
+            items << self
             if value
                 setForeground(ModifiedBrush)
-                items << self
-                parent.modified!(value,items) if parent && update_parent
+                parent.modified!(value,items,update_parent) if parent && update_parent
             else
                 setForeground(NormalBrush)
                 each_child do |item|
