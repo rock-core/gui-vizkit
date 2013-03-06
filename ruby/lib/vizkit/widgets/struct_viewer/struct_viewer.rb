@@ -1,20 +1,37 @@
 require 'vizkit'
-require 'vizkit/tree_model'
+require 'vizkit/tree_view'
 
 class StructViewer
     module Functions
         def init(parent=nil)
             Vizkit.setup_tree_view treeView
-            @data_model = Vizkit::OutputPortsDataModel.new
-            @model = Vizkit::VizkitItemModel.new @data_model
+            @model = Vizkit::VizkitItemModel.new
             treeView.setModel @model
         end
 
         def update(data, port_name)
         end
 
+        def child?(text)
+            0.upto @model.rowCount-1 do |row|
+                item = @model.item(row,0)
+                return true if item.text == text
+            end
+            false
+        end
+
         def config(port,options=Hash.new)
-            @data_model.add port
+            return if child? port.name
+            port1,port2 = if port.output? 
+                              [Vizkit::OutputPortItem.new(port), Vizkit::OutputPortItem.new(port,:item_type => :value)]
+                          elsif port.input?
+                              [Vizkit::InputPortItem.new(port), Vizkit::IntputPortItem.new(port,:item_type => :value)]
+                          end
+            @model.appendRow [port1,port2]
+            port1.expand
+            port2.expand
+            treeView.resizeColumnToContents 0
+            treeView.resizeColumnToContents 1
             # data handling is done by the data model
             :do_not_connect
         end

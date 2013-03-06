@@ -1,7 +1,7 @@
 #!/usr/bin/env ruby
 
 require 'vizkit'
-require 'vizkit/tree_model'
+require 'vizkit/tree_view'
 
 class TaskInspector
     def self.create_widget(parent = nil)
@@ -15,6 +15,18 @@ class TaskInspector
         form.actionAdd_name_service.connect SIGNAL("triggered()") do 
             corba_dialog.show
         end
+
+        #populate widget menu
+        Vizkit.default_loader.plugin_specs.keys.sort.each do |name|
+            # do not add qt base widgets
+            next if name[0] == "Q" && Qt.const_defined?(name[1..-1])
+            action = form.menuWidgets.addAction(name)
+            action.connect SIGNAL("triggered()") do
+                w = Vizkit.default_loader.create_plugin name
+                w.show
+            end
+        end
+
         form
     end
 
@@ -30,10 +42,13 @@ class TaskInspector
         def enable_tooling
         end
 
+        def treeView
+            @treeView
+        end
+
         def init
             Vizkit.setup_tree_view treeView
-            @data_model = Vizkit::NameServicesDataModel.new
-            @model = Vizkit::VizkitItemModel.new @data_model
+            @model = Vizkit::VizkitItemModel.new
             treeView.setModel @model
         end
 
@@ -45,11 +60,15 @@ class TaskInspector
                   else
                       Orocos::Async::TaskContextProxy.new task.name
                   end
-            @data_model.add obj
+            item1 = Vizkit::TaskContextItem.new obj
+            item2 = Vizkit::TaskCOntextItem.new obj,:item_type => :value
+            @model.appendRow([item1,item2])
         end
 
         def add_name_service(service,options=Hash.new)
-            @data_model.add service
+            item1 = Vizkit::NameServiceItem.new service
+            item2 = Vizkit::NameServiceItem.new service,:item_type => :value
+            @model.appendRow([item1,item2])
         end
     end
 end

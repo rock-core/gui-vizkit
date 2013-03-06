@@ -32,6 +32,15 @@
       <property name="palette">
        <palette>
         <active>
+         <colorrole role="Text">
+          <brush brushstyle="SolidPattern">
+           <color alpha="255">
+            <red>0</red>
+            <green>0</green>
+            <blue>0</blue>
+           </color>
+          </brush>
+         </colorrole>
          <colorrole role="Base">
           <brush brushstyle="SolidPattern">
            <color alpha="255">
@@ -52,6 +61,15 @@
          </colorrole>
         </active>
         <inactive>
+         <colorrole role="Text">
+          <brush brushstyle="SolidPattern">
+           <color alpha="255">
+            <red>0</red>
+            <green>0</green>
+            <blue>0</blue>
+           </color>
+          </brush>
+         </colorrole>
          <colorrole role="Base">
           <brush brushstyle="SolidPattern">
            <color alpha="255">
@@ -72,6 +90,15 @@
          </colorrole>
         </inactive>
         <disabled>
+         <colorrole role="Text">
+          <brush brushstyle="SolidPattern">
+           <color alpha="255">
+            <red>159</red>
+            <green>158</green>
+            <blue>158</blue>
+           </color>
+          </brush>
+         </colorrole>
          <colorrole role="Base">
           <brush brushstyle="SolidPattern">
            <color alpha="255">
@@ -164,13 +191,13 @@
     <addaction name="separator"/>
     <addaction name="actionAdd_name_service"/>
    </widget>
-   <widget class="QMenu" name="menuSettings">
+   <widget class="QMenu" name="menuWidgets">
     <property name="title">
-     <string>Settings</string>
+     <string>Widgets</string>
     </property>
    </widget>
    <addaction name="menuNameServices"/>
-   <addaction name="menuSettings"/>
+   <addaction name="menuWidgets"/>
   </widget>
   <action name="actionAdd_name_service">
    <property name="text">
