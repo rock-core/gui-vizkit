@@ -1,4 +1,4 @@
-require "vizkit/tree_model.rb"
+require "vizkit/tree_view"
 require 'orocos/async/log/task_context'
 
 class LogControl
@@ -92,10 +92,20 @@ class LogControl
 
       #add replayed streams to tree view 
       Vizkit.setup_tree_view treeView
-      data_model = Vizkit::LogReplayDataModel.new @log_replay
-      model = Vizkit::VizkitItemModel.new data_model
+      model = Vizkit::VizkitItemModel.new
       treeView.setModel model
-      model.header("Replayed Tasks","Information")
+      model.setHorizontalHeaderLabels ["Replayed Tasks","Information"]
+
+
+      @global_meta_data = Vizkit::GlobalMetaItem.new @log_replay
+      @global_meta_data2 = Vizkit::GlobalMetaItem.new @log_replay,:item_type => :value
+      model.appendRow [@global_meta_data, @global_meta_data2]
+      @log_replay.tasks.each do |task|
+          task = Orocos::Async::Log::TaskContext.new(task)
+          @item1 = Vizkit::LogTaskItem.new(task)
+          @item2 = Vizkit::LogTaskItem.new(task,:item_type => :value) 
+          model.appendRow [@item1, @item2]
+      end
       treeView.resizeColumnToContents(0)
 
       actionNone.connect(SIGNAL("triggered(bool)")) do |checked|
