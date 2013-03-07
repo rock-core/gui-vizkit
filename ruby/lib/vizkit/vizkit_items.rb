@@ -129,6 +129,8 @@ module Vizkit
         end
 
         def data(role = Qt::UserRole+1)
+            # workaround memeroy leak qt-ruby
+            # the returned Qt::Variant is never be deleted
             @last_data.dispose if @last_data
             @last_data = if role == Qt::DisplayRole
                              val = if @options.has_key?(:text)
@@ -447,7 +449,10 @@ module Vizkit
                 # the other one has a copy which was not changed
                 i = index.sibling(row,0)
                 if i.isValid
-                    Qt::Variant.from_ruby i.model.itemFromIndex(i)
+                    # workaround memeroy leak qt-ruby
+                    # the returned Qt::Variant is never be deleted
+                    @last_value.dispose if @last_value
+                    @last_value = Qt::Variant.from_ruby i.model.itemFromIndex(i)
                 else
                     super
                 end
@@ -509,17 +514,20 @@ module Vizkit
         end
 
         def data(role = Qt::UserRole+1)
-            if role == Qt::EditRole
-                i = index.sibling(row,0)
-                if i.isValid
-                    item = i.model.itemFromIndex i
-                    Qt::Variant.from_ruby item
-                else
-                    super
-                end
-            else
-                super
-            end
+            # workaround memeroy leak qt-ruby
+            # the returned Qt::Variant is never be deleted
+            @last_value.dispose if @last_value
+            @last_value = if role == Qt::EditRole
+                              i = index.sibling(row,0)
+                              if i.isValid
+                                  item = i.model.itemFromIndex i
+                                  Qt::Variant.from_ruby item
+                              else
+                                  super
+                              end
+                          else
+                              super
+                          end
         end
 
         def expand(propagated = false)
