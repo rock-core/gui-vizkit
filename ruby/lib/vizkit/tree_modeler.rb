@@ -281,7 +281,8 @@ module Vizkit
                 prop = task.property(item.text)
                 raise "Found no property called #{item.text} for task #{task.name}"unless prop
                 sample = prop.new_sample.zero!
-                update_property(sample,item,true)
+                #update_property(sample,item,true)
+                update_object(sample, item, true)
                 prop.write sample
             end
             unmark_dirty_items
