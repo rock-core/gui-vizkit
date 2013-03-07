@@ -7,6 +7,7 @@ module Vizkit
     class VizkitItem < Qt::StandardItem
         NormalBrush = Qt::Brush.new(Qt::black)
         ModifiedBrush = Qt::Brush.new(Qt::red)
+        ErrorBrush = Qt::Brush.new(Qt::red)
 
         attr_reader :modified
         attr_reader :options
@@ -298,7 +299,14 @@ module Vizkit
         def initialize(port,options = Hash.new)
             super
             listener = port.on_reachable do
-                update port.new_sample.zero!
+                begin
+                    update port.new_sample.zero!
+                rescue Orocos::TypekitTypeNotFound
+                    setForeground(ErrorBrush)
+                    if @options[:item_type] != :label
+                        @options[:text] = "No typekit for: #{port.type.name}"
+                    end
+                end
                 listener.stop
             end
         end
@@ -370,6 +378,17 @@ module Vizkit
             end
             @listener.stop
             @stop_propagated = false
+
+            if @options[:item_type] != :label
+                @error_listener = port.on_error do |error|
+                    @options[:text] = error.to_s
+                    emitDataChanged
+                end
+                @reachable_listener = port.on_reachable do
+                    @options.delete :text
+                    emitDataChanged
+                end
+            end
         end
 
         def collapse(propagated = false)
@@ -427,6 +446,17 @@ module Vizkit
             end
             @listener.stop
             @stop_propagated = false
+
+            if @options[:item_type] != :label
+                @error_listener = property.on_error do |error|
+                    @options[:text] = error.to_s
+                    emitDataChanged
+                end
+                @reachable_listener = property.on_reachable do
+                    @options.delete :text
+                    emitDataChanged
+                end
+            end
         end
 
         def collapse(propagated = false)
