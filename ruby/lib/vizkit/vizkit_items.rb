@@ -100,7 +100,7 @@ module Vizkit
         def initialize(typelib_val=nil,options = Hash.new)
             super()
             @options = Kernel.validate_options options,:text => nil,:item_type => :label,:editable => false
-            @persistent_indexes = []
+            @added_items = []
             setEditable false
             update typelib_val if typelib_val
         end
@@ -129,51 +129,54 @@ module Vizkit
         end
 
         def data(role = Qt::UserRole+1)
-            if role == Qt::DisplayRole
-                return Qt::Variant.new(@options[:text]) if @options.has_key?(:text)
-                return Qt::Variant.new("no data") unless @typelib_val
-                val = if !@direct_type
-                          if modified?
-                              @typelib_val.class.name + " (modified)"
-                          else
-                              @typelib_val.class.name
-                          end
-                      else
-                          item_val = @typelib_val.to_ruby
-                          if item_val.is_a?(Float) || item_val.is_a?(Fixnum) ||
-                              item_val.is_a?(TrueClass) || item_val.is_a?(FalseClass)
-                              item_val
-                          elsif item_val.is_a? Time
-                              "#{item_val.strftime("%-d %b %Y %H:%M:%S")}.#{item_val.usec.to_s}"
-                          else
-                              item_val.to_s
-                          end
-                      end
-                Qt::Variant.new(val)
-            elsif role == Qt::EditRole
-                val = if !@direct_type
-                          nil
-                      else
-                          item_val = @typelib_val.to_ruby
-                          if item_val.is_a?(Float) || item_val.is_a?(Fixnum) ||
-                              item_val.is_a?(TrueClass) || item_val.is_a?(FalseClass)
-                              item_val
-                          elsif item_val.is_a? Time
-                              Qt::DateTime.new(item_val)
-                          elsif item_val.is_a? Symbol
-                              #move current value to the front
-                              arr = @typelib_val.class.keys.keys
-                              arr.delete(item_val.to_s)
-                              arr.insert(0,item_val.to_s)
-                              arr
-                          else
-                              item_val.to_s
-                          end
-                      end
-                Qt::Variant.new(val)
-            else
-                super
-            end
+            @last_data.dispose if @last_data
+            @last_data = if role == Qt::DisplayRole
+                             val = if @options.has_key?(:text)
+                                       @options[:text]
+                                   elsif !@typelib_val
+                                       "no data"
+                                   elsif !@direct_type
+                                       if modified?
+                                           @typelib_val.class.name + " (modified)"
+                                       else
+                                           @typelib_val.class.name
+                                       end
+                                   else
+                                       item_val = @typelib_val.to_ruby
+                                       if item_val.is_a?(Float) || item_val.is_a?(Fixnum) ||
+                                           item_val.is_a?(TrueClass) || item_val.is_a?(FalseClass)
+                                           item_val
+                                       elsif item_val.is_a? Time
+                                           "#{item_val.strftime("%-d %b %Y %H:%M:%S")}.#{item_val.usec.to_s}"
+                                       else
+                                           item_val.to_s
+                                       end
+                                   end
+                             Qt::Variant.new(val)
+                         elsif role == Qt::EditRole
+                             val = if !@direct_type
+                                       nil
+                                   else
+                                       item_val = @typelib_val.to_ruby
+                                       if item_val.is_a?(Float) || item_val.is_a?(Fixnum) ||
+                                           item_val.is_a?(TrueClass) || item_val.is_a?(FalseClass)
+                                           item_val
+                                       elsif item_val.is_a? Time
+                                           Qt::DateTime.new(item_val)
+                                       elsif item_val.is_a? Symbol
+                                           #move current value to the front
+                                           arr = @typelib_val.class.keys.keys
+                                           arr.delete(item_val.to_s)
+                                           arr.insert(0,item_val.to_s)
+                                           arr
+                                       else
+                                           item_val.to_s
+                                       end
+                                   end
+                             Qt::Variant.new(val)
+                         else
+                             super
+                         end
         end
 
         def update(data = nil)
@@ -209,7 +212,7 @@ module Vizkit
                        0
                    end
             rows = [MAX_NUMBER_OF_CHILDS,rows].min
-            real_rows = @persistent_indexes.size
+            real_rows = @added_items.size
             # check that the items are reflecting the real data
             if rows > real_rows
                 real_rows.upto(rows-1) do |row|
@@ -223,13 +226,13 @@ module Vizkit
                     val_item = TypelibItem.new(@typelib_val.raw_get(field),:item_type => :value,:editable => @options[:editable])
                     appendRow [field_item,val_item]
                     # we have to store the items otherwise they might get garbage collected
-                    @persistent_indexes << [Qt::PersistentModelIndex.new(val_item.index),field_item,val_item]
+                    @added_items << [field_item,val_item]
                 end
             elsif rows < real_rows
                 # delete rows one by one because the index could be differently to
                 # the one of the typelib type
-               @persistent_indexes[rows,-1].delete_if do |index,_,_|
-                   removeRow(index.row)
+               @added_items[rows,-1].delete_if do |item,_|
+                   removeRow(item.index.row)
                    true
                end
             end
