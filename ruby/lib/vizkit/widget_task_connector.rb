@@ -46,6 +46,14 @@ module Vizkit
             "8#{str}"
         end
 
+        def method_missing(m,*args)
+            if @widget.respond_to? m
+                WidgetTaskConnector.new(@widget.send(m),@task,@options)
+            else
+                super
+            end
+        end
+
         private
         # converts the given string into a list of object which meed the given signature
         # @return [Array(Spec)]
