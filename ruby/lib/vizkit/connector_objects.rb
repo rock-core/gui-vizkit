@@ -416,6 +416,42 @@ module Vizkit
         end
     end
 
+    class ConnectorProc < ConnectorObject
+        def initialize(widget,proc_,options = Hash.new)
+            @widget = widget
+            @proc = proc_
+            @name = "code block"
+        end
+
+        def arity=(value)
+            raise ArgumentError,"no siganture has an airty of #{value}" unless arity?(value)
+            self
+        end
+
+        def arity?(value)
+            @proc.arity == value
+        end
+
+        def argument_types?(*value)
+            if arity?(value.size)
+                true
+            else
+                false
+            end
+        end
+
+        def argument_types=(*value)
+            raise ArgumentError,"no siganture has the given arguments #{value}" unless argument_types?(*value)
+            self
+        end
+
+        def write(options,*args,&block)
+            result = @proc.call(*args)
+            block.call(result) if block
+            result
+        end
+
+        # no different between read and write
+        alias :read :write
+    end
 end
-
-

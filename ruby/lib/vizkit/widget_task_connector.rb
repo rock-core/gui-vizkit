@@ -1,6 +1,7 @@
 module Vizkit
     class WidgetTaskConnector
         def initialize(widget,task,options = Hash.new)
+            raise ArgumentError,"#{widget} is not a qt object" unless widget.is_a? Qt::Object
             @widget = widget
             @task = task
             @options = options
@@ -66,6 +67,8 @@ module Vizkit
                 else
                     if signature.is_a? Symbol
                         ConnectorSlot.new(@widget,signature.to_s,options)
+                    elsif signature.respond_to? :call
+                        ConnectorProc.new(@task,signature,options)
                     else
                         raise ArgumentError,"#{signature} has an invalid type identifyer #{$1}"
                     end
