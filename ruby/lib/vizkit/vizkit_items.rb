@@ -407,7 +407,7 @@ module Vizkit
             port_temp = port_from_items items
             return 0 unless port_temp
             val = Qt::MimeData.new
-            val.setText URI::Orocos.from_port(port_temp).to_s
+            val.setText URI::Orocos.from_port(port_temp).to_s if defined? URI::DEFAULT_PARSER
             val
         end
     end
