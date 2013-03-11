@@ -152,7 +152,7 @@ module Vizkit
                 end
             else
                 if @widget.respond_to?(name.to_sym) && (!type || type == Qt::MetaMethod::Slot)
-                    arguments = Array.new(@widget.method(name).arity,:ruby)
+                    arguments = Array.new([@widget.method(name).arity,0].max,:ruby)
                     [TypelibQtAdapter::MethodInfo.new(name,name,:ruby,arguments,Qt::MetaMethod::Slot)]
                 else
                     []

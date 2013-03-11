@@ -3,7 +3,7 @@ module Qt
     module WidgetVizkitIntegration
         def connect_to_task(task,options = Hash.new,&block)
             task = if task.is_a? String
-                       Orocos::Async::TaskContextProxy.new task
+                       Orocos::Async.proxy task
                    else
                        task
                    end

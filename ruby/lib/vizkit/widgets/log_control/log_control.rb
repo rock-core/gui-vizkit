@@ -101,7 +101,8 @@ class LogControl
       @global_meta_data2 = Vizkit::GlobalMetaItem.new @log_replay,:item_type => :value
       model.appendRow [@global_meta_data, @global_meta_data2]
       @log_replay.tasks.each do |task|
-          task = Orocos::Async::Log::TaskContext.new(task)
+          next unless task.used?
+          task = task.to_async
           @item1 = Vizkit::LogTaskItem.new(task)
           @item2 = Vizkit::LogTaskItem.new(task,:item_type => :value) 
           model.appendRow [@item1, @item2]

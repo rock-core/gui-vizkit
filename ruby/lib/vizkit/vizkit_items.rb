@@ -760,11 +760,15 @@ module Vizkit
                 appendRow([@meta,@meta2])
             else
                 setText port.type.name
+                @error_listener = port.on_error do |error|
+                    @options[:text] = error.to_s
+                    emitDataChanged
+                end
             end
         end
 
         def port_from_items(items = [])
-            Orocos::Async::TaskContextProxy.new(port.task.name,:use => port.task).port(port.name,:type => port.type)
+            port.to_proxy()
         end
     end
 
