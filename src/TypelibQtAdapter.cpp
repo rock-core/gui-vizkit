@@ -77,92 +77,6 @@ void TypelibQtAdapter::initialize()
 	throw std::runtime_error("Could not get qt object");
 }
 
-
-std::string TypelibQtAdapter::getMethodSignature(const std::string& methodName)
-{
-    if(!object)
-	throw std::runtime_error("Requested method signature without passing Qt object");
-    
-    std::string method = methodName + "(";
-    
-    const QMetaObject *metaObj = object->metaObject();
-    for(int i = 0; i < metaObj->methodCount(); i++)
-    {
-	std::string signature = metaObj->method(i).signature();
-	if(!signature.compare(0, method.size(), method))
-	{
-	    QList<QByteArray> params = metaObj->method(i).parameterTypes();
-	    for(QList<QByteArray>::iterator it = params.begin(); it != params.end();it++)
-	    {
-		std::cout << (*it).data() << std::endl;
-	    }
-	    return signature;
-	}
-    }
-    
-    throw std::runtime_error("No method " + methodName + " found ");
-
-    return "";
-}
-
-std::string TypelibQtAdapter::getMethodSignatureFromNumber(std::string methodName, int methodNr)
-{
-    if(!object)
-	throw std::runtime_error("Requested method signature without passing Qt object");
-    
-    const QMetaObject *metaObj = object->metaObject();
-    std::string method = methodName + "(";
-    
-    int cnt = 0;
-    
-    for(int i = 0; i < metaObj->methodCount(); i++)
-    {
-	std::string signature = metaObj->method(i).signature();
-	if(!signature.compare(0, method.size(), method))
-	{
-	    if(cnt == methodNr)
-		return signature;
-	    
-	    cnt++;
-	}
-    }
-
-    throw std::runtime_error("Invalid signature requested for " + methodName);
-    
-    return "";
-}
-
-
-bool TypelibQtAdapter::getParameterLists(const std::string& methodName, std::vector<std::vector<std::string> > &ret)
-{
-    if(!object)
-	throw std::runtime_error("Requested method signature without passing Qt object");
-
-    const QMetaObject *metaObj = object->metaObject();
-
-    std::string method = methodName + "(";
-    
-    bool found = false;
-    
-    for(int i = 0; i < metaObj->methodCount(); i++)
-    {
-	std::string signature = metaObj->method(i).signature();
-	if(!signature.compare(0, method.size(), method))
-	{
-	    found = true;
-	    std::vector<std::string> paramList;
-	    QList<QByteArray> params = metaObj->method(i).parameterTypes();
-	    for(QList<QByteArray>::iterator it = params.begin(); it != params.end();it++)
-	    {
-		paramList.push_back(it->data());
-	    }
-	    ret.push_back(paramList);
-	}
-    }
-    
-    return found;
-}
-
 typedef std::vector< std::pair<orogen_transports::TypelibMarshallerBase*, orogen_transports::TypelibMarshallerBase::Handle*> > TypelibHandles;
 static void* getOpaqueValue(TypelibHandles& typelib_handles, std::string const& expected_type, Typelib::Value value)
 {
@@ -178,233 +92,82 @@ static void* getOpaqueValue(TypelibHandles& typelib_handles, std::string const& 
     return cxx_data;
 }
 
-bool TypelibQtAdapter::callQtMethodWithSignature(QObject* obj, const std::string& signature, const std::vector< TypelibQtAdapter::Argument >& arguments, TypelibQtAdapter::Argument returnValue)
+bool TypelibQtAdapter::callQtMethod(
+        QObject* obj,
+        const std::string& signature,
+        const std::vector< TypelibQtAdapter::Argument >& arguments,
+        TypelibQtAdapter::Argument ret)
 {
     const QMetaObject *metaObj = obj->metaObject();
-
     int methodIndex = metaObj->indexOfMethod(signature.c_str());
     if(methodIndex == -1)
-    {
 	throw std::runtime_error(std::string("QObject ") + obj->objectName().toStdString() + std::string(" has no method with signature ") + signature);
-    }
     
     QMetaMethod metaMethod = metaObj->method(methodIndex);
-    
     QList<QByteArray> parameterTypes = metaMethod.parameterTypes();
-
     if(arguments.size() != static_cast<unsigned int>(parameterTypes.size()))
     {
 	throw Typelib::DefinitionMismatch("Number of arguments do not match");
     }
 
-    std::vector<QGenericArgument> args;
-    args.resize(10);
 
-    args[0] = QGenericArgument(0);
-    
-    std::vector<QGenericArgument>::iterator argIt = args.begin();
-    std::vector<Argument>::const_iterator ait = arguments.begin();
     TypelibHandles typelib_handles;
-
-    for(QList<QByteArray>::const_iterator qit = parameterTypes.begin(); qit != parameterTypes.end(); qit++)
+    QGenericReturnArgument qtRet;
+    std::vector<QGenericArgument> qtArgs;
+    qtArgs.resize(10);
+    for (unsigned int i = 0; i < arguments.size(); ++i)
     {
-	void *cxx_data = getOpaqueValue(typelib_handles, ait->opaqueName, (ait)->value);
-	*argIt = QGenericArgument(qit->data(), cxx_data);
-
-	argIt++;
-	ait++;
+	void *cxx_data = getOpaqueValue(typelib_handles, arguments[i].cxxTypename, arguments[i].value);
+	qtArgs[i] = QGenericArgument(parameterTypes[i], cxx_data);
     }
-
-    QGenericReturnArgument retArg;
-    
-    if(returnValue.value.getData())
+    if(ret.value.getData())
     {
-        void* cxx_data = getOpaqueValue(typelib_handles, returnValue.opaqueName, returnValue.value);
-	retArg = QGenericReturnArgument(metaMethod.typeName(), cxx_data);
+        void* cxx_data = getOpaqueValue(typelib_handles, ret.cxxTypename, ret.value);
+	qtRet = QGenericReturnArgument(metaMethod.typeName(), cxx_data);
     }
+    bool successful =
+        metaMethod.invoke(obj, qtRet,
+                qtArgs[0], qtArgs[1], qtArgs[2], qtArgs[3], qtArgs[4], qtArgs[5],
+                qtArgs[6], qtArgs[7], qtArgs[8], qtArgs[9]);
 
-    bool ret = metaMethod.invoke(obj, retArg, args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7], args[8], args[9]);
-
+    // We need to refresh the return value. The other are always considered
+    // in-only (at least for now)
+    if (ret.value.getData())
+        typelib_handles.back().first->refreshTypelibSample(typelib_handles.back().second);
     for (unsigned int i = 0; i < typelib_handles.size(); ++i)
         typelib_handles[i].first->deleteHandle(typelib_handles[i].second);
-
-    return ret;
+    return successful;
 }
 
-
-bool TypelibQtAdapter::callQtMethod(QObject* obj, const std::string& methodName, const std::vector<Typelib::Value >& arguments, Typelib::Value returnValue)
+Rice::Object TypelibQtAdapter::callQtMethodR(
+        const std::string& signature,
+        Object _arguments,
+        Object _argumentTypes,
+        Object returnValue,
+        Object returnType)
 {
-
-    const QMetaObject *metaObj = obj->metaObject();
-    std::cout << "Available methods :" << std::endl;
-    for(int i = 0; i < metaObj->methodCount(); i++)
-    {
-	std::cout << metaObj->method(i).signature() << std::endl;
-	std::cout << metaObj->method(i).tag() << std::endl;
-    }
-    
-    std::string method = methodName + "(";
-    
-    //iterate over arguments to create correct name
-    std::vector<Typelib::Value >::const_iterator a_it = arguments.begin();
-    for(;a_it != arguments.end(); a_it++)
-    {
-	std::cout << "Argument name: " << a_it->getType().getName() << " " << a_it->getType().getBasename() << std::endl;
-	//TODO for this to work propperly, we need a way to get the cxx name from the typelib name
-	method += a_it->getType().getName();
-    }
-    
-    method += ")";
-    
-    //TODO build correct method name
-    int methodIndex = metaObj->indexOfMethod((method).c_str());
-    if(methodIndex == -1)
-    {
-	std::cout << "Available methods :" << std::endl;
-	for(int i = 0; i < metaObj->methodCount(); i++)
-	{
-	    std::cout << metaObj->method(i).signature() << std::endl;
-	    std::cout << metaObj->method(i).tag() << std::endl;
-	}
-	
-	throw std::runtime_error(std::string("QObject ") + obj->objectName().toStdString() + std::string(" has no method ") + methodName);
-    }
-    
-    QMetaMethod metaMethod = metaObj->method(methodIndex);
-    
-
-    
-    QList<QByteArray> parameterTypes = metaMethod.parameterTypes();
-
-    if(arguments.size() != static_cast<unsigned int>(parameterTypes.size()))
-    {
-	throw Typelib::DefinitionMismatch("Number of arguments do not match");
-    }
-
-    std::vector<QGenericArgument> args;
-    args.resize(10);
-
-    args[0] = QGenericArgument(0);
-    
-    std::cout << "Argument types are : ";
-    std::vector<QGenericArgument>::iterator argIt = args.begin();
-    std::vector<Typelib::Value >::const_iterator ait = arguments.begin();
-    for(QList<QByteArray>::const_iterator qit = parameterTypes.begin(); qit != parameterTypes.end(); qit++)
-    {
-	std::cout << qit->data() ;
-	(ait)->getType();
-	if(std::string(qit->data()) != (ait)->getType().getName() )
-	{
-	    throw Typelib::TypeException(std::string("Argument type of Method ") + std::string(qit->data()) + std::string(" does not match given argument type ") + (ait)->getType().getName() );
-	}
-	
-	*argIt = QGenericArgument((ait)->getType().getName().c_str(), (ait)->getData());
-	
-	argIt++;
-	ait++;
-    }
-
-    QGenericReturnArgument retArg;
-    
-    if(returnValue.getData())
-    {
-	retArg = QGenericReturnArgument(returnValue.getType().getName().c_str(), returnValue.getData());
-    }
-
-    //all checks done, let's call the method
-    return metaMethod.invoke(obj, retArg, args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7], args[8], args[9]);
-}
-
-Rice::Object TypelibQtAdapter::callQtMethodR(Rice::Object methodName, Rice::Object arguments, Rice::Object returnValue)
-{
-    Rice::Array argsArray(arguments);
-
-    std::vector<Typelib::Value> args;
-    
-    for(Rice::Array::iterator it = argsArray.begin(); it != argsArray.end(); ++it)
-    {
-	args.push_back(typelib_get(it->value()));
-    }
-    
-    Typelib::Value ret;
-    if(!returnValue.is_nil())
-	ret = typelib_get(returnValue.value());
-
-
-    VALUE methodVal = methodName.value();  
-    std::string method = StringValuePtr(methodVal);
-
-    if(!callQtMethod(object, method, args, ret))
-	return Rice::Nil;
-    
-    return Rice::True;
-}
-
-Object TypelibQtAdapter::getMethodListR()
-{
-    Rice::Array arr;
-    const QMetaObject *metaObj = object->metaObject();
-    for(int i = 0; i < metaObj->methodCount(); i++)
-    {
-	std::string signature = metaObj->method(i).signature();
-	arr.push(signature);
-    }
-    return arr;
-}
-
-Object TypelibQtAdapter::getParameterListsR(const std::string& methodName)
-{
-    std::vector<std::vector<std::string> > ret;
-    
-    if(!getParameterLists(methodName, ret))
-	return Rice::Nil;
-    
-    Rice::Array arr;
-    
-    for(std::vector<std::vector<std::string> >::iterator it = ret.begin(); it != ret.end(); it++)
-    {
-	Rice::Array paramList;
-	
-	for(std::vector<std::string>::iterator pit = it->begin(); pit != it->end(); pit++)
-	{
-	    paramList.push(*pit);
-	}
-	arr.push(paramList);
-    }
-    return arr;
-}
-
-Rice::Object TypelibQtAdapter::callQtMethodWithSignatureR(const std::string& signature, Object arguments, Object opaque_names, Object returnValue)
-{
-    Rice::Array argsArray(arguments);
-    Rice::Array opaqueArray(opaque_names);
+    Rice::Array arguments(_arguments);
+    Rice::Array argumentTypes(_argumentTypes);
 
     std::vector<Argument> args;
-    
-    Rice::Array::iterator opaque_it = opaqueArray.begin();
-    
-    for(Rice::Array::iterator it = argsArray.begin(); it != argsArray.end(); ++it)
+    Rice::Array::iterator arg_type_it = argumentTypes.begin();
+    for(Rice::Array::iterator it = arguments.begin(); it != arguments.end(); ++it)
     {
 	Argument arg;
-	VALUE val = opaque_it->value();
-	arg.opaqueName = StringValuePtr(val);
 	arg.value = typelib_get(it->value());
+	arg.cxxTypename = Rice::String(*arg_type_it).c_str();
 	args.push_back(arg);
-	
-	++opaque_it;
+	++arg_type_it;
     }
     
     Argument ret; 
     if(!returnValue.is_nil())
     {
-	VALUE opaque_name_r = opaque_it->value();
-	ret.opaqueName = StringValuePtr(opaque_name_r);
 	ret.value = typelib_get(returnValue.value());
-
-        ++opaque_it;
+	ret.cxxTypename = Rice::String(returnType).c_str();
     }
 
-    if(!callQtMethodWithSignature(object, signature, args, ret))
+    if(!callQtMethod(object, signature, args, ret))
 	return Rice::Nil;
     
     return Rice::True;
@@ -417,12 +180,6 @@ void Init_TypelibQtAdapter()
   Rice::Data_Type<TypelibQtAdapter> rb_adapter =
     define_class<TypelibQtAdapter>("TypelibQtAdapter")
     .define_constructor(Constructor<TypelibQtAdapter>())
-    .define_method("callQtMethod", &TypelibQtAdapter::callQtMethodR)
-    .define_method("callQtMethodWithSignature", &TypelibQtAdapter::callQtMethodWithSignatureR) 
-    .define_method("getQtObject", &TypelibQtAdapter::initialize)
-    .define_method("getMethodList", &TypelibQtAdapter::getMethodListR)
-    .define_method("getMethodSignature", &TypelibQtAdapter::getMethodSignature, (Arg("methodName")))
-    .define_method("getMethodSignatureFromNumber", &TypelibQtAdapter::getMethodSignatureFromNumber, (Arg("methodName"), Arg("number")))
-    .define_method("getParameterLists", &TypelibQtAdapter::getParameterListsR, (Arg("methodName")));
-    
+    .define_method("callQtMethod", &TypelibQtAdapter::callQtMethodR) 
+    .define_method("getQtObject", &TypelibQtAdapter::initialize);
 }

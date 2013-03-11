@@ -1,37 +1,39 @@
-#!/usr/bin/env ruby
 require 'vizkit'
-require File.join(File.dirname(__FILE__), '../..', 'tree_modeler.rb')
-require File.join(File.dirname(__FILE__),'struct_viewer_window.ui.rb')
+require 'vizkit/tree_view'
 
 class StructViewer
     module Functions
         def init(parent=nil)
-            @brush = Qt::Brush.new(Qt::Color.new(200,200,200))
-            @tree_view = Vizkit::TreeModeler.new(treeView)
-            @item_hash = Hash.new
+            Vizkit.setup_tree_view treeView
+            @model = Vizkit::VizkitItemModel.new
+            treeView.setModel @model
         end
 
         def update(data, port_name)
-            if !@item_hash[port_name]
-                @item_hash[port_name],item2 = @tree_view.update(nil,port_name,@tree_view.root,false,@item_hash.size)
-                item2.setText(data.class.name)
-            end
-            @tree_view.update(data,nil,@item_hash[port_name])
-            @tree_view.set_all_children_editable(@tree_view.model.invisible_root_item, false)
-            treeView.resizeColumnToContents(0)
         end
 
-        #add a default value 
+        def child?(text)
+            0.upto @model.rowCount-1 do |row|
+                item = @model.item(row,0)
+                return true if item.text == text
+            end
+            false
+        end
+
         def config(port,options=Hash.new)
-            #encode some values 
-            #otherwise tree_view is not able to open a new widget for an embedded type 
-            port = Vizkit::PortProxy.new(port.task,port)
-            #add place holder
-            item,item2 = @tree_view.update(nil,port.full_name,@tree_view.root,false,@item_hash.size)
-            item2.setText(port.type_name.to_s)
-            @tree_view.encode_data(item,port)
-            @tree_view.encode_data(item2,port)
-            @item_hash[port.full_name] = item
+            return if child? port.name
+            port1,port2 = if port.output? 
+                              [Vizkit::OutputPortItem.new(port), Vizkit::OutputPortItem.new(port,:item_type => :value)]
+                          elsif port.input?
+                              [Vizkit::InputPortItem.new(port), Vizkit::IntputPortItem.new(port,:item_type => :value)]
+                          end
+            @model.appendRow [port1,port2]
+            port1.expand
+            port2.expand
+            treeView.resizeColumnToContents 0
+            treeView.resizeColumnToContents 1
+            # data handling is done by the data model
+            :do_not_connect
         end
 
         def multi_value?

@@ -98,7 +98,7 @@ module Vizkit
         # @param [true,false] include_super if false no super class names are included 
         # @return [Array<String>] an array of the class and all superclass names
         def self.classes(klass,include_super=true)
-            return Array.new unless klass
+            return Array.new unless klass && klass.name
             raise ArgumentError, "#{klass} is not a class" unless klass.respond_to? :name
 
             arry = if include_super && klass.respond_to?(:superclass) && klass.superclass && klass != klass.superclass

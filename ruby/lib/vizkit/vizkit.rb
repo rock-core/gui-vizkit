@@ -4,15 +4,14 @@ module Vizkit
     extend Logger::Root('Vizkit', Logger::WARN)
 
     #register mapping to find plugins for a specific object
-    PluginHelper.register_map_obj("Orocos::OutputPort","Orocos::Log::OutputPort","Vizkit::PortProxy","Orocos::InputPort") do |port|
+    PluginHelper.register_map_obj("Orocos::Async::PortProxy","Orocos::Async::SubPortProxy") do |port|
         if port.respond_to? :type_name
-            a = PluginHelper.normalize_obj(port.type_name)
-            a.delete("Object")
-            a.delete("BasicObject")
-            a
+            PluginHelper.normalize_obj(port.type_name)-["Object","BasicObject"]
+        else
+            [port]
         end
     end
-    PluginHelper.register_map_obj("Orocos::TaskContext","Vizkit::TaskProxy") do |task|
+    PluginHelper.register_map_obj("Orocos::TaskContext") do |task|
         PluginHelper.classes(task.model) if task.respond_to?(:model) && task.model
     end
 
@@ -88,17 +87,11 @@ module Vizkit
     end
 
     def self.display value,options=Hash.new,&block
+        value = value.to_proxy
         options[:widget_type] = :display
         widget = widget_from_options(value,options,&block)
-        if(!widget)
-            Vizkit.warn "No widget found for displaying #{value}!"
-            return nil
-        end
+        Vizkit.warn "No widget found for displaying #{value}!" if(!widget)
         widget
-    end
-
-    def self.connections
-        @connections
     end
 
     class ShortCutFilter < Qt::Object
@@ -107,7 +100,6 @@ module Vizkit
                 #if someone is pressing ctrl i show a debug window
                 if event.key == 73 && event.modifiers == Qt::ControlModifier
                     @vizkit_info_viewer ||= Vizkit.default_loader.VizkitInfoViewer
-                    @vizkit_info_viewer.auto_update(Vizkit.connections)
                     @vizkit_info_viewer.show
                 end
             end
@@ -128,35 +120,13 @@ module Vizkit
         end
         gc_timer.start(5000)
 
-        if !ReaderWriterProxy.default_policy[:port_proxy]
-            $qApp.exec
-        elsif Orocos::CORBA.initialized?
-            proxy = ReaderWriterProxy.default_policy[:port_proxy] 
-            proxy.__change_name("port_proxy_#{ENV["USERNAME"]}_#{Process.pid}")
-            output = if @port_proxy_log.respond_to?(:to_str)
-                         @port_proxy_log
-                     elsif @port_proxy_log || (@port_proxy_log.nil? && Vizkit.logger.level < Logger::WARN)
-                         "%m-%p.txt"
-                     else
-                         "/dev/null"
-                     end
-            Orocos.run "port_proxy::Task" => proxy.name, :output => output do
-                proxy.start
-                #wait unti the proxy is running 
-                1.upto(3) do 
-		    break if proxy.running?
-                    sleep(0.3333)
-                end
-                if proxy.running?
-                    $qApp.exec
-                else
-                    Vizkit.error "Cannot communicate with task #{proxy.name}"
-                    Vizkit.error "... I give up"
-                end
-            end
-        else
-            $qApp.exec
+        timer = Qt::Timer.new
+        timer.connect SIGNAL("timeout()") do
+            Orocos::Async.step
         end
+        timer.start 10
+
+        $qApp.exec
         gc_timer.stop
     end
 
@@ -164,35 +134,21 @@ module Vizkit
         $qApp.processEvents
     end
 
+    def self.step
+        $qApp.processEvents
+        Orocos::Async.step
+    end
+
     def self.load(ui_file,parent = nil)
         default_loader.load(ui_file,parent)
     end
 
-    def self.disconnect_from(handle)
-        if handle.is_a? Qt::Object 
-            @connections.delete_if do |connection|
-                if connection.widget.is_a?(Qt::Object) && connection.widget.objectName && handle.findChild(Qt::Widget,connection.widget.objectName)
-                    connection.disconnect
-                    true
-                else
-                    if(connection.widget == handle)
-                        connection.disconnect
-                        true
-                    else
-                        false
-                    end
-                end
-            end
-        else
-            @connections.delete_if do |connection|
-                if connection.port == handle
-                    connection.disconnect
-                    true
-                else
-                    false
-                end
-            end
-        end
+    def self.proxy(name,options=Hash.new)
+        Orocos::Async.proxy name,options
+    end
+
+    def self.get(name,options=Hash.new)
+        Orocos::Async.get name,options
     end
 
     def self.connect_all()
@@ -201,52 +157,8 @@ module Vizkit
         end
     end
 
-    def self.reconnect_all()
-        @connections.each do |connection|
-            connection.reconnect()
-        end
-    end
-
-    #reconnects all connection to the widget and its children
-    #even if the connection is still alive
-    def self.reconnect(widget,force=false)
-        if widget.is_a?(Qt::Object)
-            @connections.each do |connection|
-                if connection.widget.is_a?(Qt::Object) && widget.findChild(Qt::Object,connection.widget.objectName)
-                    connection.reconnect
-                end
-            end
-        else
-            @connections.each do |connection|
-                connection.reconnect if connection.widget == widget
-            end
-        end
-    end
-
-    #connects all connection to the widget and its children
-    #if the connection is not responding
-    def self.connect(widget)
-        if widget.is_a?(Qt::Object)
-            @connections.each do |connection|
-                if connection.widget.is_a?(Qt::Object) 
-                    if connection.objectName() && widget.findChild(Qt::Object,connection.widget.objectName) || connection.widget == widget
-                        connection.connect
-                    end
-                end
-            end
-        else
-            @connections.each do |connection|
-                connection.connect if connection.widget == widget
-            end
-        end
-    end
-
     #disconnects all connections to widgets 
     def self.disconnect_all
-        @connections.each do |connection|
-            connection.disconnect
-        end
-        @connections = Array.new
     end
 
     # call-seq:
@@ -266,13 +178,22 @@ module Vizkit
         if widget.kind_of?(Hash)
             widget, options = nil, widget
         end
-        connection = OQConnection.new(task_name, port_name, options, widget, &block)
-        connection.connect
-        Vizkit.connections << connection 
-        connection 
+        widget = if widget.respond_to? :to_str
+                     default_loader.create_plugin(widget.to_str)
+                 else
+                     widget
+                 end
+        port = Orocos::Async.proxy(task_name).port(port_name)
+        l = port.on_reachable do
+            begin
+                port.connect_to widget,options,&block
+                l.stop # stop listener
+            rescue Exception => e
+                Vizkit.warn "error while connecting #{port.name} with widget: #{e}"
+            end
+        end
     end
 
-    @connections = Array.new
     @vizkit_local_options = {:widget => nil,:reuse => true,:parent =>nil,:widget_type => :display}
 
     class << self
