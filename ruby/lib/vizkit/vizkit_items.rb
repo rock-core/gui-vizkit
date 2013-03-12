@@ -107,7 +107,7 @@ module Vizkit
         end
 
         def setData(data,role = Qt::UserRole+1)
-            return super if role != Qt::EditRole
+            return super if role != Qt::EditRole || data.isNull
             item_val = @typelib_val.to_ruby
             val = if item_val.is_a? Integer
                       data.to_i
@@ -119,8 +119,13 @@ module Vizkit
                       Time.at(data.toDateTime.toTime_t)
                   elsif item_val.is_a? Symbol
                       data.toString.to_sym
+                  elsif item_val.is_a?(FalseClass) || item_val.is_a?(TrueClass)
+                      data.toBool
+                  else
+                      Vizkit.warn "cannot set #{data.toString} no conversion"
+                      nil
                   end
-            return false unless val
+            return false unless val != nil
             update(val)
             modified!
         end
@@ -183,7 +188,7 @@ module Vizkit
         end
 
         def update(data = nil)
-            if data
+            if data != nil
                 if @typelib_val
                     Typelib.copy(@typelib_val,Typelib.from_ruby(data,@typelib_val.class))
                 else
