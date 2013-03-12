@@ -562,8 +562,11 @@ module Vizkit
         end
 
         def write(&block)
-            @property.write(typelib_val,&block)
-            modified!(false)
+            begin
+                @property.write(typelib_val,&block)
+                modified!(false)
+            rescue Orocos::NotFound
+            end
         end
     end
 
