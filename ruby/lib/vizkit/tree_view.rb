@@ -19,11 +19,13 @@ module Vizkit
             super
             connect SIGNAL("collapsed(QModelIndex)") do |index|
                 index.model.itemFromIndex(index).collapse
-                index.model.itemFromIndex(index.sibling(index.row,1)).collapse
+                item = index.model.itemFromIndex(index.sibling(index.row,1))
+                item.collapse if item.is_a? VizkitItem
             end
             connect SIGNAL("expanded(QModelIndex)") do |index|
                 index.model.itemFromIndex(index).expand
-                index.model.itemFromIndex(index.sibling(index.row,1)).collapse
+                item = index.model.itemFromIndex(index.sibling(index.row,1))
+                item.expand if item.is_a? VizkitItem
             end
         end
     end
