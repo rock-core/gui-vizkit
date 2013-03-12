@@ -160,7 +160,12 @@ module Vizkit
                                            item_val.to_s
                                        end
                                    end
-                             Qt::Variant.new(val)
+                             begin
+                                 Qt::Variant.new(val)
+                             rescue Expetion => e
+                                 setEditable(false)
+                                 Qt::Variant.new(e.message)
+                             end
                          elsif role == Qt::EditRole
                              val = if !@direct_type
                                        nil

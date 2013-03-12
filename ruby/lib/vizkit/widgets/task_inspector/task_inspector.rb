@@ -61,7 +61,7 @@ class TaskInspector
                       Orocos::Async::TaskContextProxy.new task.name
                   end
             item1 = Vizkit::TaskContextItem.new obj
-            item2 = Vizkit::TaskCOntextItem.new obj,:item_type => :value
+            item2 = Vizkit::TaskContextItem.new obj,:item_type => :value
             @model.appendRow([item1,item2])
         end
 
