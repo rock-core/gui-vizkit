@@ -16,6 +16,7 @@ module Vizkit
             super
             setEditable false
             @options ||= Hash.new
+            @childs = Array.new
         end
 
         def collapse(propagated = false)
@@ -91,6 +92,12 @@ module Vizkit
             end
             false
         end
+
+        def appendRow(*args)
+           #store childs otherwise they might get garbage collected
+           @childs << args.flatten
+           super
+        end
     end
 
     class TypelibItem < VizkitItem
@@ -101,7 +108,7 @@ module Vizkit
         def initialize(typelib_val=nil,options = Hash.new)
             super()
             @options = Kernel.validate_options options,:text => nil,:item_type => :label,:editable => false
-            @added_items = []
+            @typelib_val = nil
             setEditable false
             update typelib_val if typelib_val
         end
@@ -193,12 +200,13 @@ module Vizkit
         end
 
         def clear
-            @added_items.each do |items|
+            @childs.each do |items|
                 items[0].clear
                 items[1].clear
+                removeRow(items[0].index.row)
             end
+            @childs = []
             @typelib_val = nil
-            @options[:text] = "no support for shrinking containers" if @options[:item_type] != :label
         end
 
         def update(data = nil)
@@ -207,7 +215,7 @@ module Vizkit
                     begin
                         Typelib.copy(@typelib_val,Typelib.from_ruby(data,@typelib_val.class))
                     rescue ArgumentError => e
-                        Vizkit.error "error during copying #{@typelib.class.name}: #{e}"
+                        Vizkit.error "error during copying #{@typelib_val.class.name}: #{e}"
                     end
                 else
                     @typelib_val = data
@@ -254,8 +262,6 @@ module Vizkit
                     field_item = TypelibItem.new(@typelib_val.raw_get(field),:text => field.to_s,:editable => @options[:editable])
                     val_item = TypelibItem.new(@typelib_val.raw_get(field),:item_type => :value,:editable => @options[:editable])
                     appendRow [field_item,val_item]
-                    # we have to store the items otherwise they might get garbage collected
-                    @added_items << [field_item,val_item]
                 end
                 emitDataChanged
             else rows < real_rows
@@ -600,7 +606,6 @@ module Vizkit
             super()
             @options = Kernel.validate_options options,:item_type => :label,:editable => true
             @task = task
-            @properties = []
             setEditable false
             if @options[:item_type] == :label
                 setText "Properties"
@@ -608,9 +613,7 @@ module Vizkit
                     next if child?(property_name)
                     prop = task.property(property_name)
                     prop.once_on_reachable do
-                        # store properties otherwise they might ge grabage collected
-                        @properties << [PropertyItem.new(prop,@options),PropertyItem.new(prop,:item_type => :value,:editable => @options[:editable])]
-                        appendRow(@properties.last)
+                        appendRow [PropertyItem.new(prop,@options),PropertyItem.new(prop,:item_type => :value,:editable => @options[:editable])]
                     end
                 end
             end
@@ -730,7 +733,7 @@ module Vizkit
             @annotation = annotation
             if @options[:item_type] == :label
                 setText annotation.stream.name
-                appendRow([VizkitItem.new("Samples"),VizkitItem.new(annotation.samples.size.to_s)])
+                appendRow [VizkitItem.new("Samples"),VizkitItem.new(annotation.samples.size.to_s)]
             else
                 setText annotation.stream.type_name
             end
@@ -748,7 +751,7 @@ module Vizkit
                 log_replay.annotations.each do |annotation|
                     field = LogAnnotationItem.new annotation
                     value = LogAnnotationItem.new annotation,:item_type => :value
-                    appendRow([field,value])
+                    appendRow [field,value]
                 end
             end
         end
