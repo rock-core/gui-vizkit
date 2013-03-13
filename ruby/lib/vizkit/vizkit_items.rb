@@ -600,20 +600,18 @@ module Vizkit
             super()
             @options = Kernel.validate_options options,:item_type => :label,:editable => true
             @task = task
+            @properties = []
             setEditable false
             if @options[:item_type] == :label
                 setText "Properties"
                 task.on_property_reachable do |property_name|
                     next if child?(property_name)
                     prop = task.property(property_name)
-                    p = proc do
-                        if prop.reachable?
-                            appendRow([PropertyItem.new(prop,@options),PropertyItem.new(prop,:item_type => :value,:editable => @options[:editable])])
-                        else
-                            Orocos::Async.event_loop.once 0.1,&p
-                        end
+                    prop.once_on_reachable do
+                        # store properties otherwise they might ge grabage collected
+                        @properties << [PropertyItem.new(prop,@options),PropertyItem.new(prop,:item_type => :value,:editable => @options[:editable])]
+                        appendRow(@properties.last)
                     end
-                    p.call
                 end
             end
         end
