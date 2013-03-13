@@ -192,10 +192,23 @@ module Vizkit
                          end
         end
 
+        def clear
+            @added_items.each do |items|
+                items[0].clear
+                items[1].clear
+            end
+            @typelib_val = nil
+            @options[:text] = "no support for shrinking containers" if @options[:item_type] != :label
+        end
+
         def update(data = nil)
-            if data != nil
-                if @typelib_val
-                    Typelib.copy(@typelib_val,Typelib.from_ruby(data,@typelib_val.class))
+            if data.class != NilClass
+                if @typelib_val.class != NilClass
+                    begin
+                        Typelib.copy(@typelib_val,Typelib.from_ruby(data,@typelib_val.class))
+                    rescue ArgumentError => e
+                        Vizkit.error "error during copying #{@typelib.class.name}: #{e}"
+                    end
                 else
                     @typelib_val = data
                     rb_sample = @typelib_val.to_ruby
@@ -207,7 +220,9 @@ module Vizkit
                     end
                 end
             end
-            raise "No data" unless @typelib_val
+            # this might be called by update after the child
+            # was delete therefore just return here
+            return unless @typelib_val
 
             # we do not need to update the childs if the item is not a label
             # otherwise check all childs
@@ -224,6 +239,7 @@ module Vizkit
                    else
                        0
                    end
+            rows = [0,rows].max
             rows = [MAX_NUMBER_OF_CHILDS,rows].min
             real_rows = @added_items.size
             # check that the items are reflecting the real data
@@ -241,13 +257,14 @@ module Vizkit
                     # we have to store the items otherwise they might get garbage collected
                     @added_items << [field_item,val_item]
                 end
-            elsif rows < real_rows
+                emitDataChanged
+            else rows < real_rows
                 # delete rows one by one because the index could be differently to
                 # the one of the typelib type
-               @added_items[rows,-1].delete_if do |item,_|
-                   removeRow(item.index.row)
-                   true
-               end
+                @added_items[rows..-1].each do |items|
+                   items[0].clear
+                   items[1].clear
+                end
             end
             # we have to update the label to reach the childs
             each_child do |item|
