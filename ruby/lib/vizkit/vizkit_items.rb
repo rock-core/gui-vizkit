@@ -102,13 +102,14 @@ module Vizkit
 
     class TypelibItem < VizkitItem
         DIRECTLY_DISPLAYED_RUBY_TYPES = [String,Numeric,Symbol,Time,TrueClass,FalseClass]
-        MAX_NUMBER_OF_CHILDS = 100
+        MAX_NUMBER_OF_CHILDS = 20
         attr_reader :typelib_val
 
         def initialize(typelib_val=nil,options = Hash.new)
             super()
             @options = Kernel.validate_options options,:text => nil,:item_type => :label,:editable => false
             @typelib_val = nil
+            @truncated = false
             setEditable false
             update typelib_val if typelib_val
         end
@@ -141,6 +142,10 @@ module Vizkit
             !!@direct_type
         end
 
+        def truncated?
+            @truncated
+        end
+
         def data(role = Qt::UserRole+1)
             # workaround memeroy leak qt-ruby
             # the returned Qt::Variant is never be deleted
@@ -153,6 +158,8 @@ module Vizkit
                                    elsif !@direct_type
                                        if modified?
                                            @typelib_val.class.name + " (modified)"
+                                       elsif truncated?
+                                           @typelib_val.class.name + " (truncated,size=#{@typelib_val.size})"
                                        else
                                            @typelib_val.class.name
                                        end
@@ -232,50 +239,70 @@ module Vizkit
             # was delete therefore just return here
             return unless @typelib_val
 
+            rows = if @direct_type
+                       0
+                   elsif @typelib_val.class.respond_to? :fields
+                       @typelib_val.class.fields.size
+                   elsif @typelib_val.respond_to? :raw_get
+                       r = @typelib_val.size
+                       if r > MAX_NUMBER_OF_CHILDS
+                           @truncated = true
+                           MAX_NUMBER_OF_CHILDS
+                       else
+                           @truncated = false
+                           r
+                       end
+                   else
+                       0
+                   end
             # we do not need to update the childs if the item is not a label
             # otherwise check all childs
             if @options[:item_type] != :label
                 emitDataChanged
                 return
             end
-            rows = if @direct_type
-                       0
-                   elsif @typelib_val.class.respond_to? :fields
-                       @typelib_val.class.fields.size
-                   elsif @typelib_val.respond_to? :raw_get
-                       @typelib_val.size
-                   else
-                       0
-                   end
-            rows = [0,rows].max
-            rows = [MAX_NUMBER_OF_CHILDS,rows].min
-            real_rows = @added_items.size
-            # check that the items are reflecting the real data
-            if rows > real_rows
-                real_rows.upto(rows-1) do |row|
-                    field = if @typelib_val.class.respond_to? :fields
-                                field = @typelib_val.class.fields[row]
-                                field.first
-                            else
-                                row
-                            end
-                    field_item = TypelibItem.new(@typelib_val.raw_get(field),:text => field.to_s,:editable => @options[:editable])
-                    val_item = TypelibItem.new(@typelib_val.raw_get(field),:item_type => :value,:editable => @options[:editable])
+
+            0.upto(rows-1) do |row|
+                field = if @typelib_val.class.respond_to? :fields
+                            field = @typelib_val.class.fields[row]
+                            field.first
+                        else
+                            row
+                        end
+                val = @typelib_val.raw_get(field)
+                if row >= @childs.size
+                    field_item = TypelibItem.new(val,:text => field.to_s,:editable => @options[:editable])
+                    val_item = TypelibItem.new(val,:item_type => :value,:editable => @options[:editable])
                     appendRow [field_item,val_item]
-                end
-                emitDataChanged
-            else rows < real_rows
-                # delete rows one by one because the index could be differently to
-                # the one of the typelib type
-                @added_items[rows..-1].each do |items|
-                   items[0].clear
-                   items[1].clear
+                else
+                    field_item,val_item = @childs[row]
+                    if field_item.typelib_val.object_id != val.object_id
+                        field_item.clear
+                        val_item.clear
+                        field_item.update val
+                        val_item.update val
+                    else
+                        field_item.update
+                        val_item.update
+                    end
                 end
             end
-            # we have to update the label to reach the childs
-            each_child do |item|
-                raise "Detect problem with garbage collection. Child #{row}/#{c} of #{text} was deleted!" unless item.is_a? TypelibItem
-                item.update
+            if rows < @childs.size
+                @childs[rows..-1].each do |items|
+                   items[0].clear
+                   items[1].clear
+                   removeRow items[0].index.row
+                end
+                @childs,elements = if rows < 1
+                                       [[],[]]
+                                   else
+                                       e = @typelib_val.instance_variable_get :@elements
+                                       puts "invalidating #{e.size-row}"
+                                       e[rows..-1].each{|o|o.invalidate}
+                                       [@childs[0..rows-1],e[0..rows-1]]
+                                   end
+                #typelib bug workaround
+                @typelib_val.instance_variable_set :@elements,elements
             end
         end
     end
