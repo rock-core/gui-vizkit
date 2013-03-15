@@ -30,7 +30,7 @@ class VizkitInfoViewer
     LOG_TAB_INDEX = 1 if !defined? LOG_TAB_INDEX
     
     # Column in event timer tree view storing the data object
-    TIMER_DATA_COLUMN = 1
+    TIMER_DATA_COLUMN = 1 if !defined? TIMER_DATA_COLUMN
 
     module Functions
         def init(parent = nil, update_frequency = 500, time_threshold = 1000)

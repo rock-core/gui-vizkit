@@ -210,5 +210,31 @@ describe "ConnectorObjects" do
             describe "on_data" do 
             end
         end
+
+        describe ConnectorProc do
+            describe "write" do 
+                it "must call the proc" do
+                    called = false
+                    p = lambda do
+                        called = true
+                    end
+                    obj = ConnectorProc.new(@@widget,p)
+                    obj.write Hash.new
+                    assert_equal true, called
+                end
+
+                it "must call the proc with arguments" do
+                    result = false
+                    result2 = false
+                    p = lambda do |a,b|
+                        result,result2 = a,b
+                    end
+                    obj = ConnectorProc.new(@@widget,p)
+                    obj.write(Hash.new,1,2)
+                    assert_equal 1, result
+                    assert_equal 2, result2
+                end
+            end
+        end
     end
 end

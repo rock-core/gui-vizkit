@@ -7,6 +7,7 @@ module Vizkit
     class VizkitItem < Qt::StandardItem
         NormalBrush = Qt::Brush.new(Qt::black)
         ModifiedBrush = Qt::Brush.new(Qt::red)
+        ErrorBrush = Qt::Brush.new(Qt::red)
 
         attr_reader :modified
         attr_reader :options
@@ -65,10 +66,10 @@ module Vizkit
         def modified!(value = true, items = [],update_parent = true)
             return if value == @modified
             @modified = value
+            items << self
             if value
                 setForeground(ModifiedBrush)
-                items << self
-                parent.modified!(value,items) if parent && update_parent
+                parent.modified!(value,items,update_parent) if parent && update_parent
             else
                 setForeground(NormalBrush)
                 each_child do |item|
@@ -100,7 +101,7 @@ module Vizkit
         def initialize(typelib_val=nil,options = Hash.new)
             super()
             @options = Kernel.validate_options options,:text => nil,:item_type => :label,:editable => false
-            @persistent_indexes = []
+            @added_items = []
             setEditable false
             update typelib_val if typelib_val
         end
@@ -129,51 +130,56 @@ module Vizkit
         end
 
         def data(role = Qt::UserRole+1)
-            if role == Qt::DisplayRole
-                return Qt::Variant.new(@options[:text]) if @options.has_key?(:text)
-                return Qt::Variant.new("no data") unless @typelib_val
-                val = if !@direct_type
-                          if modified?
-                              @typelib_val.class.name + " (modified)"
-                          else
-                              @typelib_val.class.name
-                          end
-                      else
-                          item_val = @typelib_val.to_ruby
-                          if item_val.is_a?(Float) || item_val.is_a?(Fixnum) ||
-                              item_val.is_a?(TrueClass) || item_val.is_a?(FalseClass)
-                              item_val
-                          elsif item_val.is_a? Time
-                              "#{item_val.strftime("%-d %b %Y %H:%M:%S")}.#{item_val.usec.to_s}"
-                          else
-                              item_val.to_s
-                          end
-                      end
-                Qt::Variant.new(val)
-            elsif role == Qt::EditRole
-                val = if !@direct_type
-                          nil
-                      else
-                          item_val = @typelib_val.to_ruby
-                          if item_val.is_a?(Float) || item_val.is_a?(Fixnum) ||
-                              item_val.is_a?(TrueClass) || item_val.is_a?(FalseClass)
-                              item_val
-                          elsif item_val.is_a? Time
-                              Qt::DateTime.new(item_val)
-                          elsif item_val.is_a? Symbol
-                              #move current value to the front
-                              arr = @typelib_val.class.keys.keys
-                              arr.delete(item_val.to_s)
-                              arr.insert(0,item_val.to_s)
-                              arr
-                          else
-                              item_val.to_s
-                          end
-                      end
-                Qt::Variant.new(val)
-            else
-                super
-            end
+            # workaround memeroy leak qt-ruby
+            # the returned Qt::Variant is never be deleted
+            @last_data.dispose if @last_data
+            @last_data = if role == Qt::DisplayRole
+                             val = if @options.has_key?(:text)
+                                       @options[:text]
+                                   elsif !@typelib_val
+                                       "no data"
+                                   elsif !@direct_type
+                                       if modified?
+                                           @typelib_val.class.name + " (modified)"
+                                       else
+                                           @typelib_val.class.name
+                                       end
+                                   else
+                                       item_val = @typelib_val.to_ruby
+                                       if item_val.is_a?(Float) || item_val.is_a?(Fixnum) ||
+                                           item_val.is_a?(TrueClass) || item_val.is_a?(FalseClass)
+                                           item_val
+                                       elsif item_val.is_a? Time
+                                           "#{item_val.strftime("%-d %b %Y %H:%M:%S")}.#{item_val.usec.to_s}"
+                                       else
+                                           item_val.to_s
+                                       end
+                                   end
+                             Qt::Variant.new(val)
+                         elsif role == Qt::EditRole
+                             val = if !@direct_type
+                                       nil
+                                   else
+                                       item_val = @typelib_val.to_ruby
+                                       if item_val.is_a?(Float) || item_val.is_a?(Fixnum) ||
+                                           item_val.is_a?(TrueClass) || item_val.is_a?(FalseClass)
+                                           item_val
+                                       elsif item_val.is_a? Time
+                                           Qt::DateTime.new(item_val)
+                                       elsif item_val.is_a? Symbol
+                                           #move current value to the front
+                                           arr = @typelib_val.class.keys.keys
+                                           arr.delete(item_val.to_s)
+                                           arr.insert(0,item_val.to_s)
+                                           arr
+                                       else
+                                           item_val.to_s
+                                       end
+                                   end
+                             Qt::Variant.new(val)
+                         else
+                             super
+                         end
         end
 
         def update(data = nil)
@@ -209,7 +215,7 @@ module Vizkit
                        0
                    end
             rows = [MAX_NUMBER_OF_CHILDS,rows].min
-            real_rows = @persistent_indexes.size
+            real_rows = @added_items.size
             # check that the items are reflecting the real data
             if rows > real_rows
                 real_rows.upto(rows-1) do |row|
@@ -223,13 +229,13 @@ module Vizkit
                     val_item = TypelibItem.new(@typelib_val.raw_get(field),:item_type => :value,:editable => @options[:editable])
                     appendRow [field_item,val_item]
                     # we have to store the items otherwise they might get garbage collected
-                    @persistent_indexes << [Qt::PersistentModelIndex.new(val_item.index),field_item,val_item]
+                    @added_items << [field_item,val_item]
                 end
             elsif rows < real_rows
                 # delete rows one by one because the index could be differently to
                 # the one of the typelib type
-               @persistent_indexes[rows,-1].delete_if do |index,_,_|
-                   removeRow(index.row)
+               @added_items[rows,-1].delete_if do |item,_|
+                   removeRow(item.index.row)
                    true
                end
             end
@@ -244,7 +250,7 @@ module Vizkit
     class PortItem < TypelibItem
         attr_reader :port
         def initialize(port,options = Hash.new)
-            options = Kernel.validate_options options,:item_type => :label
+            options = Kernel.validate_options options,:item_type => :label,:editable => nil
             options[:text] = port.name if options[:item_type] == :label
             @port = port
             super(nil,options)
@@ -291,11 +297,66 @@ module Vizkit
 
     class InputPortItem < PortItem
         def initialize(port,options = Hash.new)
-            super
-            listener = port.on_reachable do
-                update port.new_sample.zero!
-                listener.stop
+            options[:editable] = true unless options.has_key?(:editable)
+            options,other_options = Kernel.filter_options options,:accept => true
+	    super(port,other_options)
+            @options.merge! options
+            @sent_sample = nil
+
+            port.once_on_reachable do
+                begin
+                    update port.new_sample.zero!
+                    @sent_sample = port.new_sample.zero!
+                    setEditable @options[:editable] if @options[:item_type] != :label
+                rescue Orocos::TypekitTypeNotFound
+                    setForeground(ErrorBrush)
+                    if @options[:item_type] != :label
+                        @options[:text] = "No typekit for: #{port.type.name}"
+                    end
+                end
             end
+        end
+
+        def data(role = Qt::UserRole+1)
+            if role == Qt::EditRole && !direct_type?
+                # we have to use the one from the first row
+                # the other one has a copy which was not changed
+                i = index.sibling(row,0)
+                if i.isValid
+                    # workaround memeroy leak qt-ruby
+                    # the returned Qt::Variant is never be deleted
+                    @last_value.dispose if @last_value
+                    @last_value = Qt::Variant.from_ruby i.model.itemFromIndex(i)
+                else
+                    super
+                end
+            else
+                super
+            end
+        end
+
+        def modified!(value = true, items = [],update_parent = false)
+            return if value == @modified
+            super(value,items,false)
+            if !value
+                update @sent_sample
+            elsif direct_type?
+                write
+            end
+            if column == 0 && !direct_type?
+                i = index.sibling(row,1)
+                if i.isValid
+                    item = i.model.itemFromIndex i
+                    item.modified!(value,items)
+                end
+            end
+        end
+
+        def write(&block)
+            block ||= proc {}
+            @port.write(typelib_val,&block)
+            Typelib.copy(@sent_sample,Typelib.from_ruby(typelib_val,typelib_val.class))
+            modified!(false)
         end
     end
 
@@ -346,7 +407,7 @@ module Vizkit
             port_temp = port_from_items items
             return 0 unless port_temp
             val = Qt::MimeData.new
-            val.setText URI::Orocos.from_port(port_temp).to_s
+            val.setText URI::Orocos.from_port(port_temp).to_s if defined? URI::DEFAULT_PARSER
             val
         end
     end
@@ -365,6 +426,17 @@ module Vizkit
             end
             @listener.stop
             @stop_propagated = false
+
+            if @options[:item_type] != :label
+                @error_listener = port.on_error do |error|
+                    @options[:text] = error.to_s
+                    emitDataChanged
+                end
+                @reachable_listener = port.on_reachable do
+                    @options.delete :text
+                    emitDataChanged
+                end
+            end
         end
 
         def collapse(propagated = false)
@@ -422,6 +494,17 @@ module Vizkit
             end
             @listener.stop
             @stop_propagated = false
+
+            if @options[:item_type] != :label
+                @error_listener = property.on_error do |error|
+                    @options[:text] = error.to_s
+                    emitDataChanged
+                end
+                @reachable_listener = property.on_reachable do
+                    @options.delete :text
+                    emitDataChanged
+                end
+            end
         end
 
         def collapse(propagated = false)
@@ -444,7 +527,10 @@ module Vizkit
                 # the other one has a copy which was not changed
                 i = index.sibling(row,0)
                 if i.isValid
-                    Qt::Variant.from_ruby i.model.itemFromIndex(i)
+                    # workaround memeroy leak qt-ruby
+                    # the returned Qt::Variant is never be deleted
+                    @last_value.dispose if @last_value
+                    @last_value = Qt::Variant.from_ruby i.model.itemFromIndex(i)
                 else
                     super
                 end
@@ -506,17 +592,20 @@ module Vizkit
         end
 
         def data(role = Qt::UserRole+1)
-            if role == Qt::EditRole
-                i = index.sibling(row,0)
-                if i.isValid
-                    item = i.model.itemFromIndex i
-                    Qt::Variant.from_ruby item
-                else
-                    super
-                end
-            else
-                super
-            end
+            # workaround memeroy leak qt-ruby
+            # the returned Qt::Variant is never be deleted
+            @last_value.dispose if @last_value
+            @last_value = if role == Qt::EditRole
+                              i = index.sibling(row,0)
+                              if i.isValid
+                                  item = i.model.itemFromIndex i
+                                  Qt::Variant.from_ruby item
+                              else
+                                  super
+                              end
+                          else
+                              super
+                          end
         end
 
         def expand(propagated = false)
@@ -671,11 +760,15 @@ module Vizkit
                 appendRow([@meta,@meta2])
             else
                 setText port.type.name
+                @error_listener = port.on_error do |error|
+                    @options[:text] = error.to_s
+                    emitDataChanged
+                end
             end
         end
 
         def port_from_items(items = [])
-            Orocos::Async::TaskContextProxy.new(port.task.name,:use => port.task).port(port.name,:type => port.type)
+            port.to_proxy()
         end
     end
 

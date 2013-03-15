@@ -4,7 +4,7 @@ module Vizkit
     extend Logger::Root('Vizkit', Logger::WARN)
 
     #register mapping to find plugins for a specific object
-    PluginHelper.register_map_obj("Orocos::Async::PortProxy","Orocos::Async::SubPortProxy","Orocos::InputPort", "Orocos::OutputPort") do |port|
+    PluginHelper.register_map_obj("Orocos::Async::PortProxy","Orocos::Async::SubPortProxy") do |port|
         if port.respond_to? :type_name
             PluginHelper.normalize_obj(port.type_name)-["Object","BasicObject"]
         else
@@ -87,12 +87,10 @@ module Vizkit
     end
 
     def self.display value,options=Hash.new,&block
+        value = value.to_proxy
         options[:widget_type] = :display
         widget = widget_from_options(value,options,&block)
-        if(!widget)
-            Vizkit.warn "No widget found for displaying #{value}!"
-            return nil
-        end
+        Vizkit.warn "No widget found for displaying #{value}!" if(!widget)
         widget
     end
 
