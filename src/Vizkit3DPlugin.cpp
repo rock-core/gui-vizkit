@@ -1,8 +1,10 @@
 #include <osg/Group>
+//#include <osg/Text>
 #include <typeinfo>
 #include <cxxabi.h>
 #include "Vizkit3DPlugin.hpp"
 #include "Vizkit3DHelper.hpp"
+#include "PickHandler.hpp"
 
 using namespace vizkit;
 
@@ -32,6 +34,9 @@ VizPluginBase::VizPluginBase(QObject *parent)
     rootNode->addChild(vizNode);
     oldNodes = new osg::Group();
     rootNode->addChild(oldNodes);
+    
+    // reference counter we do not have to delete the data
+    vizNode->setUserData(new PickedUserData(this));
 }
 
 osg::ref_ptr<osg::Group> VizPluginBase::getVizNode() const 
@@ -42,6 +47,36 @@ osg::ref_ptr<osg::Group> VizPluginBase::getVizNode() const
 osg::ref_ptr<osg::Group> VizPluginBase::getRootNode() const 
 {
     return rootNode;
+}
+
+void VizPluginBase::click(float x,float y)
+{
+    QWidget *osg_widget = dynamic_cast<QWidget*>(parent()); // widget displaying the osg scene.
+    
+    if(!osg_widget)
+        return;
+    
+    QWidget *container = osg_widget; // will point to Vizkit3DWidget if there is one. contains property browser and osg widget.
+
+    // Find the container widget in the plugin's parents.
+    while(container)
+    {
+        if(container->objectName().toStdString().compare("vizkit::Vizkit3DWidget") == 0)
+        {
+            // Container found.
+            //std::cout << "grandparent: " << container->objectName().toStdString() << std::endl;
+            QPoint container_coords = osg_widget->mapTo(container, QPoint(x,y));
+            //std::cout << "grandparent coords: (" << container_coords.x() << "," << container_coords.y() << ")" << std::endl;
+            emit clicked(container_coords.x(), container_coords.y());
+            break;
+        }
+        else
+        {
+            // Try next parent.
+            container = container->parentWidget();
+        }
+    }
+
 }
 
 void VizPluginBase::setPose(const base::Vector3d& position, const base::Quaterniond& orientation)
@@ -68,7 +103,8 @@ void VizPluginBase::setPluginName(const QString &name)
 
 osg::ref_ptr<osg::Node> VizPluginBase::createMainNode()
 {
-    return new osg::Group();
+    osg::Group* main_node = new osg::Group;
+    return main_node;
 }
 
 std::vector< QDockWidget* > VizPluginBase::getDockWidgets()

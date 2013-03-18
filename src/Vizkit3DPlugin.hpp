@@ -12,15 +12,15 @@
 #include <QtPlugin>
 #include <base/eigen.h>
 
+
 namespace YAML
 {
     class Emitter;
     class Node;
 }
 
-namespace vizkit 
+namespace vizkit
 {
-
 /** 
  * Interface class for all ruby adapters of the visualization plugins
  * Ruby adapters are usefull to get incoming data via ruby.
@@ -169,6 +169,11 @@ class VizPluginBase : public QObject
 	/** @return the name of the plugin */
 	virtual const QString getPluginName() const;
         virtual void setPluginName(const QString &name);
+        
+        /**
+         * Emits signal 'clicked(float, float)' if the plugin has a Vizkit3DWidget as an ancestor.
+         */
+        virtual void click(float x,float y);
 
         /**
         * @return an instance of the ruby adapter collection.
@@ -206,6 +211,12 @@ class VizPluginBase : public QObject
         * will emitted if the plugin activity changes
         */
         void pluginActivityChanged(bool);
+        
+       /**
+        * Signals when this plugin has been clicked. x and y are in Vizkit3DWidget coordinates. 
+        * That is the container widget of the OSG viewer and the property browser.
+        */
+        void clicked(float x, float y);
 
     protected:
 	/** override this function to update the visualisation.

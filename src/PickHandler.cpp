@@ -167,8 +167,7 @@ void PickHandler::pick(const osgGA::GUIEventAdapter& ea, osgViewer::View* viewer
 	if (picker->containsIntersections())
 	{
 	    osgUtil::LineSegmentIntersector::Intersection intersection = picker->getFirstIntersection();
-	    osg::notify(osg::NOTICE)<<"Picked "<<intersection.localIntersectionPoint<<std::endl;
-
+ 
 	    osg::NodePath& nodePath = intersection.nodePath;
 	    node = (nodePath.size()>=1)?nodePath[nodePath.size()-1]:0;
 	    parent = (nodePath.size()>=2)?dynamic_cast<osg::Group*>(nodePath[nodePath.size()-2]):0;
@@ -177,8 +176,25 @@ void PickHandler::pick(const osgGA::GUIEventAdapter& ea, osgViewer::View* viewer
 	    PickedCallback *pc = dynamic_cast<PickedCallback*>(node->getUserData());
 	    if( pc )
 		pc->picked();
-        
-        setTrackedNode(viewer, node);
+	    
+	    for(int i = nodePath.size()-1; i >= 0; i--)
+	    {
+	        osg::Node *node = nodePath[i];
+	        osg::Referenced *user_data = node->getUserData();
+	        if (!user_data)
+	            continue;
+	        PickedUserData *plugin_data = dynamic_cast<PickedUserData*>(user_data);
+	        if(!plugin_data)
+	            continue;
+            
+            // Transform OSG viewport coordinates to QWidget coordinates (invert y axis)
+            float wy = (float)viewer->getCamera()->getViewport()->height() - _my;
+            float wx = _mx;
+                
+            plugin_data->getPlugin()->click(wx, wy);
+            break;
+	    }
+            // setTrackedNode(viewer, node);
 	}
     }        
 }
