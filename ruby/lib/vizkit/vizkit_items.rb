@@ -840,7 +840,7 @@ module Vizkit
 
     class LogOutputPortsItem < OutputPortsItem
         def append_port(port)
-            if port.output?
+            if port.output? && !child?(port.name)
                 appendRow([LogOutputPortItem.new(port),LogOutputPortItem.new(port,:item_type => :value)])
             else
                 raise "Port #{port} is not an output port"
