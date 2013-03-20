@@ -840,7 +840,8 @@ module Vizkit
 
     class LogOutputPortsItem < OutputPortsItem
         def append_port(port)
-            if port.output? && !child?(port.name)
+            if port.output?
+                raise ArgumentError, "port #{port.name} is already added" if child?(port.name)
                 appendRow([LogOutputPortItem.new(port),LogOutputPortItem.new(port,:item_type => :value)])
             else
                 raise "Port #{port} is not an output port"
