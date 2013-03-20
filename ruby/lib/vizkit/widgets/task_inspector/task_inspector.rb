@@ -31,6 +31,8 @@ class TaskInspector
     end
 
     module Functions
+        attr_reader :model
+
         def default_options()
             options = Hash.new
             options[:interval] = 1000   #update interval in msec
