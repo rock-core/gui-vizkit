@@ -10,6 +10,7 @@ module Vizkit
         tree_view.setDragEnabled(true)
         tree_view.connect(SIGNAL('customContextMenuRequested(const QPoint&)')) do |pos|
             index = tree_view.index_at(pos)
+            next unless index.isValid
             item = index.model.itemFromIndex index
             item.context_menu(pos,tree_view)
         end
