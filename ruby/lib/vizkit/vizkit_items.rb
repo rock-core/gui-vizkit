@@ -438,6 +438,14 @@ module Vizkit
             # do not show context menu if clicked on second column
             return if items.find{|i|i.column == 1}
             sub_path = items.reverse.map(&:text)
+            #convert string to number if possible
+            sub_path = sub_path.map do |s|
+                if s.to_i.to_s == s
+                    s.to_i
+                else
+                    s
+                end
+            end
             if !sub_path.empty?
                 item = items.last
                 port.sub_port(sub_path,item.typelib_val.class)
