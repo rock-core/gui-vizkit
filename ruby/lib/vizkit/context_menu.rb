@@ -93,6 +93,8 @@ module Vizkit
                     puts e
                 end
             end
+        rescue Orocos::NotFound
+            # the task is not reachable 
         end
 
         def self.control_widget_for(type_name,parent,pos)
