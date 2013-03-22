@@ -85,7 +85,6 @@ else
         end
         if !port_name
             task_inspector ||= Vizkit.default_loader.TaskInspector
-            task_inspector.enable_tooling=true
             task_inspector.add_task(task_name)
             task_inspector.show
         else
