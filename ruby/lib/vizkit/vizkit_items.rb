@@ -448,7 +448,7 @@ module Vizkit
             end
             if !sub_path.empty?
                 item = items.last
-                port.sub_port(sub_path,item.typelib_val.class)
+                port.sub_port(sub_path)
             else
                 port
             end
