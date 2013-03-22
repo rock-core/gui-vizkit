@@ -98,6 +98,73 @@ module Vizkit
            @childs << args.flatten
            super
         end
+
+        def from_variant(data,klass)
+            if klass == Integer || klass == Fixnum
+                data.to_i
+            elsif klass == Float
+                data.to_f
+            elsif klass == String
+                data.toString.to_s
+            elsif klass == Time
+                Time.at(data.toDateTime.toTime_t)
+            elsif klass == Symbol
+                data.toString.to_sym
+            elsif klass == (FalseClass) || klass == (TrueClass)
+                data.toBool
+            else
+                raise "cannot convert #{data.toString} to #{klass} - no conversion"
+            end
+        end
+    end
+
+    # Item which can be bind to a member variable of an object which 
+    # have simple types as possible values
+    class VizkitAccessorItem< VizkitItem
+        def initialize(obj,variable_name)
+            super()
+            variable_name = variable_name.to_sym
+            @obj = obj
+            @getter = if @obj.respond_to?(variable_name)
+                          @obj.method(variable_name)
+                      else
+                          raise ArgumentError,"no getter for #{variable_name} on obj #{obj}"
+                      end
+            name = "#{variable_name}=".to_sym
+            @setter = if @obj.respond_to?(name)
+                          setEditable true
+                          @obj.method(name)
+                      end
+        end
+
+        def data(role = Qt::UserRole+1)
+            # workaround memeroy leak qt-ruby
+            # the returned Qt::Variant is never be deleted
+            @last_data.dispose if @last_data
+            @last_data = if role == Qt::DisplayRole || role == Qt::EditRole
+                             Qt::Variant.new @getter.call
+                         else
+                             super
+                         end
+        end
+
+        def setData(data,role = Qt::UserRole+1)
+            if role == Qt::EditRole && !data.isNull && @setter
+                @setter.call(from_variant(data,@getter.call.class))
+            else
+                super
+            end
+        end
+    end
+
+    class VizkitAccessorsItem < VizkitItem
+        def add_accessor_item(obj,*names)
+            names.each do |name|
+                item = VizkitItem.new(name.to_s)
+                value = VizkitAccessorItem.new(obj,name)
+                appendRow([item,value])
+            end
+        end
     end
 
     class TypelibItem < VizkitItem
@@ -117,22 +184,7 @@ module Vizkit
         def setData(data,role = Qt::UserRole+1)
             return super if role != Qt::EditRole || data.isNull
             item_val = @typelib_val.to_ruby
-            val = if item_val.is_a? Integer
-                      data.to_i
-                  elsif item_val.is_a? Float
-                      data.to_f
-                  elsif item_val.is_a? String
-                      data.toString.to_s
-                  elsif item_val.is_a? Time
-                      Time.at(data.toDateTime.toTime_t)
-                  elsif item_val.is_a? Symbol
-                      data.toString.to_sym
-                  elsif item_val.is_a?(FalseClass) || item_val.is_a?(TrueClass)
-                      data.toBool
-                  else
-                      Vizkit.warn "cannot set #{data.toString} no conversion"
-                      nil
-                  end
+            val = from_variant data,item_val.class
             return false unless val != nil
             update(val)
             modified!
@@ -489,8 +541,11 @@ module Vizkit
             @listener = port.on_data do |data|
                 # depending on the type we receive none typelip objects
                 # therefore if have to initialize it with a new sample
-                update port.new_sample.zero! unless typelib_val
-                update data
+                begin 
+                    update port.new_sample.zero! unless typelib_val
+                    update data
+                rescue Orocos::NotFound
+                end
             end
             @listener.stop
             @stop_propagated = false
@@ -554,11 +609,14 @@ module Vizkit
             @listener = @property.on_change do |data|
                 # depending on the type we receive none typelip objects
                 # therefore if have to initialize it with a new sample
-                unless typelib_val
-                    update property.new_sample.zero!
-                    setEditable @options[:editable] if @options[:item_type] != :label
+                begin
+                    unless typelib_val
+                        update property.new_sample.zero!
+                        setEditable @options[:editable] if @options[:item_type] != :label
+                    end
+                    update data if !modified?
+                rescue Orocos::NotFound
                 end
-                update data if !modified?
             end
             @listener.stop
             @stop_propagated = false
@@ -863,6 +921,80 @@ module Vizkit
                 appendRow [@ports,@ports2]
             else
                 setText task.file_path
+            end
+        end
+    end
+
+    class ThreadPoolItem < VizkitAccessorsItem
+        def initialize(thread_pool,options = Hash.new)
+            @options = Kernel.validate_options options,:item_type => :label
+            if @options[:item_type] == :label
+                super "ThreadPool"
+                add_accessor_item(thread_pool,:min,:max,:spawned,:waiting,:auto_trim)
+            else
+                super()
+            end
+        end
+    end
+
+    class EventLoopTimerItem < VizkitAccessorsItem
+        def initialize(timer,options = Hash.new)
+            @options = Kernel.validate_options options,:item_type => :label
+            if @options[:item_type] == :label
+                super(timer.doc)
+                add_accessor_item(timer,:single_shot,:period)
+            else
+                super()
+            end
+        end
+    end
+
+    class EventLoopTimersItem < VizkitItem
+        def initialize(event_loop,options = Hash.new)
+            @options = Kernel.validate_options options,:item_type => :label
+
+            if @options[:item_type] == :label
+                super "Timers"
+                @timers = Hash.new
+                t = event_loop.every 1.0 do
+                    timers_new = Hash.new
+                    event_loop.timers.each do |timer|
+                        next if timer.single_shot?
+                        item = if @timers.has_key? timer
+                                   @timers[timer]
+                               else
+                                   label = EventLoopTimerItem.new(timer)
+                                   value = VizkitItem.new
+                                   appendRow([label,value])
+                                   label
+                               end
+                        timers_new[timer] = item
+                    end
+                    # remove old timers
+                    @timers.each_pair do |timer,item|
+                        if !timers_new.has_key? timer
+                            removeRow item.index.row
+                        end
+                    end
+                    @timers = timers_new
+                end
+                t.doc = "Debug Timer Refresh"
+            else
+                super()
+            end
+        end
+    end
+
+    class EventLoopItem < VizkitItem
+        def initialize(event_loop,options = Hash.new)
+            @options = Kernel.validate_options options,:item_type => :label
+
+            if @options[:item_type] == :label
+                super("EventLoop")
+                appendRow([EventLoopTimersItem.new(event_loop),VizkitItem.new])
+                appendRow([ThreadPoolItem.new(event_loop.thread_pool),VizkitItem.new])
+            else
+                super()
             end
         end
     end
