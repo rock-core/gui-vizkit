@@ -85,16 +85,17 @@ else
         end
         if !port_name
             task_inspector ||= Vizkit.default_loader.TaskInspector
-            task_inspector.add_task(task_name)
+            task_inspector.add_task(Orocos::Async::CORBA.proxy(task_name))
             task_inspector.show
         else
-            task = Orocos.name_service.get(task_name)
-            widget = Vizkit.default_loader.create_plugin_for(task.port(port_name),:display,nil,true)
-            if widget
-                Vizkit.connect_port_to task_name,port_name,widget
-                widget.show
-            else
-                Vizkit.warn "Cannot find a display widget for #{port_name}"
+            begin
+                task = Orocos::Async::CORBA.proxy(task_name)
+                port = task.port(port_name)
+                port.wait
+                widget = Vizkit.display port
+                Vizkit.warn "Cannot find a display widget for #{port_name}" unless widget
+            rescue Orocos::NotFound => e
+                Vizkit.warn "Skipping #{task_name}.#{port_name}: cannot be found"
             end
         end
     end

@@ -41,11 +41,11 @@ class TaskInspector
 
         def add_task(task,options=Hash.new)
             obj = if task.is_a? String
-                      Orocos::Async::TaskContextProxy.new task
+                      Orocos::Async.proxy task
                   elsif task.is_a? Orocos::Async::TaskContextProxy
                       task
                   else
-                      Orocos::Async::TaskContextProxy.new task.name
+                      Orocos::Async.proxy task.name
                   end
             item1 = Vizkit::TaskContextItem.new obj
             item2 = Vizkit::TaskContextItem.new obj,:item_type => :value
