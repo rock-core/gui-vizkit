@@ -31,22 +31,7 @@ class TaskInspector
     end
 
     module Functions
-        attr_reader :model
-
-        def default_options()
-            options = Hash.new
-            options[:interval] = 1000   #update interval in msec
-            return options
-        end
-
-        def enable_tooling=(value)
-        end
-        def enable_tooling
-        end
-
-        def treeView
-            @treeView
-        end
+        attr_reader :model,:treeView
 
         def init
             Vizkit.setup_tree_view treeView
@@ -76,11 +61,5 @@ class TaskInspector
 end
 
 Vizkit::UiLoader.register_ruby_widget("TaskInspector",TaskInspector.method(:create_widget))
-Vizkit::UiLoader.register_default_widget_for("TaskInspector",Orocos::TaskContext,:add_task)
+Vizkit::UiLoader.register_default_widget_for("TaskInspector",Orocos::Async::TaskContextProxy,:add_task)
 
-#Vizkit::UiLoader.register_default_widget_for("TaskInspector",Vizkit::TaskProxy,:config)
-#Vizkit::UiLoader.register_default_widget_for("TaskInspector",Orocos::Log::TaskContext,:config)
-#Vizkit::UiLoader.register_default_control_for("TaskInspector",Orocos::TaskContext,:config)
-#Vizkit::UiLoader.register_default_control_for("TaskInspector",Vizkit::TaskProxy,:config)
-
-#Vizkit::UiLoader.register_deprecate_plugin_clone("task_inspector","TaskInspector")
