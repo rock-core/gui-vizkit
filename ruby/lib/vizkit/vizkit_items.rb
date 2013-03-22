@@ -814,6 +814,9 @@ module Vizkit
                 name_service.on_error do |error|
                     setText error.to_s
                 end
+                name_service.on_reachable do
+                    setText "reachable"
+                end
             end
         end
     end
