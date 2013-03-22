@@ -14,9 +14,6 @@ parser = OptionParser.new do |opt|
     opt.on('--host=HOSTNAME', String, "the corba nameserver we should contact") do |name|
         Orocos::CORBA.name_service.ip = name
     end
-    opt.on('-a','--all',"Display all tasks") do
-        @show_all = true
-    end
     opt.on('--debug',"Show debug information") do
         Vizkit.logger.level = Logger::INFO
         Bundles.public_logs = true
@@ -77,7 +74,6 @@ task_inspector,widget = nil,nil
 if remaining.empty?
     task_inspector = Vizkit.default_loader.TaskInspector
     raise "Cannot find plugin TaskInspector" unless task_inspector
-    task_inspector.enable_tooling=@show_all
     task_inspector.add_name_service Orocos::Async::CORBA.name_service
     task_inspector.show
 else
