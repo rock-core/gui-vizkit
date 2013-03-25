@@ -358,10 +358,17 @@ module Vizkit
     class PortItem < TypelibItem
         attr_reader :port
         def initialize(port,options = Hash.new)
-            options = Kernel.validate_options options,:item_type => :label,:editable => nil
-            options[:text] = port.name if options[:item_type] == :label
+            options,other_options = Kernel.filter_options options,:item_type => :label,:full_name => false
+            other_options[:item_type] = options[:item_type]
+            if options[:item_type] == :label
+                other_options[:text] = if options[:full_name]
+                                           port.full_name
+                                       else
+                                           port.name
+                                       end
+            end
             @port = port
-            super(nil,options)
+            super(nil,other_options)
         end
     end
 

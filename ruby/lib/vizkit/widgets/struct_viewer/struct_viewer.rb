@@ -21,11 +21,11 @@ class StructViewer
         end
 
         def config(port,options=Hash.new)
-            return if child? port.name
-            port1,port2 = if port.output? 
-                              [Vizkit::OutputPortItem.new(port), Vizkit::OutputPortItem.new(port,:item_type => :value)]
+            return if child? port.full_name
+            port1,port2 = if port.output?
+                              [Vizkit::OutputPortItem.new(port,:full_name => true), Vizkit::OutputPortItem.new(port,:item_type => :value)]
                           elsif port.input?
-                              [Vizkit::InputPortItem.new(port), Vizkit::IntputPortItem.new(port,:item_type => :value)]
+                              [Vizkit::InputPortItem.new(port,:full_name => true), Vizkit::IntputPortItem.new(port,:item_type => :value)]
                           end
             @model.appendRow [port1,port2]
             port1.expand
