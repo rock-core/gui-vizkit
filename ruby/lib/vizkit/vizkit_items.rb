@@ -345,16 +345,12 @@ module Vizkit
                    items[1].clear
                    removeRow items[0].index.row
                 end
-                @childs,elements = if rows < 1
-                                       [[],[]]
-                                   else
-                                       e = @typelib_val.instance_variable_get :@elements
-                                       puts "invalidating #{e.size-row}"
-                                       e[rows..-1].each{|o|o.invalidate}
-                                       [@childs[0..rows-1],e[0..rows-1]]
-                                   end
-                #typelib bug workaround
-                @typelib_val.instance_variable_set :@elements,elements
+                @childs = if rows < 1
+                              []
+                          else
+                              @childs[0, rows]
+                          end
+                @typelib_val.invalidate_children
             end
         end
     end
