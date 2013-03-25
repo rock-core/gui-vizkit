@@ -249,9 +249,9 @@ class CompoundDisplayConfig
     attr_reader :task, :port, :widget, :connection_policy
     
     def initialize(task = nil, port = nil, widget = nil, policy = Hash.new)
-        @task = task # string
-        @port = port # string
-        @widget = widget # string
+        @task = task.force_encoding("utf-8") # string
+        @port = port.force_encoding("utf-8") # string
+        @widget = widget.force_encoding("utf-8") # string
         @connection_policy = policy # hash
     end
     
