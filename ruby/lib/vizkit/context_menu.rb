@@ -97,6 +97,26 @@ module Vizkit
             # the task is not reachable 
         end
 
+        # displays the menu for a given Async::Log::TaskContext
+        def self.log_task(task,parent,pos)
+            menu = Qt::Menu.new(parent)
+            action = Qt::Action.new("Export to CORBA", parent)
+            action.checkable = true
+            if task.ruby_task_context?
+                action.checked = true
+            else
+                action.connect SIGNAL("triggered(bool)") do |val|
+                    begin
+                        task.to_ruby_task_context
+                    rescue Exception => e
+                        Qt::MessageBox::warning(nil,"Export to CORBA",e.to_s)
+                    end
+                end
+            end
+            menu.add_action(action)
+            menu.exec(parent.viewport.map_to_global(pos))
+        end
+
         def self.control_widget_for(type_name,parent,pos)
             menu = Qt::Menu.new(parent)
             Vizkit.default_loader.find_all_plugin_names(:argument => type_name,:callback_type => :control,:flags => {:deprecated => false}).each do |w|

@@ -917,6 +917,7 @@ module Vizkit
     class LogTaskItem < VizkitItem
         def initialize(task,options = Hash.new)
             super()
+            @task = task
             @options = Kernel.validate_options options,:item_type => :label
             if @options[:item_type] == :label
                 setText task.name
@@ -929,6 +930,10 @@ module Vizkit
             else
                 setText task.file_path
             end
+        end
+
+        def context_menu(pos,parent_widget,items = [])
+            ContextMenu.log_task(@task,parent_widget,pos)
         end
     end
 
