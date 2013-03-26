@@ -357,6 +357,17 @@ UiLoader.register_3d_plugin_for('TrajectoryVisualization', "/base/samples/RigidB
 end
 UiLoader.register_3d_plugin_for('TrajectoryVisualization', "Eigen::Vector3", :updateTrajectory)
 UiLoader.register_3d_plugin_for('TrajectoryVisualization', "/base/geometry/Spline<3>", :updateSpline)
+UiLoader.register_3d_plugin_for('TrajectoryVisualization', "/std/vector</base/Trajectory_m>") do |obj, sample, _|
+    spline = Types::Base::Geometry::Spline3.new
+    sample.each do |tr|
+        spline.append(tr.spline)
+    end
+    obj.updateSpline(spline)
+    # if !sample.empty?
+    #     obj.updateSpline(sample[0].spline)
+    # end
+end
+UiLoader.register_3d_plugin_for('TrajectoryVisualization', "/wrappers/geometry/Spline", :updateSpline)
 UiLoader.register_3d_plugin('RigidBodyStateVisualization',"vizkit-base", 'RigidBodyStateVisualization')
 UiLoader.register_3d_plugin_for('RigidBodyStateVisualization', "/base/samples/RigidBodyState", :updateRigidBodyState)
 UiLoader.register_3d_plugin('LaserScanVisualization',"vizkit-base", 'LaserScanVisualization')
