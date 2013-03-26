@@ -789,6 +789,7 @@ module Vizkit
                     enabled false
                 end
                 task.on_reachable do
+                    setText "INITIALIZING"
                     enabled true
                 end
             end
