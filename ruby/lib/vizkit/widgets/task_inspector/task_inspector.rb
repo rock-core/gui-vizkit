@@ -56,6 +56,9 @@ class TaskInspector
             item1 = Vizkit::NameServiceItem.new service
             item2 = Vizkit::NameServiceItem.new service,:item_type => :value
             @model.appendRow([item1,item2])
+            service.once_on_task_added do |name|
+                treeView.expand(item1.index)
+            end
         end
     end
 end
