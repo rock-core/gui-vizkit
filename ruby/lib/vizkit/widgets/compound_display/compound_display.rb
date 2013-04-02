@@ -20,7 +20,7 @@ class CompoundDisplay < Qt::Widget
     # Flag whether to display the load / save configuration buttons.
     attr_reader :show_menu
     
-    def initialize(row_count = 3, col_count = 2, parent = nil)
+    def initialize(row_count = 2, col_count = 3, parent = nil)
         super(parent)
         
         @container_hash = Hash.new # holds the container widgets
