@@ -82,6 +82,7 @@ class CompoundDisplay < Qt::Widget
     # to the configuration.
     def configure(pos, task, port, widget, policy = Hash.new)
         @container_hash[pos].configure(task, port, widget, policy)
+        connect(pos)
     end
     
     # Establish a connection between the port and widget specified in config for element at +pos+.
