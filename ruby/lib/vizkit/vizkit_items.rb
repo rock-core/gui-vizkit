@@ -314,6 +314,21 @@ module Vizkit
                 return
             end
 
+            # detect resizing
+            if rows < @childs.size
+                @childs[rows..-1].each do |items|
+                   items[0].clear
+                   items[1].clear
+                   removeRow items[0].index.row
+                end
+                @childs = if rows < 1
+                              []
+                          else
+                              @childs[0, rows]
+                          end
+                @typelib_val.invalidate_children
+            end
+
             0.upto(rows-1) do |row|
                 field = if @typelib_val.class.respond_to? :fields
                             field = @typelib_val.class.fields[row]
@@ -338,19 +353,6 @@ module Vizkit
                         val_item.update
                     end
                 end
-            end
-            if rows < @childs.size
-                @childs[rows..-1].each do |items|
-                   items[0].clear
-                   items[1].clear
-                   removeRow items[0].index.row
-                end
-                @childs = if rows < 1
-                              []
-                          else
-                              @childs[0, rows]
-                          end
-                @typelib_val.invalidate_children
             end
         end
     end
