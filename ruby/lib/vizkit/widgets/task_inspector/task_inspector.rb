@@ -53,11 +53,29 @@ class TaskInspector
         end
 
         def add_name_service(service,options=Hash.new)
-            item1 = Vizkit::NameServiceItem.new service
-            item2 = Vizkit::NameServiceItem.new service,:item_type => :value
-            @model.appendRow([item1,item2])
-            service.once_on_task_added do |name|
-                treeView.expand(item1.index)
+            if service.respond_to?(:on_name_service_added) # This is a "global" name service
+                service.on_name_service_added do |new_ns|
+                    add_name_service(new_ns)
+                end
+                service.on_name_service_removed do |removed_ns|
+                    to_remove = []
+                    @model.rowCound.times do |i|
+                        item = @model.item(i, 0)
+                        if item.respond_to?(:name_service) && item.name_service = removed_ns
+                            to_remove << i
+                        end
+                    end
+                    to_remove.reverse.each do |idx|
+                        @model.takeRow(idx)
+                    end
+                end
+            else
+                item1 = Vizkit::NameServiceItem.new service
+                item2 = Vizkit::NameServiceItem.new service,:item_type => :value
+                @model.appendRow([item1,item2])
+                service.once_on_task_added do |name|
+                    treeView.expand(item1.index)
+                end
             end
         end
     end
