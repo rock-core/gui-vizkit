@@ -74,7 +74,7 @@ task_inspector,widget = nil,nil
 if remaining.empty?
     task_inspector = Vizkit.default_loader.TaskInspector
     raise "Cannot find plugin TaskInspector" unless task_inspector
-    task_inspector.add_name_service Orocos::Async::CORBA.name_service
+    task_inspector.add_name_service Orocos::Async.name_service
     task_inspector.show
 else
     remaining.each do |spec|
@@ -83,13 +83,15 @@ else
             Vizkit.warn "Wrong parameter. Ignoring empty task name"
             next
         end
+
+        task  = Orocos.name_service.get(task_name)
+        proxy = task.to_proxy
         if !port_name
             task_inspector ||= Vizkit.default_loader.TaskInspector
-            task_inspector.add_task(Orocos::Async::CORBA.proxy(task_name))
+            task_inspector.add_task(task)
             task_inspector.show
         else
             begin
-                task = Orocos::Async::CORBA.proxy(task_name)
                 port = task.port(port_name)
                 port.wait
                 widget = Vizkit.display port
