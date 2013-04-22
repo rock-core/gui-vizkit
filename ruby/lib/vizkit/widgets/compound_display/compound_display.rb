@@ -280,7 +280,8 @@ class ContainerWidget < Qt::Widget
         
         @listener = nil
         
-        @label_text = "#{@position}: No input"
+        @default_label_text = "#{@position}: No input"
+        @label_text = @default_label_text
         
         @layout = Qt::VBoxLayout.new(self)
         
@@ -332,6 +333,8 @@ class ContainerWidget < Qt::Widget
             widget.set_parent(nil)
             widget = nil
         end
+
+        set_label_text(@default_label_text)
     end
     
     def set_content_widget(widget)
