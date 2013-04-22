@@ -39,17 +39,11 @@ class CompoundDisplay < Qt::Widget
         
         ## Configure configuration import / export
         @gui.load_button.connect(SIGNAL :clicked) do
-            @config_load_path = Qt::FileDialog.getOpenFileName(self, "Open configuration file", ".", "YAML Files (*.yml *.yaml)")
-            if @config_load_path
-                configure_by_yaml(@config_load_path)
-            end
+            configure_by_yaml
         end
         
         @gui.save_button.connect(SIGNAL :clicked) do
-            @config_save_path = Qt::FileDialog.getSaveFileName(self, "Save configuration file", "./myconfig.yml", "YAML Files (*.yml *.yaml)")
-            if @config_save_path
-                save_yaml(@config_save_path)
-            end
+            save_yaml
         end
         
         @gui.disconnect_button.hide # TODO disconnect not fully working.
@@ -177,6 +171,11 @@ class CompoundDisplay < Qt::Widget
     #     connection_policy:
     #
     def configure_by_yaml(path)
+        unless path
+            # Display file explorer
+            path = Qt::FileDialog.getOpenFileName(self, "Open configuration file", ".", "YAML Files (*.yml *.yaml)")
+        end
+
         begin   
             # Load configuration from YAML
             hash = YAML.load(open(path))
@@ -218,6 +217,11 @@ class CompoundDisplay < Qt::Widget
 
     # Save complete configuration in YAML format to a file located at +path+.
     def save_yaml(path)
+        unless path
+            # Display file explorer
+            path = Qt::FileDialog.getSaveFileName(self, "Save configuration file", "./myconfig.yml", "YAML Files (*.yml *.yaml)")
+        end
+
         begin
             config_hash = Hash.new
             @container_hash.each do |pos, container|
