@@ -269,8 +269,8 @@ module Vizkit
         end
 
         def update(data = nil)
-            if data.class != NilClass
-                if @typelib_val.class != NilClass
+            if !data.nil?
+                if !@typelib_val.nil?
                     begin
                         Typelib.copy(@typelib_val,Typelib.from_ruby(data,@typelib_val.class))
                     rescue ArgumentError => e
