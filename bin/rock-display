@@ -15,7 +15,8 @@ parser = OptionParser.new do |opt|
         Orocos::CORBA.name_service.ip = name
     end
     opt.on('--debug',"Show debug information") do
-        Vizkit.logger.level = Logger::INFO
+        Vizkit.logger.level = Logger::DEBUG
+        Typelib.logger.level = Logger::DEBUG
         Bundles.public_logs = true
     end
     opt.on('-c','--clean',"Removes dangling corba tasks from the name service.") do

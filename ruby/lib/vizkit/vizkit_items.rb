@@ -275,6 +275,9 @@ module Vizkit
                         Typelib.copy(@typelib_val,Typelib.from_ruby(data,@typelib_val.class))
                     rescue ArgumentError => e
                         Vizkit.error "error during copying #{@typelib_val.class.name}: #{e}"
+                        Vizkit.log_nest(2) do
+                            Vizkit.log_pp(:debug, e.backtrace)
+                        end
                     end
                 else
                     @typelib_val = data
