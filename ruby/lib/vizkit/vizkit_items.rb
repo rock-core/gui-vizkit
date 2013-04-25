@@ -329,7 +329,6 @@ module Vizkit
                           else
                               @childs[0, rows]
                           end
-                @typelib_val.invalidate_children
             end
 
             0.upto(rows-1) do |row|
