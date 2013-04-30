@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>561</width>
-    <height>318</height>
+    <width>621</width>
+    <height>329</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -211,8 +211,8 @@
       <widget class="QLabel" name="label_4">
        <property name="geometry">
         <rect>
-         <x>290</x>
-         <y>12</y>
+         <x>285</x>
+         <y>10</y>
          <width>34</width>
          <height>16</height>
         </rect>
@@ -224,6 +224,9 @@
        </property>
        <property name="text">
         <string>Index:</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
        </property>
       </widget>
       <widget class="QLabel" name="label_2">
@@ -243,13 +246,16 @@
        <property name="text">
         <string>Time:</string>
        </property>
+       <property name="alignment">
+        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+       </property>
       </widget>
       <widget class="QLabel" name="timestamp">
        <property name="geometry">
         <rect>
-         <x>330</x>
+         <x>328</x>
          <y>30</y>
-         <width>151</width>
+         <width>252</width>
          <height>16</height>
         </rect>
        </property>
@@ -275,96 +281,13 @@
         <string/>
        </property>
       </widget>
-      <widget class="QLCDNumber" name="lcd_speed">
-       <property name="geometry">
-        <rect>
-         <x>440</x>
-         <y>10</y>
-         <width>41</width>
-         <height>18</height>
-        </rect>
-       </property>
-       <property name="maximumSize">
-        <size>
-         <width>220</width>
-         <height>18</height>
-        </size>
-       </property>
-       <property name="palette">
-        <palette>
-         <active>
-          <colorrole role="Button">
-           <brush brushstyle="SolidPattern">
-            <color alpha="255">
-             <red>0</red>
-             <green>0</green>
-             <blue>0</blue>
-            </color>
-           </brush>
-          </colorrole>
-          <colorrole role="Light">
-           <brush brushstyle="SolidPattern">
-            <color alpha="255">
-             <red>0</red>
-             <green>0</green>
-             <blue>0</blue>
-            </color>
-           </brush>
-          </colorrole>
-         </active>
-         <inactive>
-          <colorrole role="Button">
-           <brush brushstyle="SolidPattern">
-            <color alpha="255">
-             <red>0</red>
-             <green>0</green>
-             <blue>0</blue>
-            </color>
-           </brush>
-          </colorrole>
-          <colorrole role="Light">
-           <brush brushstyle="SolidPattern">
-            <color alpha="255">
-             <red>0</red>
-             <green>0</green>
-             <blue>0</blue>
-            </color>
-           </brush>
-          </colorrole>
-         </inactive>
-         <disabled>
-          <colorrole role="Button">
-           <brush brushstyle="SolidPattern">
-            <color alpha="255">
-             <red>0</red>
-             <green>0</green>
-             <blue>0</blue>
-            </color>
-           </brush>
-          </colorrole>
-          <colorrole role="Light">
-           <brush brushstyle="SolidPattern">
-            <color alpha="255">
-             <red>0</red>
-             <green>0</green>
-             <blue>0</blue>
-            </color>
-           </brush>
-          </colorrole>
-         </disabled>
-        </palette>
-       </property>
-       <property name="numDigits">
-        <number>3</number>
-       </property>
-      </widget>
       <widget class="QLabel" name="label_3">
        <property name="geometry">
         <rect>
-         <x>403</x>
-         <y>13</y>
-         <width>34</width>
-         <height>16</height>
+         <x>401</x>
+         <y>7</y>
+         <width>41</width>
+         <height>21</height>
         </rect>
        </property>
        <property name="font">
@@ -373,7 +296,11 @@
         </font>
        </property>
        <property name="text">
-        <string>Speed:</string>
+        <string>Current
+speed:</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
        </property>
       </widget>
       <widget class="QLabel" name="label_5">
@@ -393,13 +320,16 @@
        <property name="text">
         <string>Port:</string>
        </property>
+       <property name="alignment">
+        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+       </property>
       </widget>
       <widget class="QLabel" name="last_port">
        <property name="geometry">
         <rect>
-         <x>330</x>
+         <x>328</x>
          <y>50</y>
-         <width>151</width>
+         <width>252</width>
          <height>16</height>
         </rect>
        </property>
@@ -428,7 +358,7 @@
       <widget class="QSpinBox" name="index">
        <property name="geometry">
         <rect>
-         <x>329</x>
+         <x>327</x>
          <y>8</y>
          <width>71</width>
          <height>21</height>
@@ -447,6 +377,73 @@
         <number>99999999</number>
        </property>
        <property name="singleStep">
+        <number>1</number>
+       </property>
+      </widget>
+      <widget class="QLabel" name="dcurrent_speed">
+       <property name="geometry">
+        <rect>
+         <x>445</x>
+         <y>10</y>
+         <width>41</width>
+         <height>16</height>
+        </rect>
+       </property>
+       <property name="maximumSize">
+        <size>
+         <width>252</width>
+         <height>250</height>
+        </size>
+       </property>
+       <property name="font">
+        <font>
+         <family>Ubuntu</family>
+         <pointsize>11</pointsize>
+         <italic>false</italic>
+        </font>
+       </property>
+       <property name="frameShape">
+        <enum>QFrame::Box</enum>
+       </property>
+       <property name="lineWidth">
+        <number>1</number>
+       </property>
+       <property name="text">
+        <string/>
+       </property>
+      </widget>
+      <widget class="QLabel" name="label_6">
+       <property name="geometry">
+        <rect>
+         <x>492</x>
+         <y>7</y>
+         <width>34</width>
+         <height>21</height>
+        </rect>
+       </property>
+       <property name="font">
+        <font>
+         <pointsize>8</pointsize>
+        </font>
+       </property>
+       <property name="text">
+        <string>Target
+speed:</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+       </property>
+      </widget>
+      <widget class="QDoubleSpinBox" name="dtarget_speed">
+       <property name="geometry">
+        <rect>
+         <x>530</x>
+         <y>8</y>
+         <width>62</width>
+         <height>21</height>
+        </rect>
+       </property>
+       <property name="decimals">
         <number>1</number>
        </property>
       </widget>
@@ -484,7 +481,7 @@
       <property name="margin_lr" stdset="0">
        <number>5</number>
       </property>
-      <property name="backgroundColor" stdset="0">
+      <property name="backgroundColor">
        <color>
         <red>240</red>
         <green>235</green>
@@ -522,7 +519,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>561</width>
+     <width>621</width>
      <height>25</height>
     </rect>
    </property>

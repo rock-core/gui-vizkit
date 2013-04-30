@@ -62,6 +62,7 @@ class LogControl
       bback.connect(SIGNAL('clicked()'),self,:bback_clicked)
       bstop.connect(SIGNAL('clicked()'),self,:bstop_clicked)
       bplay.connect(SIGNAL('clicked()'),self,:bplay_clicked)
+      dtarget_speed.connect(SIGNAL('valueChanged(double)'),self,:update_target_speed)
     
       timeline.connect(SIGNAL("endMarkerReleased(int)")) do |value| 
         index.setValue(@log_replay.sample_index)
@@ -166,7 +167,8 @@ class LogControl
     def display_info
       if @log_replay.time
         timestamp.text = @log_replay.time.strftime("%a %D %H:%M:%S." + "%06d" % @log_replay.time.usec)
-        lcd_speed.display(@log_replay.actual_speed)
+        dcurrent_speed.text = ( '%.1f' % @log_replay.actual_speed )
+        dtarget_speed.value = ( @log_replay.speed )
         index.setValue(@log_replay.sample_index)
         last_port.text = @log_replay.current_port.full_name if @log_replay.current_port
       else
@@ -197,14 +199,16 @@ class LogControl
       @log_replay.seek(timeline.getSliderIndex)
       display_info
     end
+
+    def update_target_speed value
+        @log_replay.speed = value.to_f
+        @log_replay.reset_time_sync
+    end
     
     def bnext_clicked
       return if !@log_replay.replay?
       if playing?
-        #we cannot use speed= here because this would overwrite the 
-        #user_speed which is the default speed for replay
-        @log_replay.speed = @log_replay.speed*2
-        @log_replay.reset_time_sync
+	update_target_speed @log_replay.speed*2
       else
         if actionNone.isChecked
             @log_replay.step(false)
@@ -229,8 +233,7 @@ class LogControl
     def bback_clicked 
       return if !@log_replay.replay?
       if playing?
-        @log_replay.speed = @log_replay.speed*0.5
-        @log_replay.reset_time_sync
+	update_target_speed @log_replay.speed*0.5
       else
         if actionNone.isChecked
             @log_replay.step_back
