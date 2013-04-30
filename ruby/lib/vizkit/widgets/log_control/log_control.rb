@@ -147,14 +147,23 @@ class LogControl
 
       @last_info = Time.now
       @timer = Orocos::Async.event_loop.every 0.001,false do
-          if @log_replay.sync_step?
-              bplay_clicked if @log_replay.sample_index >= timeline.getEndMarkerIndex || !@log_replay.step
-              if Time.now - @last_info > 0.1
-                  @last_info = Time.now
-                  display_info      #we do not display the info every step to save cpu time
-                  timeline.setSliderIndex(@log_replay.sample_index)
-              end
-          end
+	  # make sure we only process steps for around 10ms
+	  # and dont block here
+	  update_time = Time.now
+	  while @log_replay.sync_step? && Time.now - update_time < 0.01
+	      sample = @log_replay.step
+	      if @log_replay.sample_index >= timeline.getEndMarkerIndex || !sample
+		  bplay_clicked
+		  break
+	      end
+	  end
+
+	  #we do not display the info every step to save cpu time
+	  if Time.now - @last_info > 0.1
+	      @last_info = Time.now
+	      display_info      
+	      timeline.setSliderIndex(@log_replay.sample_index)
+	  end
       end
       @timer.doc = "Log::Replay"
       display_info
