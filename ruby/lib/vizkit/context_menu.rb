@@ -90,7 +90,7 @@ module Vizkit
                         Vizkit.control task.__task,:widget => action.text
                     end
                 rescue RuntimeError => e 
-                    puts e
+                    Qt::MessageBox::warning(nil,"Failed",e.message)
                 end
             end
         rescue Orocos::NotFound
