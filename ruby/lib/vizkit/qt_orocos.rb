@@ -84,7 +84,10 @@ module Orocos
                               else
                                   [obj,nil]
                               end
+            connect_to_widget(widget,callback,options,&block)
+        end
 
+        def connect_to_widget(widget,callback,options,&block)
             if(widget.respond_to?(:config) && widget.config(self,options,&block) == :do_not_connect)
                 Vizkit.info "Disable auto connect for widget #{widget} because config returned :do_not_connect"
                 nil
@@ -127,6 +130,22 @@ module Orocos
     end
 
     class Async::PortProxy
+        include QtOrocos
+    end
+
+    class Async::TaskContextProxy
+        alias :org_connect_to :connect_to
+        remove_method :connect_to
+
+        def connect_to_widget(widget,callback,options,&block)
+            if(widget.respond_to?(:config) && widget.config(self,options,&block) == :do_not_connect)
+                Vizkit.info "Disable auto connect for widget #{widget} because config returned :do_not_connect"
+                nil
+            else
+                callback ||= QtOrocos.callback_for(widget,self.class.name)
+                callback.call(self,options)
+            end
+        end
         include QtOrocos
     end
 
