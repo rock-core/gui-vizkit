@@ -46,6 +46,7 @@ module Vizkit
                 menu.add_action(Qt::Action.new("Reset Exception", parent))
             elsif task.running?
                 menu.add_action(Qt::Action.new("Stop Task", parent))
+                menu.add_action(Qt::Action.new("Reconfigure Task", parent))
             elsif task.ready?
                 menu.add_action(Qt::Action.new("Cleanup Task", parent))
                 menu.add_action(Qt::Action.new("Start Task", parent))
@@ -73,6 +74,11 @@ module Vizkit
                         task.reset_exception
                     elsif action.text == "Cleanup Task"
                         task.cleanup
+                    elsif action.text == "Reconfigure Task"
+                        task.stop
+                        task.cleanup
+                        task.configure
+                        task.start
                     elsif action.text == "Load Configuration"
                         file_name = Qt::FileDialog::getOpenFileName(nil,"Load Config",File.expand_path("."),"Config Files (*.yml)")
                         task.apply_conf_file(file_name) if file_name
