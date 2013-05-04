@@ -137,6 +137,8 @@ module Vizkit
                     UiLoader.current_file_path = path
                     begin 
                         Kernel.load path if !path.match(/.ui.rb$/) && ::File.extname(path) ==".rb"
+                    rescue Interrupt
+                        raise
                     rescue Exception => e
                         Vizkit.warn "Cannot load vizkit extension #{path}"
                         Vizkit.warn e.message
