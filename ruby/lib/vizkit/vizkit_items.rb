@@ -513,6 +513,19 @@ module Vizkit
             end
         end
 
+        def set_widget_title(widget, name)
+            # It seems that #respond_to? is broken on QtRuby. try the different
+            # methods one by one ...
+            begin
+                widget.window_title = "#{name} #{widget.window_title}"
+            rescue NoMethodError
+                begin
+                    widget.setPluginName("#{name} #{widget.getPluginName}")
+                rescue NoMethodError
+                end
+            end
+        end
+
         def context_menu(pos,parent_widget,items = [])
             if port.output?
                 port_temp = port_from_items items
@@ -520,6 +533,7 @@ module Vizkit
                 widget_name = Vizkit::ContextMenu.widget_for(port_temp.type_name,parent_widget,pos)
                 if widget_name
                     widget = Vizkit.display(port_temp, :widget => widget_name)
+                    set_widget_title(widget, port_temp.full_name)
                     widget.setAttribute(Qt::WA_QuitOnClose, false) if widget.is_a? Qt::Widget
                 end
             else
