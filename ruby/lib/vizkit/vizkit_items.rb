@@ -828,7 +828,7 @@ module Vizkit
             if @options[:item_type] == :label
                 setText name_service.name
                 name_service.on_task_added do |task_name|
-                    task = Orocos::Async.proxy task_name
+                    task = name_service.proxy task_name
                     next if child?(task.basename)
                     appendRow([TaskContextItem.new(task,:basename => true),TaskContextItem.new(task,:item_type => :value)])
                 end
