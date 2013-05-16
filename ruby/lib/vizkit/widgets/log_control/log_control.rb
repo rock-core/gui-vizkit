@@ -147,23 +147,27 @@ class LogControl
 
       @last_info = Time.now
       @timer = Orocos::Async.event_loop.every 0.001,false do
-	  # make sure we only process steps for around 10ms
-	  # and dont block here
-	  update_time = Time.now
-	  while @log_replay.sync_step? && Time.now - update_time < 0.01
-	      sample = @log_replay.step
-	      if @log_replay.sample_index >= timeline.getEndMarkerIndex || !sample
-		  bplay_clicked
-		  break
-	      end
-	  end
-
-	  #we do not display the info every step to save cpu time
-	  if Time.now - @last_info > 0.1
-	      @last_info = Time.now
-	      display_info      
-	      timeline.setSliderIndex(@log_replay.sample_index)
-	  end
+          begin
+              # make sure we only process steps for around 10ms
+              # and dont block here
+              update_time = Time.now
+              while @log_replay.sync_step? && Time.now - update_time < 0.01
+                  sample = @log_replay.step
+                  if @log_replay.sample_index >= timeline.getEndMarkerIndex || !sample
+                      bplay_clicked
+                      break
+                  end
+              end
+          rescue Exception => e
+              bplay_clicked
+              Qt::MessageBox::warning(nil,"Corrupted Log-File",e.to_s)
+          end
+          #we do not display the info every step to save cpu time
+          if Time.now - @last_info > 0.1
+              @last_info = Time.now
+              display_info      
+              timeline.setSliderIndex(@log_replay.sample_index)
+          end
       end
       @timer.doc = "Log::Replay"
       display_info
@@ -207,6 +211,8 @@ class LogControl
       @log_replay.reset_time_sync
       @log_replay.seek(timeline.getSliderIndex)
       display_info
+      rescue Exception => e
+          Qt::MessageBox::warning(nil,"Corrupted Log-File",e.to_s)
     end
 
     def update_target_speed value
