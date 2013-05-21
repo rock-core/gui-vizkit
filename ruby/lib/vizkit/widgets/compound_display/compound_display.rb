@@ -185,7 +185,7 @@ class CompoundDisplay < Qt::Widget
             
             if hash.keys.max > @container_hash.keys.max
                 error = "Higher position value in file than #containers available."
-            elsif hash.size < @container_hash.size
+            elsif hash.size > @container_hash.size
                 error = "More config items in file than containers available."
             end
             
