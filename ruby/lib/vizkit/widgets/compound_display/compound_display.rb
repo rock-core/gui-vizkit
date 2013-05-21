@@ -170,7 +170,7 @@ class CompoundDisplay < Qt::Widget
     #     widget: ImageView
     #     connection_policy:
     #
-    def configure_by_yaml(path)
+    def configure_by_yaml(path=nil)
         unless path
             # Display file explorer
             path = Qt::FileDialog.getOpenFileName(self, "Open configuration file", ".", "YAML Files (*.yml *.yaml)")
@@ -216,7 +216,7 @@ class CompoundDisplay < Qt::Widget
     #end
 
     # Save complete configuration in YAML format to a file located at +path+.
-    def save_yaml(path)
+    def save_yaml(path=nil)
         unless path
             # Display file explorer
             path = Qt::FileDialog.getSaveFileName(self, "Save configuration file", "./myconfig.yml", "YAML Files (*.yml *.yaml)")
