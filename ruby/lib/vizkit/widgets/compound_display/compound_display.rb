@@ -344,9 +344,9 @@ class ContainerWidget < Qt::Widget
         task = Orocos::Async.proxy(@config.task)
         port = task.port(@config.port)
         
-        @listener.stop if @listener
         @listener = port.connect_to(widget) if task && port #Vizkit.connect_port_to(config.task, config.port, widget, config.connection_policy) #port.connect_to(widget) if task && port
         set_label_text("#{@config.task}.#{@config.port}")
+        
         @disconnected = false
         @disconnect_button.setEnabled(true)
     end
