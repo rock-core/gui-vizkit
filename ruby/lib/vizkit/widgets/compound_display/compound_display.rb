@@ -285,15 +285,38 @@ class ContainerWidget < Qt::Widget
         @default_label_text = "#{@position}: No input"
         @label_text = @default_label_text
         
+        # Vertical Layout containing label bar and container widget
         @layout = Qt::VBoxLayout.new(self)
+        
+        # Horizontal layout for the label bar
+        @label_layout = Qt::HBoxLayout.new(self)
         
         @label = Qt::Label.new(label_text)
         @label.set_size_policy(Qt::SizePolicy::Preferred, Qt::SizePolicy::Maximum)
-        @layout.add_widget(@label)
+        
+        @disconnect_button = Qt::PushButton.new("X")
+        @disconnect_button.set_minimum_width(20)
+        @disconnect_button.set_maximum_width(20)
+        @disconnect_button.set_size_policy(Qt::SizePolicy::Maximum, Qt::SizePolicy::Fixed)
+        @disconnect_button.setEnabled(false)
+        
+        @label_layout.add_widget(@label)
+        @label_layout.add_widget(@disconnect_button)
+        
+        @layout.add_layout(@label_layout)
+        
         
         set_accept_drops(true)
 
         set_content_widget(content_widget) if content_widget
+        
+        @disconnect_button.connect(SIGNAL :clicked) do
+            if @disconnected
+                connect
+            else
+                disconnect
+            end
+        end
         
         self
     end
@@ -325,6 +348,7 @@ class ContainerWidget < Qt::Widget
         @listener = port.connect_to(widget) if task && port #Vizkit.connect_port_to(config.task, config.port, widget, config.connection_policy) #port.connect_to(widget) if task && port
         set_label_text("#{@config.task}.#{@config.port}")
         @disconnected = false
+        @disconnect_button.setEnabled(true)
     end
     
     def disconnect
