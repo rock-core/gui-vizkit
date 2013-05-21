@@ -337,14 +337,36 @@ class ContainerWidget < Qt::Widget
         
         disconnect
 
-        puts "Connecting #{@config.task}.#{@config.port} to #{@config.widget}"
+        puts "Trying to connect #{@config.task}.#{@config.port} to #{@config.widget} ..."
         widget = Vizkit.default_loader.create_plugin(@config.widget)
         set_content_widget(widget)
 
         task = Orocos::Async.proxy(@config.task)
         port = task.port(@config.port)
         
-        @listener = port.connect_to(widget) if task && port #Vizkit.connect_port_to(config.task, config.port, widget, config.connection_policy) #port.connect_to(widget) if task && port
+        port.on_reachable do
+            puts "#{task.name}.#{port.name} is reachable"
+            begin
+                @listener = port.connect_to(widget) if task && port
+                puts "#{task.name}.#{port.name} connected."
+            rescue Exception => e
+                puts "Connection of #{@config.task}.#{@config.port} to #{@config.widget} failed!"
+                Kernel.raise e
+                @disconnected = false
+                #port.disconnect_all # TODO possible?
+                disconnect
+                return
+            end
+        end
+        port.on_unreachable do
+            puts "#{task.name}.#{port.name} is unreachable."
+            #port.disconnect_all # TODO possible?
+            
+            #@disconnected = false
+            #disconnect # TODO detatches widgets .....
+        end
+        
+        #Vizkit.connect_port_to(config.task, config.port, widget, config.connection_policy) #port.connect_to(widget) if task && port
         set_label_text("#{@config.task}.#{@config.port}")
         
         @disconnected = false
