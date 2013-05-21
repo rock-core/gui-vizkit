@@ -358,9 +358,10 @@ class ContainerWidget < Qt::Widget
         @listener = nil
         
         # Destroy old widget if any
-        if widget = @content_widget
-            widget.set_parent(nil)
-            widget = nil
+        if @content_widget
+            @layout.remove_widget(@content_widget)
+            @content_widget.set_parent(nil)
+            @content_widget = nil
         end
 
         set_label_text(@default_label_text)
