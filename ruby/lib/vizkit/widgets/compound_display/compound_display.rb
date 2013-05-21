@@ -280,6 +280,8 @@ class ContainerWidget < Qt::Widget
         
         @listener = nil
         
+        @disconnected = true
+        
         @default_label_text = "#{@position}: No input"
         @label_text = @default_label_text
         
@@ -322,9 +324,12 @@ class ContainerWidget < Qt::Widget
         @listener.stop if @listener
         @listener = port.connect_to(widget) if task && port #Vizkit.connect_port_to(config.task, config.port, widget, config.connection_policy) #port.connect_to(widget) if task && port
         set_label_text("#{@config.task}.#{@config.port}")
+        @disconnected = false
     end
     
     def disconnect
+        return if @disconnected
+        
         @listener.stop if @listener
         @listener = nil
         
@@ -335,6 +340,7 @@ class ContainerWidget < Qt::Widget
         end
 
         set_label_text(@default_label_text)
+        @disconnected = true
     end
     
     def set_content_widget(widget)
