@@ -181,7 +181,6 @@ class LogControl
       if @log_replay.time
         timestamp.text = @log_replay.time.strftime("%a %D %H:%M:%S." + "%06d" % @log_replay.time.usec)
         dcurrent_speed.text = ( '%.1f' % @log_replay.actual_speed )
-        dtarget_speed.value = ( @log_replay.speed )
         index.setValue(@log_replay.sample_index)
         last_port.text = @log_replay.current_port.full_name if @log_replay.current_port
       else
@@ -216,8 +215,11 @@ class LogControl
     end
 
     def update_target_speed value
-        @log_replay.speed = value.to_f
-        @log_replay.reset_time_sync
+        if value >= 0.001 && value != @log_replay.speed
+            @log_replay.speed = value.to_f
+            @log_replay.reset_time_sync
+            dtarget_speed.value = @log_replay.speed if value != dtarget_speed.value
+        end
     end
     
     def bnext_clicked

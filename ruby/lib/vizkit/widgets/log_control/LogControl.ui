@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>621</width>
-    <height>329</height>
+    <width>612</width>
+    <height>332</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -211,7 +211,7 @@
       <widget class="QLabel" name="label_4">
        <property name="geometry">
         <rect>
-         <x>285</x>
+         <x>280</x>
          <y>10</y>
          <width>34</width>
          <height>16</height>
@@ -232,7 +232,7 @@
       <widget class="QLabel" name="label_2">
        <property name="geometry">
         <rect>
-         <x>290</x>
+         <x>282</x>
          <y>30</y>
          <width>28</width>
          <height>16</height>
@@ -253,15 +253,15 @@
       <widget class="QLabel" name="timestamp">
        <property name="geometry">
         <rect>
-         <x>328</x>
+         <x>320</x>
          <y>30</y>
-         <width>252</width>
+         <width>270</width>
          <height>16</height>
         </rect>
        </property>
        <property name="maximumSize">
         <size>
-         <width>252</width>
+         <width>270</width>
          <height>250</height>
         </size>
        </property>
@@ -284,7 +284,7 @@
       <widget class="QLabel" name="label_3">
        <property name="geometry">
         <rect>
-         <x>401</x>
+         <x>393</x>
          <y>7</y>
          <width>41</width>
          <height>21</height>
@@ -306,7 +306,7 @@ speed:</string>
       <widget class="QLabel" name="label_5">
        <property name="geometry">
         <rect>
-         <x>290</x>
+         <x>280</x>
          <y>50</y>
          <width>28</width>
          <height>16</height>
@@ -327,15 +327,15 @@ speed:</string>
       <widget class="QLabel" name="last_port">
        <property name="geometry">
         <rect>
-         <x>328</x>
+         <x>320</x>
          <y>50</y>
-         <width>252</width>
+         <width>270</width>
          <height>16</height>
         </rect>
        </property>
        <property name="maximumSize">
         <size>
-         <width>252</width>
+         <width>270</width>
          <height>250</height>
         </size>
        </property>
@@ -358,7 +358,7 @@ speed:</string>
       <widget class="QSpinBox" name="index">
        <property name="geometry">
         <rect>
-         <x>327</x>
+         <x>319</x>
          <y>8</y>
          <width>71</width>
          <height>21</height>
@@ -383,7 +383,7 @@ speed:</string>
       <widget class="QLabel" name="dcurrent_speed">
        <property name="geometry">
         <rect>
-         <x>445</x>
+         <x>437</x>
          <y>10</y>
          <width>41</width>
          <height>16</height>
@@ -415,7 +415,7 @@ speed:</string>
       <widget class="QLabel" name="label_6">
        <property name="geometry">
         <rect>
-         <x>492</x>
+         <x>480</x>
          <y>7</y>
          <width>34</width>
          <height>21</height>
@@ -437,14 +437,23 @@ speed:</string>
       <widget class="QDoubleSpinBox" name="dtarget_speed">
        <property name="geometry">
         <rect>
-         <x>530</x>
+         <x>520</x>
          <y>8</y>
-         <width>62</width>
+         <width>71</width>
          <height>21</height>
         </rect>
        </property>
        <property name="decimals">
-        <number>1</number>
+        <number>3</number>
+       </property>
+       <property name="minimum">
+        <double>0.001000000000000</double>
+       </property>
+       <property name="maximum">
+        <double>999.999000000000024</double>
+       </property>
+       <property name="value">
+        <double>1.000000000000000</double>
        </property>
       </widget>
      </widget>
@@ -519,7 +528,7 @@ speed:</string>
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>621</width>
+     <width>612</width>
      <height>25</height>
     </rect>
    </property>
