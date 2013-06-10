@@ -24,7 +24,6 @@ class CompoundDisplay < Qt::Widget
         super(parent)
         
         @container_hash = Hash.new # holds the container widgets
-        @grid_dimensions_set = false
         
         set_window_title("CompoundDisplay")
         resize(600,400)
@@ -298,10 +297,10 @@ class ContainerWidget < Qt::Widget
         end
         
         # Define label palettes
-        @standard_palette = Qt::Palette.new#(@label.palette)
+        @standard_palette = Qt::Palette.new
         @label.set_palette(@standard_palette)
         
-        @unreachable_palette = Qt::Palette.new#@standard_palette.dup
+        @unreachable_palette = Qt::Palette.new
         @unreachable_palette.set_color(Qt::Palette::Window, Qt::Color.new(223, 49, 49)); # red
 
         self
@@ -331,7 +330,7 @@ class ContainerWidget < Qt::Widget
         port = task.port(@config.port)
         
         port.on_reachable do
-            puts "#{task.name}.#{port.name} is reachable"
+            Vizkit.warn "#{task.name}.#{port.name} is reachable"
             begin
                 @listener = port.connect_to(widget) if task && port
                 puts "#{task.name}.#{port.name} connected."
@@ -341,24 +340,17 @@ class ContainerWidget < Qt::Widget
                 puts "Connection of #{@config.task}.#{@config.port} to #{@config.widget} failed!"
                 Kernel.raise e
                 @disconnected = false
-                #port.disconnect_all # TODO possible?
                 disconnect
                 return
             end
         end
         port.on_unreachable do
-            puts "#{task.name}.#{port.name} is unreachable."
+            Vizkit.warn "#{task.name}.#{port.name} is unreachable."
             
             @label.set_palette(@unreachable_palette)
             @label.set_tool_tip("Port is unreachable.")
-            
-            #port.disconnect_all # TODO possible?
-            
-            #@disconnected = false
-            #disconnect # TODO detatches widgets .....
         end
         
-        #Vizkit.connect_port_to(config.task, config.port, widget, config.connection_policy) #port.connect_to(widget) if task && port
         set_label_text("#{@config.task}.#{@config.port}")
         
         @disconnected = false
