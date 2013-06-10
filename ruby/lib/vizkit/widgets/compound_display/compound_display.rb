@@ -24,7 +24,7 @@ class CompoundDisplay < Qt::Widget
         super(parent)
         
         @container_hash = Hash.new # holds the container widgets
-        @disconnected = false
+        @grid_dimensions_set = false
         
         set_window_title("CompoundDisplay")
         resize(600,400)
@@ -45,28 +45,6 @@ class CompoundDisplay < Qt::Widget
         @gui.save_button.connect(SIGNAL :clicked) do
             save_yaml
         end
-        
-        @gui.disconnect_button.hide # TODO disconnect not fully working.
-        #@gui.disconnect_button.connect(SIGNAL :clicked) do
-        #    if not @disconnected
-        #        @config_hash.each do |idx,_|
-        #            disconnect idx
-        #        end
-        #        @gui.disconnect_button.set_text("Reconnect all")
-        #        @disconnected = true
-        #    else
-        #        @config_hash.each do |idx,_|
-        #            connect idx
-        #        end
-        #        @gui.disconnect_button.set_text("Disconnect all")
-        #        @disconnected = false
-        #    end
-        #end
-        
-        @gui.reduce_rows_button.hide # TODO grid resize at runtime is buggy
-        #@gui.reduce_rows_button.connect(SIGNAL :clicked) do
-        #    set_grid_dimensions(row_count-1, col_count)
-        #end
         
         self
     end

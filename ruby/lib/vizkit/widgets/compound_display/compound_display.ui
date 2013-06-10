@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>654</width>
+    <width>678</width>
     <height>341</height>
    </rect>
   </property>
@@ -63,20 +63,6 @@
           </property>
           <property name="text">
            <string>Save Configuration</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QPushButton" name="disconnect_button">
-          <property name="text">
-           <string>Disconnect all</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QPushButton" name="reduce_rows_button">
-          <property name="text">
-           <string>Reduce rows</string>
           </property>
          </widget>
         </item>
