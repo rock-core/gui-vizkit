@@ -271,6 +271,7 @@ class ContainerWidget < Qt::Widget
         
         @label = Qt::Label.new(label_text)
         @label.set_size_policy(Qt::SizePolicy::Preferred, Qt::SizePolicy::Maximum)
+        @label.set_auto_fill_background(true)
         
         @disconnect_button = Qt::PushButton.new("X")
         @disconnect_button.set_minimum_width(20)
@@ -296,6 +297,13 @@ class ContainerWidget < Qt::Widget
             end
         end
         
+        # Define label palettes
+        @standard_palette = Qt::Palette.new#(@label.palette)
+        @label.set_palette(@standard_palette)
+        
+        @unreachable_palette = Qt::Palette.new#@standard_palette.dup
+        @unreachable_palette.set_color(Qt::Palette::Window, Qt::Color.new(223, 49, 49)); # red
+
         self
     end
     
@@ -327,6 +335,8 @@ class ContainerWidget < Qt::Widget
             begin
                 @listener = port.connect_to(widget) if task && port
                 puts "#{task.name}.#{port.name} connected."
+                @label.set_palette(@standard_palette)
+                @label.set_tool_tip("")
             rescue Exception => e
                 puts "Connection of #{@config.task}.#{@config.port} to #{@config.widget} failed!"
                 Kernel.raise e
@@ -338,6 +348,10 @@ class ContainerWidget < Qt::Widget
         end
         port.on_unreachable do
             puts "#{task.name}.#{port.name} is unreachable."
+            
+            @label.set_palette(@unreachable_palette)
+            @label.set_tool_tip("Port is unreachable.")
+            
             #port.disconnect_all # TODO possible?
             
             #@disconnected = false
@@ -365,6 +379,7 @@ class ContainerWidget < Qt::Widget
         end
 
         set_label_text(@default_label_text)
+        
         @disconnected = true
     end
     
