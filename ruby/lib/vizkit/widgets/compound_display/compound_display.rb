@@ -36,6 +36,9 @@ class CompoundDisplay < Qt::Widget
         
         set_grid_dimensions(row_count, col_count)
         
+        # Allow user to set grid dimensions once
+        @grid_dimensions_set = false
+        
         ## Configure configuration import / export
         @gui.load_button.connect(SIGNAL :clicked) do
             configure_by_yaml
@@ -86,7 +89,15 @@ class CompoundDisplay < Qt::Widget
     #   6 7 8
     #  
     def set_grid_dimensions(row_count, col_count)
-
+        
+        # Forbid resetting grid dimensions
+        if @grid_dimensions_set
+            Vizkit.warn("Error: You may set grid dimensions before configuration only.")
+            return
+        else
+            @grid_dimensions_set = true
+        end
+        
         # Remove all parent widgets from grid.
         child = nil
         while(child = @grid.take_at(0)) 
