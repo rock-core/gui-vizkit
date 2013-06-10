@@ -55,7 +55,8 @@ module Vizkit
                     widget
                 end
                 spec.extension(VizkitCXXExtension)
-                spec.cplusplus_name(class_name).extension(block)
+                spec.extension(block)
+                spec.cplusplus_name(class_name)
                 spec.on_create do |plugin|
                     plugin.initialize_vizkit_extension
                 end
@@ -171,6 +172,7 @@ module Vizkit
                 raise "Plugin #{plugin_name} is already registered!"
             end
             spec = PluginSpec.new(plugin_name).creation_method(creation_method,&block).plugin_type(plugin_type)
+            spec.extension(PluginConnections)
             raise "Cannot register plugin. Plugin name is nil" unless spec.plugin_name
             add_plugin_spec(spec)
         end

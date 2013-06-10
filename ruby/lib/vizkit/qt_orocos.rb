@@ -50,16 +50,6 @@ module Orocos
     end
 
     module QtOrocos
-
-        def self.callback_for(widget,type_name)
-            fct = widget.plugin_spec.find_callback!  :argument => type_name, :callback_type => :display
-            if fct
-                fct.bind(widget)
-            else
-                raise Orocos::NotFound,"#{widget.class_name} has no callback for #{type_name}"
-            end
-        end
-
         def connect_to(obj=nil, options = Hash.new,&block)
             obj,options = if obj.is_a?(Hash)
                                  [nil,obj]
@@ -84,26 +74,12 @@ module Orocos
                               else
                                   [obj,nil]
                               end
-            connect_to_widget(widget,callback,options,&block)
-        end
-
-        def connect_to_widget(widget,callback,options,&block)
-            if(widget.respond_to?(:config) && widget.config(self,options,&block) == :do_not_connect)
-                Vizkit.info "Disable auto connect for widget #{widget} because config returned :do_not_connect"
-                nil
+            if widget.respond_to?(:connection_manager)
+                widget.connection_manager.connect_to(self,callback,options,&block)
             else
-                callback ||= if type?
-                                 QtOrocos.callback_for(widget,type_name)
-                             else
-                                 listener = on_reachable do
-                                     callback = QtOrocos.callback_for(widget,type_name)
-                                     listener.stop
-                                 end
-                             end
-                Vizkit.info "Create new Connection for #{name} and #{widget || callback}"
-                on_data do |data|
-                    callback.call data,full_name
-                end
+                raise ArgumentError,"Cannot connect port #{full_name} to #{obj}. No connection manager found!" if obj
+                # use global connection manager
+                Vizkit.connection_manager.connect_to(self,callback,options,&block)
             end
         end
     end
@@ -137,12 +113,21 @@ module Orocos
         alias :org_connect_to :connect_to
         remove_method :connect_to
 
+        def callback_for(widget)
+            fct = widget.plugin_spec.find_callback!  :argument => self.class.name, :callback_type => :display
+            if fct
+                fct.bind(widget)
+            else
+                raise Orocos::NotFound,"#{widget.class_name} has no callback for #{self.class.name}"
+            end
+        end
+
         def connect_to_widget(widget,callback,options,&block)
             if(widget.respond_to?(:config) && widget.config(self,options,&block) == :do_not_connect)
                 Vizkit.info "Disable auto connect for widget #{widget} because config returned :do_not_connect"
                 nil
             else
-                callback ||= QtOrocos.callback_for(widget,self.class.name)
+                callback ||= callback_for(widget)
                 callback.call(self,options)
             end
         end

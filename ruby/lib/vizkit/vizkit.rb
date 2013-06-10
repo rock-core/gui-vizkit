@@ -241,4 +241,10 @@ module Vizkit
             Orocos.initialize
         end
     end
+
+    #returns an instance to a connection manager handing the connections
+    #between code blocks and orocos ports
+    def self.connection_manager
+        @connection_manager ||= Vizkit::ConnectionManager.new($qApp)
+    end
 end
