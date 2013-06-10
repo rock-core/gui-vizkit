@@ -32,11 +32,18 @@ class TaskInspector
 
     module Functions
         attr_reader :model,:treeView
-
         def init
             Vizkit.setup_tree_view treeView
             @model = Vizkit::VizkitItemModel.new
             treeView.setModel @model
+            @filter = ::Vizkit::PluginConnections::ShowHideEventFilter.new
+            installEventFilter(@filter)
+            @filter.on_show do
+                treeView.reconnect
+            end
+            @filter.on_hide do
+                treeView.disconnect
+            end
         end
 
         def add_task(task,options=Hash.new)

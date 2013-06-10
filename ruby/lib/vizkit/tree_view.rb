@@ -29,6 +29,34 @@ module Vizkit
                 item.expand if item.is_a? VizkitItem
             end
         end
+
+        def tree_view.disconnected_items
+            @disconnected_items ||= []
+        end
+
+        # stops all listeners 
+        # this should be called if the tree view is no longer visible
+        #
+        # warning: if the tree view is still visible it will reconnect
+        # if a item gets expanded
+        def tree_view.disconnect
+            0.upto(model.rowCount-1) do |i|
+                index = model.index(i,0)
+                next unless isExpanded(index)
+                model.item(i,0).collapse
+                model.item(i,1).collapse
+                disconnected_items << i
+            end
+        end
+
+        # restores the state before disconnect was called
+        def tree_view.reconnect
+            disconnected_items.each do |i|
+                model.item(i,0).expand
+                model.item(i,1).expand
+            end
+            disconnected_items.clear
+        end
     end
 
     # editor for enum values

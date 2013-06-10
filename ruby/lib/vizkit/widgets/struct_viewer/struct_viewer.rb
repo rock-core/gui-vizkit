@@ -7,6 +7,20 @@ class StructViewer
             Vizkit.setup_tree_view treeView
             @model = Vizkit::VizkitItemModel.new
             treeView.setModel @model
+            @filter = ::Vizkit::PluginConnections::ShowHideEventFilter.new
+            installEventFilter(@filter)
+            @filter.on_show do
+                0.upto(@model.rowCount-1) do |i|
+                    @model.item(i,0).listener.start
+                    @model.item(i,1).listener.start
+                end
+            end
+            @filter.on_hide do
+                0.upto(@model.rowCount-1) do |i|
+                    @model.item(i,0).listener.stop
+                    @model.item(i,1).listener.stop
+                end
+            end
         end
 
         def update(data, port_name)
