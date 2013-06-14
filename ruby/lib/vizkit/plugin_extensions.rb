@@ -115,9 +115,16 @@ module Vizkit
             end
 
             def connect_to(port,callback=nil,options=Hash.new,&block)
+                raise_error = lambda do 
+                    raise "no callback found for#{port} and #{@owner}"
+                end
                 if(@owner.respond_to?(:config) && @owner.config(port,options,&block) == :do_not_connect)
                     Vizkit.info "Disable auto connect for #{@owner} because config returned :do_not_connect"
                     nil
+                elsif !port.respond_to?(:type?)
+                    callback ||= callback_for(port)
+                    raise_error.call unless callback
+                    callback.call(port)
                 else
                     callback ||= if port.type?
                                      callback_for(port.type_name)
@@ -125,9 +132,11 @@ module Vizkit
                                      listener = port.once_on_reachable do
                                          @on_reachable_listeners[port].delete listener
                                          callback = callback_for(port.type_name)
+                                         raise_error.call unless callback
                                      end
                                      @on_reachable_listeners[port] << listener
                                  end
+                    raise_error.call unless callback
                     Vizkit.info "Create new Connection for #{port.name} and #{@owner || callback}"
                     listener = port.on_data do |data|
                         callback.call data,port.full_name
