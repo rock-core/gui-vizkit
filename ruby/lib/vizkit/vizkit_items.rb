@@ -1028,4 +1028,42 @@ module Vizkit
             end
         end
     end
+    
+    class SyskitActionItem < VizkitItem
+        def initialize(action, options = Hash.new)
+            @action = action
+            @options = Kernel.validate_options options, :item_type => :label
+            
+            if @options[:item_type] == :label
+                super("Syskit Actions")
+            else
+                super(@action.name)
+            end
+        end
+        
+        #def data(role = Qt::UserRole + 1)
+        #    return Qt::Variant.new(@action.name)
+        #end
+       
+       def context_menu(pos,parent_widget,items = [])
+           items << "Horst"
+           items << "Karl"
+           items << "Peter"
+           
+           result = ContextMenu.basic(items,parent_widget,pos)
+           puts "Got result: #{result}"
+       end
+       
+       def running?
+           return @action.running
+       end
+       # 
+       # def start
+       # 
+       # end
+       # 
+       # def stop
+       # 
+       # end
+    end
 end
