@@ -1,6 +1,23 @@
 
 module Vizkit
     class ContextMenu
+        # Simple context menu to choose from a list of elements.
+        # Elements have to be strings.
+        # 
+        # TODO use this method as generalization in all following special cases. 
+        def self.basic(elements, parent, pos)
+            Kernel.raise "No array submitted." unless elements.respond_to? "each"
+            
+            menu = Qt::Menu.new(parent)
+            
+            elements.each do |e|
+                Kernel.raise "No conversion to a string from: #{e}" unless e.respond_to? "to_s"
+                menu.add_action(Qt::Action.new(e.to_s, parent))
+            end
+            action = menu.exec(parent.viewport.map_to_global(pos))
+            action.text if action
+        end
+        
         def self.widget_for(type_name,parent,pos)
             menu = Qt::Menu.new(parent)
 
