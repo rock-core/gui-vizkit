@@ -1045,25 +1045,27 @@ module Vizkit
         #    return Qt::Variant.new(@action.name)
         #end
        
-       def context_menu(pos,parent_widget,items = [])
-           items << "Horst"
-           items << "Karl"
-           items << "Peter"
-           
-           result = ContextMenu.basic(items,parent_widget,pos)
-           puts "Got result: #{result}"
-       end
+        def context_menu(pos,parent_widget,items = [])
+            if running?
+                items << "Stop"
+            else
+                items << "Start"
+            end
+            
+            result = ContextMenu.basic(items,parent_widget,pos)
+            puts "Got result: #{result}"
+        end
        
-       def running?
-           return @action.running
-       end
-       # 
-       # def start
-       # 
-       # end
-       # 
-       # def stop
-       # 
-       # end
+        def running?
+            return @action.running
+        end
+        # 
+        # def start
+        # 
+        # end
+        # 
+        # def stop
+        # 
+        # end
     end
 end
