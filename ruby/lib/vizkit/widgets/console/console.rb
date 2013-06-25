@@ -2,8 +2,10 @@ require "stringio"
 
 module Vizkit 
     class ConsoleContext
-        HELP = { nil => "Type 'methods' to see all available methods.\nType 'help('method_name')' for help.",
+        if !defined? HELP
+            HELP = { nil => "Type 'methods' to see all available methods.\nType 'help('method_name')' for help.",
                 "clear" => "clears the console output."}
+        end
 
         def initialize(console)
             @console = console
@@ -41,12 +43,14 @@ module Vizkit
 
     class Console < Qt::TextEdit
         #used to flag QTextBlocks
-        COMMAND_TYPE = 1
-        ERROR_TYPE = 2
-        STDOUT_TYPE = 3
-        STDERR_TYPE = 4
-        RESULT_TYPE = 5
-        TEXT_TYPE = 6
+        if !defined? COMMAND_TYPE
+            COMMAND_TYPE = 1
+            ERROR_TYPE = 2
+            STDOUT_TYPE = 3
+            STDERR_TYPE = 4
+            RESULT_TYPE = 5
+            TEXT_TYPE = 6
+        end
 
         def self.colors 
             if !@colors
@@ -97,7 +101,7 @@ module Vizkit
         end
 
         def add_obj(obj,options)
-            name = obj.name.downcase
+            name = obj.basename.downcase
             if @console_context.respond_to? name
                 insert_text "Cannot Add #{name}(#{obj.class.name}). #{name} is already defined."
             else
@@ -328,9 +332,9 @@ module Vizkit
     end
     UiLoader.register_ruby_widget("Console",Console.method(:new))
     UiLoader.register_widget_for("Console",Orocos::TaskContext,:add_obj)
-    UiLoader.register_widget_for("Console",Vizkit::TaskProxy,:add_obj)
+#    UiLoader.register_widget_for("Console",Vizkit::TaskProxy,:add_obj)
     UiLoader.register_widget_for("Console",Orocos::Log::TaskContext,:add_obj)
     UiLoader.register_widget_for("Console",Typelib::Type,:add_dynamic_obj)
     UiLoader.register_control_for("Console",Orocos::TaskContext,:add_obj)
-    UiLoader.register_control_for("Console",Vizkit::TaskProxy,:add_obj)
+#    UiLoader.register_control_for("Console",Vizkit::TaskProxy,:add_obj)
 end

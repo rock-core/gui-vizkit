@@ -1,13 +1,12 @@
 #! /usr/bin/env ruby
 
 require 'vizkit'
-require 'orocos'
 require 'optparse'
 require 'rock/bundle'
 
 @show_all = false
 @proxy = true
-@clean = true
+@clean = false
 Bundles.public_logs = false 
 
 parser = OptionParser.new do |opt|
@@ -15,18 +14,13 @@ parser = OptionParser.new do |opt|
     opt.on('--host=HOSTNAME', String, "the corba nameserver we should contact") do |name|
         Orocos::CORBA.name_service.ip = name
     end
-    opt.on('-a','--all',"Display all tasks") do
-        @show_all = true
-    end
-    opt.on('--noproxy',"Do not use a port proxy between the task inspector and other orocos tasks") do
-        @proxy = false
-    end
     opt.on('--debug',"Show debug information") do
-        Vizkit.logger.level = Logger::INFO
+        Vizkit.logger.level = Logger::DEBUG
+        Typelib.logger.level = Logger::DEBUG
         Bundles.public_logs = true
     end
-    opt.on('-c','--noclean',"Does not removes dangling corba tasks from the name service.") do
-        @clean = false
+    opt.on('-c','--clean',"Removes dangling corba tasks from the name service.") do
+        @clean = true
     end
     opt.on('-M', '--maxMessageSize SIZE', 
            'maximum size of a message transported via corba (e.g. 2145, 3K, 3.5M, 0.1G)') do |size|
@@ -66,11 +60,7 @@ def corba_error
     Vizkit.error "Try to reset the nameserver and to disable all virtual network interfaces."
 end
 
-
 remaining = parser.parse(ARGV)
-task_inspector = nil
-widget = nil
-
 begin
     Bundles.initialize
     Orocos::CORBA.cleanup if @clean
@@ -81,64 +71,38 @@ rescue Orocos::CORBAError => e
     exit 1
 end
 
-Orocos::CORBA.call_timeout = 3000
-Orocos::CORBA.connect_timeout = 500
-Vizkit::ReaderWriterProxy.default_policy[:port_proxy] = nil if !@proxy
-
+task_inspector,widget = nil,nil
 if remaining.empty?
-  @timer = Qt::Timer.new
-  task_inspector ||= Vizkit.default_loader.TaskInspector
-  raise "Cannot find plugin TaskInspector" unless task_inspector
-
-  task_inspector.enable_tooling=@show_all
-
-  #check for new tasks every 5 seconds 
-  refresh = Proc.new do 
-      begin
-      Orocos.name_service.names.each do |name|
-          task_inspector.config(name,:cleanup_nameservice =>@clean)
-      end
-      rescue Orocos::CORBAError => e
-          Vizkit.error "Corba name service is not answering. Cannot update display. ... keep on trying "
-          Vizkit.error ""
-          corba_error
-      end
-  end
-  @timer.connect SIGNAL('timeout()') do 
-      refresh.call
-  end
-  refresh.call
-  @timer.start(5000)
+    task_inspector = Vizkit.default_loader.TaskInspector
+    raise "Cannot find plugin TaskInspector" unless task_inspector
+    task_inspector.add_name_service Orocos::Async.name_service
+    task_inspector.show
 else
     remaining.each do |spec|
         task_name, port_name = spec.split('.')
-        if !task_name 
+        if !task_name
             Vizkit.warn "Wrong parameter. Ignoring empty task name"
-            next 
+            next
         end
-        task = Vizkit::TaskProxy.new task_name
-        if !port_name || !task.ping
+
+        task  = Orocos.name_service.get(task_name)
+        proxy = task.to_proxy
+        if !port_name
             task_inspector ||= Vizkit.default_loader.TaskInspector
-            task_inspector.enable_tooling= true
-            task_inspector.config(task)
+            task_inspector.add_task(task)
+            task_inspector.show
         else
-            widget = Vizkit.default_loader.create_plugin_for(task.port(port_name),:display,nil,true)
-            if widget
-                Vizkit.connect_port_to task_name,port_name,widget
-                widget.show
-            else
-                Vizkit.warn "Cannot find a display widget for #{port_name}"
+            begin
+                port = task.port(port_name)
+                port.wait
+                widget = Vizkit.display port
+                Vizkit.warn "Cannot find a display widget for #{port_name}" unless widget
+            rescue Orocos::NotFound => e
+                Vizkit.warn "Skipping #{task_name}.#{port_name}: cannot be found"
             end
         end
     end
-    task_inspector.force_update = true if task_inspector
-end
-
-if task_inspector
-    task_inspector.show
-elsif !widget
-    puts parser
-    exit 1
+    exit 1 if !widget && !task_inspector
 end
 Vizkit.exec
 

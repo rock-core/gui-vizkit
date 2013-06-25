@@ -1,14 +1,15 @@
 #!/usr/bin/env ruby
 
-require 'orocos'
-require 'orocos/log'
-require File.join('vizkit','plugin_accessor.rb')
-require File.join('vizkit','typelib_qt_adapter')
-require File.join('vizkit','plugin')
-require File.join('vizkit','plugin_extensions')
-require File.join('vizkit','uiloader')
-require File.join('vizkit','vizkit')
-require File.join('vizkit','task_proxy')
-require File.join('vizkit','oqconnection')
-require File.join('vizkit','port_proxy_extensions')
-require File.join('vizkit','timer')
+require 'orocos/async'
+
+require 'vizkit/plugin_accessor'
+require 'vizkit/typelib_qt_adapter'
+require 'vizkit/uiloader'
+require 'vizkit/plugin'
+require 'vizkit/connection_manager'
+require 'vizkit/plugin_extensions'
+require 'vizkit/vizkit'
+require 'vizkit/timer'
+require 'vizkit/connector_objects'
+require 'vizkit/widget_task_connector'
+require 'vizkit/qt_orocos'

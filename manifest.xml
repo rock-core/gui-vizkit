@@ -8,6 +8,7 @@
 	DFKI/robotik@dfki.de
     </copyright>
     <depend package="base/types" />
+    <depend package="base/scripts" />
     <depend package="external/yaml-cpp" />
     <depend package="drivers/transformer" />
     <!-- needed for the vizkit/Ruby parts -->
@@ -18,6 +19,6 @@
     <depend package="drivers/orogen/transformer" optional="1"/>
     <depend package="tools/orocos.rb" optional="1" />
     <depend package="qtruby" optional="1"/>
-    <depend package="tools/port_proxy" optional="1"/>
     <depend package="gui/rock_widget_collection"  optional="1"/>
+    <depend package="drivers/controldev"  optional="1"/>
 </package>

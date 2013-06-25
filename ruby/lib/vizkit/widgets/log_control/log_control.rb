@@ -1,4 +1,5 @@
-require File.join(File.dirname(__FILE__), '../..', 'tree_modeler.rb')
+require "vizkit/tree_view"
+require 'orocos/async/log/task_context'
 
 class LogControl
   class StopAllTimer < Qt::Object
@@ -61,6 +62,7 @@ class LogControl
       bback.connect(SIGNAL('clicked()'),self,:bback_clicked)
       bstop.connect(SIGNAL('clicked()'),self,:bstop_clicked)
       bplay.connect(SIGNAL('clicked()'),self,:bplay_clicked)
+      dtarget_speed.connect(SIGNAL('valueChanged(double)'),self,:update_target_speed)
     
       timeline.connect(SIGNAL("endMarkerReleased(int)")) do |value| 
         index.setValue(@log_replay.sample_index)
@@ -90,19 +92,23 @@ class LogControl
       index.setMaximum(@log_replay.size-1)
 
       #add replayed streams to tree view 
-      @tree_view = Vizkit::TreeModeler.new(treeView)
-      @tree_view.model.setHorizontalHeaderLabels(["Replayed Tasks","Information"])
-      @tree_view.update(@log_replay, nil)
-      treeView.resizeColumnToContents(0)
+      Vizkit.setup_tree_view treeView
+      model = Vizkit::VizkitItemModel.new
+      treeView.setModel model
+      model.setHorizontalHeaderLabels ["Replayed Tasks","Information"]
 
-      treeView.connect(SIGNAL('expanded(const QModelIndex)')) do 
-        @tree_view.update(@log_replay, nil)
+
+      @global_meta_data = Vizkit::GlobalMetaItem.new @log_replay
+      @global_meta_data2 = Vizkit::GlobalMetaItem.new @log_replay,:item_type => :value
+      model.appendRow [@global_meta_data, @global_meta_data2]
+      @log_replay.tasks.each do |task|
+          next unless task.used?
+          task = task.to_async
+          @item1 = Vizkit::LogTaskItem.new(task)
+          @item2 = Vizkit::LogTaskItem.new(task,:item_type => :value) 
+          model.appendRow [@item1, @item2]
       end
-
-
-
-      @brush = Qt::Brush.new(Qt::Color.new(200,200,200))
-      @widget_hash = Hash.new
+      treeView.resizeColumnToContents(0)
 
       actionNone.connect(SIGNAL("triggered(bool)")) do |checked|
         if checked 
@@ -139,23 +145,47 @@ class LogControl
         setEnabled(true)
       end
 
+      @last_info = Time.now
+      @timer = Orocos::Async.event_loop.every 0.001,false do
+          begin
+              # make sure we only process steps for around 10ms
+              # and dont block here
+              update_time = Time.now
+              while @log_replay.sync_step? && Time.now - update_time < 0.01
+                  sample = @log_replay.step
+                  if @log_replay.sample_index >= timeline.getEndMarkerIndex || !sample
+                      bplay_clicked
+                      break
+                  end
+              end
+          rescue Exception => e
+              bplay_clicked
+              Qt::MessageBox::warning(nil,"Corrupted Log-File",e.to_s)
+          end
+          #we do not display the info every step to save cpu time
+          if Time.now - @last_info > 0.1
+              @last_info = Time.now
+              display_info      
+              timeline.setSliderIndex(@log_replay.sample_index)
+          end
+      end
+      @timer.doc = "Log::Replay"
       display_info
     end
 
     def playing?
-      @replay_on
+        @timer.running?
     end
 
     def display_info
       if @log_replay.time
         timestamp.text = @log_replay.time.strftime("%a %D %H:%M:%S." + "%06d" % @log_replay.time.usec)
-        lcd_speed.display(@log_replay.actual_speed)
+        dcurrent_speed.text = ( '%.1f' % @log_replay.actual_speed )
         index.setValue(@log_replay.sample_index)
         last_port.text = @log_replay.current_port.full_name if @log_replay.current_port
       else
         timestamp.text = "0"
       end
-      @tree_view.update(@log_replay, nil)
     end
 
     def speed=(double)
@@ -169,21 +199,10 @@ class LogControl
     end
 
     def auto_replay
-      @replay_on = true
       @log_replay.reset_time_sync
-      last_warn = Time.now 
-      last_info = Time.now
-      while @replay_on 
-       bplay_clicked if @log_replay.sample_index >= timeline.getEndMarkerIndex || !@log_replay.step(true)
-       if Time.now - last_info > 0.1
-        last_info = Time.now
-        $qApp.processEvents
-        display_info      #we do not display the info every step to save cpu time
-        timeline.setSliderIndex(@log_replay.sample_index)
-       end
-      end
-      display_info        #display info --> otherwise info is maybe not up to date
+      display_info              #display info --> otherwise info is maybe not up to date
       timeline.setSliderIndex(@log_replay.sample_index)
+      @timer.start
     end
 
     def slider_released(index)
@@ -191,26 +210,37 @@ class LogControl
       @log_replay.reset_time_sync
       @log_replay.seek(timeline.getSliderIndex)
       display_info
+      rescue Exception => e
+          Qt::MessageBox::warning(nil,"Corrupted Log-File",e.to_s)
+    end
+
+    def update_target_speed value
+        if value >= 0.001 && value != @log_replay.speed
+            @log_replay.speed = value.to_f
+            @log_replay.reset_time_sync
+            dtarget_speed.value = @log_replay.speed if value != dtarget_speed.value
+        end
     end
     
     def bnext_clicked
       return if !@log_replay.replay?
-      if @replay_on
-        #we cannot use speed= here because this would overwrite the 
-        #user_speed which is the default speed for replay
-        @log_replay.speed = @log_replay.speed*2
-        @log_replay.reset_time_sync
+      if playing?
+	update_target_speed @log_replay.speed*2
       else
         if actionNone.isChecked
             @log_replay.step(false)
         else
-            port = @log_replay.current_port 
-            begin
-                @log_replay.step(false)
-                timeline.setSliderIndex(@log_replay.sample_index)
-                display_info
-                $qApp.processEvents
-            end while port && port != @log_replay.current_port
+            @port ||= @log_replay.current_port
+            @log_replay.step(false)
+            timeline.setSliderIndex(@log_replay.sample_index)
+            display_info
+            if @port != @log_replay.current_port
+                Orocos::Async.event_loop.once do 
+                    bnext_clicked
+                end
+            else
+                @port = nil
+            end
         end
       end
       timeline.setSliderIndex(@log_replay.sample_index)
@@ -219,29 +249,32 @@ class LogControl
 
     def bback_clicked 
       return if !@log_replay.replay?
-      if @replay_on
-        @log_replay.speed = @log_replay.speed*0.5
-        @log_replay.reset_time_sync
+      if playing?
+	update_target_speed @log_replay.speed*0.5
       else
         if actionNone.isChecked
             @log_replay.step_back
         else
-            port = @log_replay.current_port 
-            begin
-                @log_replay.step_back
-                timeline.setSliderIndex(@log_replay.sample_index)
-                display_info
-                $qApp.processEvents
-            end while port && port != @log_replay.current_port
+            @port ||= @log_replay.current_port
+            @log_replay.step_back
+            timeline.setSliderIndex(@log_replay.sample_index)
+            display_info
+            if @port != @log_replay.current_port
+                Orocos::Async.event_loop.once do 
+                    bback_clicked
+                end
+            else
+                @port = nil
+            end
         end
       end
       timeline.setSliderIndex(@log_replay.sample_index)
       display_info
     end
     
-    def bstop_clicked 
+    def bstop_clicked
        return if !@log_replay.replay?
-       bplay_clicked if @replay_on
+       bplay_clicked if playing?
        if timeline.getStartMarkerIndex == 0
          @log_replay.rewind
        else
@@ -261,11 +294,11 @@ class LogControl
         slider_released(index)
     end
     
-    def bplay_clicked 
+    def bplay_clicked
       return if !@log_replay.replay?
-      if @replay_on
+      if playing?
         bplay.icon = @play_icon
-        @replay_on = false
+        @timer.cancel
       else
         bplay.icon = @pause_icon
         if(timeline.getSliderIndex < timeline.getStartMarkerIndex || timeline.getSliderIndex >= timeline.getEndMarkerIndex)

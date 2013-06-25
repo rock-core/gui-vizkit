@@ -52,9 +52,12 @@ using Qt::WindowFlags;
 
 #include <iostream>
 
+
+#ifdef USE_3DMOUSE
 namespace vizkit{
-    class ConnexionHID;
+    class ConnexionPlugin;
 };
+#endif
 
 class QOSGWidget : public QWidget
 {
@@ -73,9 +76,11 @@ public:
         return _gw.get(); 
     }
 
-    vizkit::ConnexionHID* getConnexionHID() const{
+#ifdef USE_3DMOUSE
+    vizkit::ConnexionPlugin* getConnexionHID() const{
         return chid;
     }
+#endif
 
 protected:
 
@@ -86,7 +91,9 @@ protected:
     // Looking at the doc for Qt::WA_PaintOnScreen this may be appropriate.
     // Didn't seem to help or hurt.
     virtual QPaintEngine *paintEngine() { return 0; }
-    vizkit::ConnexionHID *chid;
+#ifdef USE_3DMOUSE
+    vizkit::ConnexionPlugin *chid;
+#endif
 
 // Grabbed this from Martin Beckett:
 //  The GraphincsWindowWin32 implementation already takes care of message handling.

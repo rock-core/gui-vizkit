@@ -20,7 +20,9 @@
 #include "QOSGWidget.hpp"
 #include "CompositeViewerQOSG.hpp"
 #include "MouseManipulationManipulator.h"
-#include "ConnexionHID.h"
+#ifdef USE_3DMOUSE
+#include "ConnexionPlugin.h"
+#endif
 
 #if defined(WIN32) && !defined(__CYGWIN__)
 #include <osgViewer/api/Win32/GraphicsWindowWin32>
@@ -392,7 +394,6 @@ ViewQOSG::ViewQOSG( QWidget *parent )
       QOSGWidget( parent ),
       _daw(parent)
 {
-    chid = 0;
 
 // OSG
     setGeometry( 0, 0, parent->width(), parent->height() );
@@ -407,14 +408,19 @@ ViewQOSG::ViewQOSG( QWidget *parent )
     getCamera()->setViewport(
         new osg::Viewport( 0, 0, parent->width(), parent->height()));
 
-    chid = new vizkit::ConnexionHID();
-    
+#ifdef USE_3DMOUSE
+    chid = 0;
+    chid = new vizkit::ConnexionPlugin();
+#endif
+
     setupManipulatorAndHandler( *this );
     
+#ifdef USE_3DMOUSE
     if(chid->init(getCameraManipulator())){
         osgGA::KeySwitchMatrixManipulator *keyswitchManipulator = dynamic_cast<osgGA::KeySwitchMatrixManipulator*>(getCameraManipulator());
         keyswitchManipulator->selectMatrixManipulator( 5 );
     }
+#endif
 
 } // ViewQOSG::ViewQOSG
 
@@ -557,9 +563,10 @@ void setupManipulatorAndHandler(osgViewer::View & view
             '4', "Terrain", new osgGA::TerrainManipulator() );
 	keyswitchManipulator->addMatrixManipulator( 
 	    '5', "MouseManipulator", new enview::MouseManipulationManipulator(view.getCamera()) );
+#ifdef USE_3DMOUSE
         if(v && v->getConnexionHID())
 	    keyswitchManipulator->addMatrixManipulator( '6', "NullManipulator",  v->getConnexionHID());
-
+#endif
 	// set the default to be the terrain manipulator as it matches enview best at the moment
         keyswitchManipulator->selectMatrixManipulator( 3 );
 
