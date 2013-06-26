@@ -232,6 +232,17 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "Plot2d" do
         update(sample[1],name+"_y")
         update(sample[2],name+"_z")
     end
+    
+    def update_vectorXd(sample,name)
+        if (sample.size() == 1)
+            update(sample[0], name)
+        else
+            rename_graph(name,name+"[0]")
+            for i in (0..sample.size()-1)
+                update(sample[i], name+"["+i.to_s()+"]")
+            end
+        end
+    end
    
     def set_x_axis_scale(start,stop)
         getXAxis.setRange(start,stop)
@@ -295,4 +306,5 @@ Vizkit::UiLoader.register_widget_for("Plot2d","/base/samples/LaserScan",:update_
 Vizkit::UiLoader.register_widget_for("Plot2d",vector_types,:update_vector)
 Vizkit::UiLoader.register_widget_for("Plot2d","/base/Angle",:update_angle)
 Vizkit::UiLoader.register_widget_for("Plot2d","/base/Vector3d",:update_vector3d)
+Vizkit::UiLoader.register_widget_for("Plot2d","/base/VectorXd",:update_vectorXd)
 
