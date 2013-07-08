@@ -1029,16 +1029,23 @@ module Vizkit
         end
     end
     
-    class SyskitActionItem < VizkitItem
-        def initialize(action, options = Hash.new)
+    class SyskitActionItem < VizkitItem    
+        attr_reader :name
+        attr_reader :arguments
+        
+        def initialize(action)
+            Kernel.raise "Not an action or job." unless action.is_a? DummyRobyAction
             @action = action
-            @options = Kernel.validate_options options, :item_type => :label
+            @name = action.name
+            @arguments = action.arguments
             
-            if @options[:item_type] == :label
-                super("Syskit Actions")
-            else
+            #@options = Kernel.validate_options options, :item_type => :label
+            
+            #if @options[:item_type] == :label
+            #    super("Syskit Actions")
+            #else
                 super(@action.name)
-            end
+            #end
         end
         
         #def data(role = Qt::UserRole + 1)
@@ -1056,8 +1063,10 @@ module Vizkit
             puts "Got result: #{result}"
         end
        
+        # TODO rename
         def running?
-            return @action.running
+            # Returns false if action has no state (e.g. if action is an action model, not a job)
+            return @action.state != :model
         end
         # 
         # def start
