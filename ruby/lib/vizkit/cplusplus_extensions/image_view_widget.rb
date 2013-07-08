@@ -13,6 +13,9 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "ImageView" do
       if !defined? @init
           @options ||= default_options
           #connect(SIGNAL("activityChanged(bool)"),self,:setActive)
+          
+          #connection_manager.provide_own_context_menu = true
+
           @init = true
       end
   end

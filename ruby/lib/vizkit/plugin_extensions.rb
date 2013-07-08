@@ -1,3 +1,4 @@
+require 'orocos/uri'
 
 class Module
     # Shortcut to define the necessary methods so that a module can be used to
@@ -61,6 +62,8 @@ module Vizkit
     # connection management for orocos ports
     module PluginConnections
         class ShowHideEventFilter < ::Qt::Object
+            signals 'contextMenuRequest(QContextMenuEvent*)'
+        
             def eventFilter(obj,event)
                 if event.is_a?(Qt::HideEvent)
                     @on_hide.call if @on_hide
@@ -74,6 +77,8 @@ module Vizkit
                     @on_show.call if @on_show
                 elsif event.is_a?(Qt::CloseEvent)
                     @on_hide.call if @on_hide
+                elsif event.is_a?(Qt::ContextMenuEvent)
+                    emit contextMenuRequest(event)
                 end
                 return false
             end
@@ -88,11 +93,57 @@ module Vizkit
         end
 
         class ConnectionManager < Vizkit::ConnectionManager
+            class ConnectionAction < Qt::Action
+                attr_reader :uri
+                attr_reader :connection_manager
+                def initialize(title, uri, connection_manager, parent)
+                    super(title, parent)
+                    @uri = uri
+                    @connection_manager = connection_manager
+                    
+                    connect(SIGNAL 'triggered(bool)') do |_|
+                        handle
+                    end
+                end
+            end
+            class DeleteAction < ConnectionAction
+                def initialize(uri, connection_manager, parent)
+                    super("Delete", uri, connection_manager, parent)
+                end
+                
+                def handle
+                    connection_manager.delete(uri.port_proxy)
+                end
+            end
+            class DisconnectAction < ConnectionAction
+                def initialize(uri, connection_manager, parent)
+                    super("Disconnect", uri, connection_manager, parent)
+                end
+                
+                def handle
+                    connection_manager.disconnect(uri.port_proxy)
+                end
+            end
+            class ReconnectAction < ConnectionAction
+                def initialize(uri, connection_manager, parent)
+                    super("Reconnect", uri, connection_manager, parent)
+                end
+                
+                def handle
+                    connection_manager.reconnect(uri.port_proxy)
+                end
+            end
+            
             attr_accessor :disconnect_on_hide
+            attr_accessor :allow_multiple_connections
+            attr_accessor :provide_own_context_menu
 
             def initialize(owner)
                 super
                 @disconnect_on_hide = true
+                @allow_multiple_connections = false
+                @provide_own_context_menu = false
+                                
                 @filter = ShowHideEventFilter.new
                 # we have to use an event filter because
                 # c++ widgets cannot be overloaded
@@ -103,6 +154,24 @@ module Vizkit
                 @filter.on_show do
                     reconnect if @disconnect_on_hide
                 end
+                @filter.connect(SIGNAL 'contextMenuRequest(QContextMenuEvent*)') do |event|
+                    # Does the widget manage its own context menu?
+                    unless @provide_own_context_menu
+                        # No. Then display connections in a context menu.
+                        # The relevant action handles are called
+                        # automatically when the action is triggered.
+                        menu = Qt::Menu.new(owner)
+                        menu.add_menu(connection_menu(menu))
+                        #menu.add_action("OtherStuff")
+                        ContextMenu.advanced(menu, event.global_pos)
+                    else
+                        # If the owner provides an own context menu, he has to add the
+                        # connection menu to it. Use #connection_menu.
+                        #
+                        # TODO Currently not possible for C++ widgets.
+                    end
+                end
+
             end
 
             def callback_for(type_name)
@@ -115,6 +184,11 @@ module Vizkit
             end
 
             def connect_to(port,callback=nil,options=Hash.new,&block)
+                unless @on_data_listeners[port].empty?
+                    Vizkit.warn "You may not register multiple listeners on the same port."
+                    return nil
+                end
+            
                 raise_error = lambda do 
                     raise "no callback found for#{port} and #{@owner}"
                 end
@@ -141,9 +215,52 @@ module Vizkit
                     listener = port.on_data do |data|
                         callback.call data,port.full_name
                     end
+                    
+                    unless @allow_multiple_connections
+                        # Remove all listeners on this port.
+                        delete(port)
+                    end
+                    
                     @on_data_listeners[port] << listener
+                    
                     listener
                 end
+            end
+            
+            def connect_to_uri(uri,callback=nil,options=Hash.new,&block)
+                Kernel.raise("Not a valid uri: #{uri.class}") unless uri.is_a? URI::Orocos
+                Kernel.raise("Cannot get port proxy from URI.") unless uri.port_proxy?
+
+                port = uri.port_proxy
+                connect_to(port,callback,options,&block)
+            end
+            
+            def has_connection?
+                connections.empty?
+            end
+            
+            # Return all ports as URIs where listeners are installed.
+            def connections
+                list = []
+                
+                @on_data_listeners.each do |port, listeners|
+                    listeners.each do |l|
+                        list << URI::Orocos.from_port(port)
+                    end
+                end
+                list
+            end
+            
+            def connection_menu(parent)
+                menu = Qt::Menu.new("Connections", parent)
+                connections.each do |conn|
+                    sub_menu = Qt::Menu.new("#{conn.task_name}:#{conn.port_name}", menu)
+                    menu.add_menu(sub_menu)
+                    sub_menu.add_action(ReconnectAction.new(conn, self, sub_menu))
+                    sub_menu.add_action(DisconnectAction.new(conn, self, sub_menu))
+                    sub_menu.add_action(DeleteAction.new(conn, self, sub_menu))
+                end
+                menu
             end
         end
 

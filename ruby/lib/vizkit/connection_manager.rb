@@ -35,6 +35,18 @@ module Vizkit
             end
         end
 
+        def delete(port=nil)
+            if port
+                disconnect(port)
+                @on_data_listeners[port].clear
+                @on_reachable_listeners[port].clear
+            else
+                @on_data_listeners.keys.each do |key|
+                    delete(key)
+                end
+            end
+        end
+
         def disconnect(port=nil)
             if port
                 @on_data_listeners[port].each do |l|
