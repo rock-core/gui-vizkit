@@ -14,8 +14,30 @@ module Vizkit
                 Kernel.raise "No conversion to a string from: #{e}" unless e.respond_to? "to_s"
                 menu.add_action(Qt::Action.new(e.to_s, parent))
             end
-            action = menu.exec(parent.viewport.map_to_global(pos))
-            action.text if action
+            
+            # Return text of selected action
+            ret = advanced(menu, pos)
+            
+            if ret
+                ret.text
+            else
+                nil
+            end
+        end
+        
+        # Like #basic but you have to submit your own Qt::Menu. Returns the chosen action or nil, not its text.
+        def self.advanced(menu, pos)
+            Kernel.raise "Not a valid menu: #{menu.class}" unless menu.is_a? Qt::Menu
+            action =
+            if menu.parent.is_a? Qt::AbstractScrollArea
+                menu.exec(menu.parent.viewport.map_to_global(pos))
+            else
+                # TODO This should work generally, if you submit event.global_pos. Why use viewport elsewhere? The problem is that viewport is not a member of QWidget.
+                menu.exec(pos)
+            end
+            
+            # Return selected action
+            action
         end
         
         def self.widget_for(type_name,parent,pos)
