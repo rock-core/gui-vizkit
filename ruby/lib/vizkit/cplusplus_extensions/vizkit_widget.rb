@@ -212,7 +212,7 @@ module VizkitPluginLoaderExtension
     #
     #   createPlugin("vfh_star")
     #
-    def createPlugin(lib_name, plugin_name, plugin_spec = PluginSpec.new(plugin_name))
+    def createPlugin(lib_name, plugin_name = nil, plugin_spec = PluginSpec.new(plugin_name))
 	path = findPluginPath(lib_name)
 	if !path
 	    Kernel.raise "#{plugin_name} is not a lib#{lib_name}-viz.so in VIZKIT_PLUGIN_RUBY_PATH."
