@@ -1029,52 +1029,79 @@ module Vizkit
         end
     end
     
-    class SyskitActionItem < VizkitItem    
+    class SyskitActionItem < VizkitItem
+            
         attr_reader :name
+        attr_reader :state
+        attr_reader :action
         attr_reader :arguments
+        
+        # Mapping from action states to colors
+        @@state_colors = {
+            :model => Qt::Color.new("black"),
+            :pending => Qt::Color.new("dodgerblue"),
+            :planned => Qt::Color.new("dodgerblue"),
+            :running => Qt::Color.new("limegreen"),
+            :failed => Qt::Color.new("orangered"),
+            :successful => Qt::Color.new("silver")
+        }
         
         def initialize(action)
             Kernel.raise "Not an action or job." unless action.is_a? DummyRobyAction
             @action = action
-            @name = action.name
-            @arguments = action.arguments
+            @base_name = @action.name
+            @state = @action.state
+            @arguments = @action.arguments
             
-            #@options = Kernel.validate_options options, :item_type => :label
+            @name = generate_name(@base_name, arguments)
             
-            #if @options[:item_type] == :label
-            #    super("Syskit Actions")
-            #else
-                super(@action.name)
-            #end
+            super(@name)
+
+            set_selectable(false)
+            update_view
+        end
+        
+        # Updates the item display. Checks for state change and updates color, tooltip, etc.
+        def update_view
+            set_foreground(Qt::Brush.new(@@state_colors[@action.state]))
+            set_tool_tip("State: #{@action.state}")
+        end
+        
+        # Creates string of base name and arguments
+        def generate_name(base_name, arguments)
+            
+            name = "" << base_name
+            name << " ("
+            if arguments
+                
+                arguments.each do |key,value|
+                    value ||= "nil"
+                    name << key.to_s << " => \"" << value.to_s << "\", "
+                end 
+                name.rstrip! # remove whitespace at the end
+                name.chop! if name.end_with?(",")   # remove last comma
+            end
+            name << ")"
+            name
         end
         
         #def data(role = Qt::UserRole + 1)
-        #    return Qt::Variant.new(@action.name)
+        #    case role
+        #    when Qt::ForegroundRole
+        #        return Qt::Brush.new(@state_colors[:pending])
+        #    else
+        #        #TODO choose suitable default value.
+        #        #return Qt::Variant.new(@action.name)
+        #        super.data(role)
+        #    end
+        #    
         #end
-       
-        def context_menu(pos,parent_widget,items = [])
-            if running?
-                items << "Stop"
-            else
-                items << "Start"
-            end
-            
-            result = ContextMenu.basic(items,parent_widget,pos)
-            puts "Got result: #{result}"
-        end
        
         # TODO rename
         def running?
             # Returns false if action has no state (e.g. if action is an action model, not a job)
             return @action.state != :model
         end
-        # 
-        # def start
-        # 
-        # end
-        # 
-        # def stop
-        # 
-        # end
+
     end
 end
