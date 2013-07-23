@@ -221,7 +221,7 @@ class LogControl
             dtarget_speed.value = @log_replay.speed if value != dtarget_speed.value
         end
     end
-    
+
     def bnext_clicked
       return if !@log_replay.replay?
       if playing?
@@ -247,10 +247,10 @@ class LogControl
       display_info
     end
 
-    def bback_clicked 
+    def bback_clicked
       return if !@log_replay.replay?
       if playing?
-	update_target_speed @log_replay.speed*0.5
+	        update_target_speed @log_replay.speed*0.5
       else
         if actionNone.isChecked
             @log_replay.step_back
@@ -290,8 +290,15 @@ class LogControl
     end
 
     def seek_to(index)
+      bplay_clicked if playing?
+      if index.is_a? Time
+        @log_replay.seek(index)
+        timeline.setSliderIndex(@log_replay.sample_index)
+        display_info
+      else
         timeline.setSliderIndex index
         slider_released(index)
+      end
     end
     
     def bplay_clicked

@@ -856,6 +856,18 @@ module Vizkit
                 setText annotation.stream.type_name
             end
         end
+
+        def context_menu(pos,parent_widget,items = [])
+            widget_name = Vizkit::ContextMenu.widget_for(Orocos::Log::Annotations,parent_widget,pos)
+            if widget_name
+                widget = Vizkit.default_loader.create_plugin(widget_name)
+                fct = widget.plugin_spec.find_callback!(:argument => Orocos::Log::Annotations,:callback_type => :display)
+                fct = fct.bind(widget)
+                fct.call(annotation)
+                widget.setAttribute(Qt::WA_QuitOnClose, false) if widget.is_a? Qt::Widget
+                widget.show
+            end
+        end
     end
 
     class GlobalMetaItem < VizkitItem

@@ -8,24 +8,34 @@ class LogMarkerViewer < Qt::Widget
     @layout.addWidget(@widget,0,0)
     @current_index = -1;
     self.setLayout @layout
+    resize(450,200)
+
+    @widget.list.connect SIGNAL("itemDoubleClicked(QListWidgetItem*)") do |item|
+        specs =  Vizkit.default_loader.find_all_plugin_specs(:argument => Orocos::Log::Replay,:callback_type => :control,:flags => {:deprecated => false})
+        specs.each do |spec|
+            plugin = spec.created_plugins.find do |plugin|
+                plugin.respond_to?(:seek_to)
+            end
+            if plugin
+                marker = @markers[@widget.list.current_row]
+                plugin.seek_to(marker.time)
+                break
+            end
+        end
+    end
   end
 
-  def config2(annotations,options=Hash.new)
-    @markers = Orocos::Log::LogMarker.parse(annotations.samples)
-    @markers.each do |marker|
-        if marker.index >= 0
-            @widget.list.addItem("#{" "*3*marker.index}#{marker.type}(#{marker.index}): #{marker.comment}")
-        else
-            @widget.list.addItem("+++ #{marker.type}: #{marker.comment} ++++")
-        end
-
-    end
-
-    #prove of concept to get the widget 
-    #widget =  loader.created_controls_for(Orocos::Log::Replay)
-    #puts widget.first.ruby_class_name
+  def config(annotations,options=Hash.new)
+      @markers = Orocos::Log::LogMarker.parse(annotations.samples)
+      @markers.each do |marker|
+          if marker.index >= 0
+              @widget.list.addItem("#{marker.time.to_s}: #{" "*3*marker.index}#{marker.type}(#{marker.index}): #{marker.comment}")
+          else
+              @widget.list.addItem("#{marker.time.to_s}: # #{marker.type}: #{marker.comment} #")
+          end
+      end
   end
 end
 
 Vizkit::UiLoader.register_ruby_widget "LogMarkerViewer", LogMarkerViewer.method(:new)
-Vizkit::UiLoader.register_widget_for "LogMarkerViewer", Orocos::Log::Annotations, :config2
+Vizkit::UiLoader.register_widget_for "LogMarkerViewer", Orocos::Log::Annotations, :config
