@@ -87,4 +87,3 @@ end
 
 Vizkit::UiLoader.register_ruby_widget "LoggerControl", LoggerControlWidget.method(:new)
 Vizkit::UiLoader.register_control_for "LoggerControl", "logger::Logger", :config
-Vizkit::UiLoader.register_deprecate_plugin_clone("logger_control","LoggerControl")
