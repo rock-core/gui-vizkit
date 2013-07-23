@@ -815,7 +815,7 @@ module Vizkit
 
         def context_menu(pos,parent_widget,items = [])
             if task.respond_to? :current_state
-                ContextMenu.task_state(task,parent_widget,pos)
+                ContextMenu.task(task,parent_widget,pos)
                 true
             end
         end
