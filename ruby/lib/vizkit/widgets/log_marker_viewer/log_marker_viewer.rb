@@ -17,23 +17,37 @@ class LogMarkerViewer < Qt::Widget
                 plugin.respond_to?(:seek_to)
             end
             if plugin
+                # set current index to clicked marker
                 marker = @markers[@widget.list.current_row]
                 plugin.seek_to(marker.time)
+                # set end and start marker if clicked marker is a start
+                # marker and the corresponding stop marker can be found
+                break unless marker.type == :start
+                @widget.list.current_row.upto(@markers.size-1) do |idx|
+                    if @markers[idx].type == :stop && @markers[idx].index == marker.index
+                        plugin.timeline_marker(marker.time,@markers[idx].time)
+                        break
+                    end
+                end
                 break
             end
         end
     end
   end
 
-  def config(annotations,options=Hash.new)
-      @markers = Orocos::Log::LogMarker.parse(annotations.samples)
-      @markers.each do |marker|
+  def config2(markers)
+      @markers = markers
+      markers.each do |marker|
           if marker.index >= 0
               @widget.list.addItem("#{marker.time.to_s}: #{" "*3*marker.index}#{marker.type}(#{marker.index}): #{marker.comment}")
           else
               @widget.list.addItem("#{marker.time.to_s}: # #{marker.type}: #{marker.comment} #")
           end
       end
+  end
+
+  def config(annotations,options=Hash.new)
+      config2(Orocos::Log::LogMarker.parse(annotations.samples))
   end
 end
 

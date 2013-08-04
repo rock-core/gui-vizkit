@@ -145,6 +145,12 @@ class LogControl
         setEnabled(true)
       end
 
+      actionViewer.connect(SIGNAL("triggered(bool)")) do |checked|
+        widget = Vizkit.default_loader.LogMarkerViewer
+        widget.config2(@log_replay.log_markers)
+        widget.show
+      end
+
       @last_info = Time.now
       @timer = Orocos::Async.event_loop.every 0.001,false do
           begin
@@ -175,6 +181,11 @@ class LogControl
 
     def playing?
         @timer.running?
+    end
+
+    def timeline_marker(start_time,end_time)
+        timeline.setStartMarkerIndex(@log_replay.sample_index_for_time(start_time))
+        timeline.setEndMarkerIndex(@log_replay.sample_index_for_time(end_time))
     end
 
     def display_info
