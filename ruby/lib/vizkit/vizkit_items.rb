@@ -1044,7 +1044,6 @@ module Vizkit
     class SyskitActionItem < VizkitItem
             
         attr_reader :name
-        attr_reader :state
         attr_reader :action
         attr_reader :arguments
         
@@ -1062,7 +1061,6 @@ module Vizkit
             Kernel.raise "Not an action or job." unless action.is_a? DummyRobyAction
             @action = action
             @base_name = @action.name
-            @state = @action.state
             @arguments = @action.arguments
             
             @name = generate_name(@base_name, arguments)
@@ -1075,8 +1073,8 @@ module Vizkit
         
         # Updates the item display. Checks for state change and updates color, tooltip, etc.
         def update_view
-            set_foreground(Qt::Brush.new(@@state_colors[@action.state]))
-            set_tool_tip("State: #{@action.state}")
+            set_foreground(Qt::Brush.new(@@state_colors[state]))
+            set_tool_tip("State: #{state}")
         end
         
         # Creates string of base name and arguments
@@ -1095,6 +1093,10 @@ module Vizkit
             end
             name << ")"
             name
+        end
+        
+        def state
+            @action.state
         end
         
         #def data(role = Qt::UserRole + 1)
