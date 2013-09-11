@@ -116,7 +116,6 @@ end
 module VizkitPluginLoaderExtension
     def initialize_vizkit_extension
         super
-
         if !@connected_to_broadcaster
             @port_frame_associations ||= Hash.new
             @connected_transformation_producers ||= Hash.new
@@ -127,8 +126,22 @@ module VizkitPluginLoaderExtension
                 @connected_to_broadcaster = true
             end
         end
+        @grid = createPlugin("vizkit-base","GridVisualization")
+        @grid.setPluginName("Grid")
     end
-    
+
+    def grid
+        @grid
+    end
+
+    def setGrid(val)
+        @grid.enabled(val)
+    end
+   
+    def isGridEnabled
+        @grid.enabled
+    end
+
     def load_plugin(path)
         loader = Qt::PluginLoader.new(path)
         loader.load
