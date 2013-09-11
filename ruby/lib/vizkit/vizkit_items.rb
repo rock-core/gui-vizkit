@@ -815,7 +815,7 @@ module Vizkit
 
         def context_menu(pos,parent_widget,items = [])
             if task.respond_to? :current_state
-                ContextMenu.task_state(task,parent_widget,pos)
+                ContextMenu.task(task,parent_widget,pos)
                 true
             end
         end
@@ -854,6 +854,18 @@ module Vizkit
                 appendRow [VizkitItem.new("Samples"),VizkitItem.new(annotation.samples.size.to_s)]
             else
                 setText annotation.stream.type_name
+            end
+        end
+
+        def context_menu(pos,parent_widget,items = [])
+            widget_name = Vizkit::ContextMenu.widget_for(Orocos::Log::Annotations,parent_widget,pos)
+            if widget_name
+                widget = Vizkit.default_loader.create_plugin(widget_name)
+                fct = widget.plugin_spec.find_callback!(:argument => Orocos::Log::Annotations,:callback_type => :display)
+                fct = fct.bind(widget)
+                fct.call(annotation)
+                widget.setAttribute(Qt::WA_QuitOnClose, false) if widget.is_a? Qt::Widget
+                widget.show
             end
         end
     end
@@ -1030,40 +1042,80 @@ module Vizkit
     end
     
     class SyskitActionItem < VizkitItem
-        def initialize(action, options = Hash.new)
-            @action = action
-            @options = Kernel.validate_options options, :item_type => :label
             
-            if @options[:item_type] == :label
-                super("Syskit Actions")
-            else
-                super(@action.name)
+        attr_reader :name
+        attr_reader :action
+        attr_reader :arguments
+        
+        # Mapping from action states to colors
+        @@state_colors = {
+            :model => Qt::Color.new("black"),
+            :pending => Qt::Color.new("dodgerblue"),
+            :planned => Qt::Color.new("dodgerblue"),
+            :running => Qt::Color.new("limegreen"),
+            :failed => Qt::Color.new("orangered"),
+            :successful => Qt::Color.new("silver")
+        }
+        
+        def initialize(action)
+            Kernel.raise "Not an action or job." unless action.is_a? DummyRobyAction
+            @action = action
+            @base_name = @action.name
+            @arguments = @action.arguments
+            
+            @name = generate_name(@base_name, arguments)
+            
+            super(@name)
+
+            set_selectable(false)
+            update_view
+        end
+        
+        # Updates the item display. Checks for state change and updates color, tooltip, etc.
+        def update_view
+            set_foreground(Qt::Brush.new(@@state_colors[state]))
+            set_tool_tip("State: #{state}")
+        end
+        
+        # Creates string of base name and arguments
+        def generate_name(base_name, arguments)
+            
+            name = "" << base_name
+            name << " ("
+            if arguments
+                
+                arguments.each do |key,value|
+                    value ||= "nil"
+                    name << key.to_s << " => \"" << value.to_s << "\", "
+                end 
+                name.rstrip! # remove whitespace at the end
+                name.chop! if name.end_with?(",")   # remove last comma
             end
+            name << ")"
+            name
+        end
+        
+        def state
+            @action.state
         end
         
         #def data(role = Qt::UserRole + 1)
-        #    return Qt::Variant.new(@action.name)
+        #    case role
+        #    when Qt::ForegroundRole
+        #        return Qt::Brush.new(@state_colors[:pending])
+        #    else
+        #        #TODO choose suitable default value.
+        #        #return Qt::Variant.new(@action.name)
+        #        super.data(role)
+        #    end
+        #    
         #end
        
-       def context_menu(pos,parent_widget,items = [])
-           items << "Horst"
-           items << "Karl"
-           items << "Peter"
-           
-           result = ContextMenu.basic(items,parent_widget,pos)
-           puts "Got result: #{result}"
-       end
-       
-       def running?
-           return @action.running
-       end
-       # 
-       # def start
-       # 
-       # end
-       # 
-       # def stop
-       # 
-       # end
+        # TODO rename
+        def running?
+            # Returns false if action has no state (e.g. if action is an action model, not a job)
+            return @action.state != :model
+        end
+
     end
 end

@@ -251,6 +251,10 @@ module Vizkit
 
         #creates a widget and all its children from an ui file
         def load(ui_file,parent=nil)
+            if parent and not parent.is_a? Qt::Widget
+                Kernel.raise("You can only set a QWidget as parent. You tried: #{parent}")
+            end
+            
             file = Qt::File.new(ui_file)
             file.open(Qt::File::ReadOnly)
 

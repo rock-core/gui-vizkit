@@ -145,6 +145,12 @@ class LogControl
         setEnabled(true)
       end
 
+      actionViewer.connect(SIGNAL("triggered(bool)")) do |checked|
+        widget = Vizkit.default_loader.LogMarkerViewer
+        widget.config2(@log_replay.log_markers)
+        widget.show
+      end
+
       @last_info = Time.now
       @timer = Orocos::Async.event_loop.every 0.001,false do
           begin
@@ -175,6 +181,11 @@ class LogControl
 
     def playing?
         @timer.running?
+    end
+
+    def timeline_marker(start_time,end_time)
+        timeline.setStartMarkerIndex(@log_replay.sample_index_for_time(start_time))
+        timeline.setEndMarkerIndex(@log_replay.sample_index_for_time(end_time))
     end
 
     def display_info
@@ -221,7 +232,7 @@ class LogControl
             dtarget_speed.value = @log_replay.speed if value != dtarget_speed.value
         end
     end
-    
+
     def bnext_clicked
       return if !@log_replay.replay?
       if playing?
@@ -247,10 +258,10 @@ class LogControl
       display_info
     end
 
-    def bback_clicked 
+    def bback_clicked
       return if !@log_replay.replay?
       if playing?
-	update_target_speed @log_replay.speed*0.5
+	        update_target_speed @log_replay.speed*0.5
       else
         if actionNone.isChecked
             @log_replay.step_back
@@ -290,8 +301,15 @@ class LogControl
     end
 
     def seek_to(index)
+      bplay_clicked if playing?
+      if index.is_a? Time
+        @log_replay.seek(index)
+        timeline.setSliderIndex(@log_replay.sample_index)
+        display_info
+      else
         timeline.setSliderIndex index
         slider_released(index)
+      end
     end
     
     def bplay_clicked

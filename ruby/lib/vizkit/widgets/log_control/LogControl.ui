@@ -548,8 +548,15 @@ speed:</string>
     <addaction name="actionNone"/>
     <addaction name="actionCurrent_Port"/>
    </widget>
+   <widget class="QMenu" name="menuLog_Marker">
+    <property name="title">
+     <string>Log Marker</string>
+    </property>
+    <addaction name="actionViewer"/>
+   </widget>
    <addaction name="menuExport"/>
    <addaction name="menuKey_Stream"/>
+   <addaction name="menuLog_Marker"/>
   </widget>
   <action name="actionQuit">
    <property name="text">
@@ -586,6 +593,11 @@ speed:</string>
    </property>
    <property name="text">
     <string>None</string>
+   </property>
+  </action>
+  <action name="actionViewer">
+   <property name="text">
+    <string>Viewer</string>
    </property>
   </action>
  </widget>

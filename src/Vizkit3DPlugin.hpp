@@ -125,6 +125,7 @@ class VizPluginBase : public QObject
     
     public:
         VizPluginBase(QObject *parent=NULL);
+        ~VizPluginBase();
 
 	/** @return true if the plugins internal state has been updated */
 	virtual bool isDirty() const;
@@ -135,16 +136,6 @@ class VizPluginBase : public QObject
          * plugin's nodes */
 	osg::ref_ptr<osg::Group> getVizNode() const;
 	osg::ref_ptr<osg::Group> getRootNode() const;
-
-       /**
-        * @return true if plugin is enabled
-        */
-        virtual bool isPluginEnabled();
-        
-       /**
-        * @param enabled set plugin enabled or disabled
-        */
-        virtual void setPluginEnabled(bool enabled);
 
 	/** override this method to save configuration data. Always call the
 	 * superclass as well.
@@ -166,6 +157,16 @@ class VizPluginBase : public QObject
         std::vector<QDockWidget*> getDockWidgets();
         
     public slots:
+       /**
+        * @return true if plugin is enabled
+        */
+        virtual bool isPluginEnabled();
+        
+       /**
+        * @param enabled set plugin enabled or disabled
+        */
+        virtual void setPluginEnabled(bool enabled);
+
 	/** @return the name of the plugin */
 	virtual const QString getPluginName() const;
         virtual void setPluginName(const QString &name);
@@ -206,6 +207,11 @@ class VizPluginBase : public QObject
         * must be emitted if a property of an inherited plugin changes
         */
         void propertyChanged(QString property_name);
+
+       /**
+        * Must be emitted when children are added/removed from this plugin
+        */
+        void childrenChanged();
         
        /**
         * will emitted if the plugin activity changes
@@ -312,6 +318,9 @@ class Vizkit3DPlugin : public VizPluginBase,
     public VizPluginAddType< T >
 {
     public:
+        Vizkit3DPlugin(QObject* parent = NULL)
+            : VizPluginBase(parent) {}
+
 	/** updates the data to be visualised and marks the visualisation dirty
 	 * @param data const ref to data that is visualised
 	 */

@@ -14,8 +14,30 @@ module Vizkit
                 Kernel.raise "No conversion to a string from: #{e}" unless e.respond_to? "to_s"
                 menu.add_action(Qt::Action.new(e.to_s, parent))
             end
-            action = menu.exec(parent.viewport.map_to_global(pos))
-            action.text if action
+            
+            # Return text of selected action
+            ret = advanced(menu, pos)
+            
+            if ret
+                ret.text
+            else
+                nil
+            end
+        end
+        
+        # Like #basic but you have to submit your own Qt::Menu. Returns the chosen action or nil, not its text.
+        def self.advanced(menu, pos)
+            Kernel.raise "Not a valid menu: #{menu.class}" unless menu.is_a? Qt::Menu
+            action =
+            if menu.parent.is_a? Qt::AbstractScrollArea
+                menu.exec(menu.parent.viewport.map_to_global(pos))
+            else
+                # TODO This should work generally, if you submit event.global_pos. Why use viewport elsewhere? The problem is that viewport is not a member of QWidget.
+                menu.exec(pos)
+            end
+            
+            # Return selected action
+            action
         end
         
         def self.widget_for(type_name,parent,pos)
@@ -41,7 +63,7 @@ module Vizkit
             action.text if action
         end
 
-        def self.task_state(task,parent,pos)
+        def self.task(task,parent,pos)
             return if !task.respond_to? :model
             menu = Qt::Menu.new(parent)
 
@@ -69,7 +91,7 @@ module Vizkit
                 menu.add_action(Qt::Action.new("Start Task", parent))
             end
 
-            #check if there are widgets for the task 
+            #check if there are widgets for the task
             if task.model
                 menu.addSeparator
                 Vizkit.default_loader.find_all_plugin_names(:argument => task,:callback_type => :control,:flags => {:deprecated => false}).each do |w|
@@ -110,7 +132,7 @@ module Vizkit
                             task.save_conf(file_name) if file_name
                         end
                     elsif
-                        Vizkit.control task.__task,:widget => action.text
+                        Vizkit.control task,:widget => action.text
                     end
                 rescue RuntimeError => e 
                     Qt::MessageBox::warning(nil,"Failed",e.message)

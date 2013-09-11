@@ -5,10 +5,12 @@
 #include <QtDesigner/QDesignerExportWidget>
 #include <transformer/NonAligningTransformer.hpp>
 #include <vizkit/Vizkit3DPlugin.hpp>
+#include <QVector3D>
 
 class ViewQOSG;
 class QComboBox;
 class QGroupBox;
+class QSplitter;
 
 namespace vizkit 
 {
@@ -35,8 +37,6 @@ public:
 
     osg::ref_ptr<osg::Group> getRootNode() const;
     osg::ref_ptr<ViewQOSG> getViewer();
-    void addDataHandler(VizPluginBase *viz);
-    void removeDataHandler(VizPluginBase *viz);
     
     /**
      * Sets the camera focus to specific position.
@@ -81,6 +81,9 @@ public slots:
     void setCameraLookAt(double x, double y, double z);
     void setCameraEye(double x, double y, double z);
     void setCameraUp(double x, double y, double z);
+    void getCameraView(QVector3D& eye, QVector3D& lookAt, QVector3D& up);
+
+    void collapsePropertyBrowser();
         
 signals:
     void addPlugins(QObject* plugin,QObject* parent);
@@ -91,6 +94,8 @@ private slots:
     void addPluginIntern(QObject* plugin,QObject *parent=NULL);
     void removePluginIntern(QObject* plugin);
     void pluginActivityChanged(bool enabled);
+    void pluginChildrenChanged();
+    void pluginDeleted(QObject* plugin);
 
 protected:
     void changeCameraView(const osg::Vec3* lookAtPos,
@@ -100,8 +105,14 @@ protected:
     void setGridEnabled(bool enabled);
     bool areAxesEnabled();
     void setAxesEnabled(bool enabled);
+    void setPluginEnabled(QObject* plugin, bool enabled);
     
     void checkAddFrame(const std::string &frame);
+
+    void registerDataHandler(VizPluginBase *viz);
+    void deregisterDataHandler(VizPluginBase *viz);
+    void enableDataHandler(VizPluginBase *viz);
+    void disableDataHandler(VizPluginBase *viz);
 
     osg::ref_ptr<osg::Group> root;
     void createSceneGraph();
@@ -114,10 +125,17 @@ protected:
     transformer::NonAligningTransformer transformer;
     QComboBox *frameSelector;
     QGroupBox* groupBox;
+    QSplitter* splitter;
     
     std::string displayFrame;
     std::string initalDisplayFrame;
-    std::vector<VizPluginBase *> plugins;
+
+    typedef std::map<VizPluginBase*, osg::ref_ptr<osg::Group> > PluginMap;
+
+    /** The set of known plugins, as a mapping from the plugin to the osg::Node
+     * to which it should be attached.
+     */
+    PluginMap plugins;
  
     std::map<std::string, bool> availableFrames;
     

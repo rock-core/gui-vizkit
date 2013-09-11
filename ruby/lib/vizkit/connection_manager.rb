@@ -26,7 +26,7 @@ module Vizkit
         def listening?(port = nil)
             if port
                 @on_data_listeners[port].find do |l|
-                    l.listening
+                    l.listening?
                 end
             else
                 @on_data_listeners.keys.each do |key|
@@ -76,5 +76,6 @@ module Vizkit
             @on_data_listeners[port] << listener
             listener
         end
+        
     end
 end
