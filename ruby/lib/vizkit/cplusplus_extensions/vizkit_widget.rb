@@ -380,6 +380,8 @@ UiLoader.register_3d_plugin('MotionCommandVisualization',"vizkit-base", 'MotionC
 UiLoader.register_3d_plugin_for('MotionCommandVisualization', "/base/MotionCommand2D", :updateMotionCommand)
 UiLoader.register_3d_plugin('WaypointVisualization',"vizkit-base", 'WaypointVisualization')
 UiLoader.register_3d_plugin_for('WaypointVisualization', "/base/Waypoint", :updateWp)
+UiLoader.register_3d_plugin('PointcloudVisualization',"vizkit-base", 'PointcloudVisualization')
+UiLoader.register_3d_plugin_for('PointcloudVisualization', "/base/samples/Pointcloud", :updatePointCloud)
 end
 Vizkit::UiLoader.register_widget_for("vizkit::Vizkit3DWidget","/transformer/ConfigurationState", :update)
 
