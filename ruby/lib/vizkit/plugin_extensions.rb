@@ -94,9 +94,10 @@ module Vizkit
                 super
                 @disconnect_on_hide = true
                 @filter = ShowHideEventFilter.new
+
                 # we have to use an event filter because
                 # c++ widgets cannot be overloaded
-                owner.installEventFilter(@filter)
+                owner.installEventFilter(@filter) if owner.is_a? Qt::Object
                 @filter.on_hide do
                     disconnect if @disconnect_on_hide
                 end
