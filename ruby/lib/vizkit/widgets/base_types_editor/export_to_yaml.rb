@@ -3,8 +3,18 @@ class ExportToYaml
     end
 
     def config(object,options=Hash.new)
-        sample = if object.respond_to? :reader
-                     object.reader.read
+        sample = if object.respond_to?(:last_sample) && object.last_sample
+                     object.last_sample
+                 elsif object.respond_to?(:once_on_data)
+                     object.once_on_data do |data|
+                         sample = data
+                     end
+                     0.upto(10) do
+                         break if sample
+                         Orocos::Async.step
+                         sleep 0.1
+                     end
+                     sample
                  else
                      object
                  end
