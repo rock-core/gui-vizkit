@@ -13,7 +13,7 @@ include Vizkit
 describe "ConnectorObjects" do
     class SandBoxConnectorObjects < MiniTest::Spec
         def self.prepare
-            @@widget = Vizkit.default_loader.TestVizkitWidget
+            @@widget = Vizkit.default_loader.create_plugin("vizkit3d::Vizkit3DWidget")
             @@widget.extend Vizkit::QtTypelibExtension
             @@task = Orocos::Async.proxy "test_task"
             @@connector = Vizkit::WidgetTaskConnector.new(@@widget,@@task)

@@ -69,7 +69,7 @@ module Orocos
                                   if obj.respond_to?(:receiver)
                                       [obj.receiver,obj]
                                   else
-                                      [nil,nil]
+                                      [nil,obj]
                                   end
                               else
                                   [obj,nil]
@@ -77,7 +77,7 @@ module Orocos
             if widget.respond_to?(:connection_manager)
                 widget.connection_manager.connect_to(self,callback,options,&block)
             else
-                raise ArgumentError,"Cannot connect port #{full_name} to #{obj}. No connection manager found!" if obj
+                raise ArgumentError,"Cannot connect port #{full_name} to #{obj}. No connection manager found!" if obj.is_a?(Qt::Object)
                 # use global connection manager
                 Vizkit.connection_manager.connect_to(self,callback,options,&block)
             end

@@ -231,10 +231,15 @@ module Vizkit
     @vizkit3d_transformer_broadcaster_name = ['transformer_broadcaster', 'configuration_state']
     @port_proxy_log = nil
 
-    #returns the instance of the vizkit 3d widget 
+    #returns the instance of the vizkit 3d widget
     def self.vizkit3d_widget
-        @vizkit3d_widget ||= default_loader.create_plugin("vizkit::Vizkit3DWidget")
-        @vizkit3d_widget
+        @vizkit3d_widget ||= if default_loader.widget?("vizkit3d::Vizkit3DWidget")
+                                 default_loader.create_plugin("vizkit3d::Vizkit3DWidget")
+                             else
+                                 # this can be removed after all plugins are moved to vizkit3d
+                                 default_loader.create_plugin("vizkit::Vizkit3DWidget")
+                                 # add new interface to be compatible
+                             end
     end
 
     # Make sure that orocos.rb is properly initialized. This must be called in
