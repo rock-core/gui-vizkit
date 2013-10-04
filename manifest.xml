@@ -1,24 +1,17 @@
 <package>
     <description brief="Rock Visualization Library">
-	Provides a Qt based framework for visualisation of rock data items.
+	Provides a Qt ruby based framework for visualisation of rock data items.
 	Visualisation plugins for specific data items are within the respective packages.
     </description>
-    <author>Jakob Schwendner/jakob.schwendner@dfki.de</author>
+    <author>Alexander Duda/alexander.duda@dfki.de</author>
     <copyright>
 	DFKI/robotik@dfki.de
     </copyright>
-    <depend package="base/types" />
-    <depend package="base/scripts" />
-    <depend package="external/yaml-cpp" />
-    <depend package="drivers/transformer" />
-    <!-- needed for the vizkit/Ruby parts -->
-    <rosdep name="osg" />
-    <rosdep name="qt4" />
-    <rosdep name="qt-designer" />
+    <depend package="base/cmake"/>
+    <depend package="tools/orocos.rb"/>
+    <depend package="qtruby"/>
 
-    <depend package="drivers/orogen/transformer" optional="1"/>
-    <depend package="tools/orocos.rb" optional="1" />
-    <depend package="qtruby" optional="1"/>
+    <depend package="tools/typelib"  optional="1"/>
+    <depend package="gui/vizkit3d"  optional="1"/>
     <depend package="gui/rock_widget_collection"  optional="1"/>
-    <depend package="drivers/controldev"  optional="1"/>
 </package>
