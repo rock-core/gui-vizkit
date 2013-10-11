@@ -1,6 +1,71 @@
 require 'vizkittypelib'
 module Vizkit
 module VizkitPluginExtension
+    attr_reader :plugins 
+
+    def load_adapters(plugin_spec)
+        if !Orocos.master_project # Check if Orocos has been initialized
+   	    raise RuntimeError, 'you need to call Orocos.initialize before using the Ruby bindings for Vizkit3D'
+	end
+        @bridges = Hash.new
+        @plugins = Hash.new
+        
+        plugins[plugin_spec.plugin_name] = self
+        @adapter_collection = getRubyAdapterCollection
+        return if !@adapter_collection
+        @adapter_collection.getListOfAvailableAdapter.each do |name|
+            plugin = @adapter_collection.getAdapter(name)
+            bridge = TypelibToQVariant.create_bridge
+            Qt::Object.connect(bridge, SIGNAL('changeVariant(QVariant&, bool)'), plugin, SLOT('update(QVariant&, bool)'))
+            @bridges[plugin.getRubyMethod] = bridge
+            @plugins[plugin.getRubyMethod] = plugin
+            cxx_typename = plugin.getDataType
+            # the plugin reports a C++ type name. We need a typelib type name
+            typename = Typelib::GCCXMLLoader.cxx_to_typelib(cxx_typename)
+            if !Orocos.registered_type?(cxx_typename)
+                Orocos.load_typekit_for(typename, true) 
+            end
+            expected_ruby_type = Orocos.typelib_type_for(typename)
+            is_opaque = (expected_ruby_type.name != typename)
+
+            singleton_class = (class << self; self end)
+            singleton_class.class_eval do
+		attr_accessor :type_to_method
+		
+                define_method(plugin.getRubyMethod) do |*args|
+		    value, _ = *args
+                    value = Typelib.from_ruby(value, expected_ruby_type)
+                    bridge.wrap(value, typename, is_opaque)
+                end
+		
+		define_method('updateData') do |value|
+		    if(method_name = @type_to_method[value.class.name])
+			self.send(method_name, value)
+		    else
+			message = "Expected type(s) "
+			
+			type_to_method.each do |i,j |
+			    message = message + i + " "
+			end
+			message = message + "but got #{value.class.name}"
+			raise ArgumentError, message
+		    end
+                end		
+            end
+	    if(!self.type_to_method)
+		self.type_to_method = Hash.new()
+	    end
+	    if(plugin.getRubyMethod.match("update"))
+		self.type_to_method[expected_ruby_type.name] = plugin.getRubyMethod
+	    end
+
+            plugin.instance_variable_set(:@expected_ruby_type,expected_ruby_type)
+            def plugin.expected_ruby_type
+                @expected_ruby_type
+            end
+        end
+    end
+
     def pretty_print(pp)
         pp.text "=========================================================="
         pp.breakable
@@ -10,17 +75,42 @@ module VizkitPluginExtension
         pp.breakable
         pp.text "Library name: #{lib_name}"
         pp.breakable
+        
         pp.text "----------------------------------------------------------"
-        pp.breakable
+        pp.breakable 
         pp.text "  Methods:"
         methods = method_list-["destroyed(QObject*)", "destroyed()", "deleteLater()", "_q_reregisterTimers(void*)", "getRubyAdapterCollection()"]
         methods.each do |method|
             pp.breakable
             pp.text "    " + method 
         end
-        pp.breakable
+        #begin
+        #backward compatibility
+        if @plugins.size > 1
+            pp.breakable
+            pp.breakable
+            pp.text "!!! The vizkit3d plugin is using an old mechanism to update the data" 
+            pp.breakable
+            pp.text "!!! Please update to the new mechanism see" 
+            pp.breakable
+                pp.text "!!! http://www.rock-robotics.org/documentation/graphical_user_interface/450_vizkit3d.html"
+            pp.breakable
+            pp.text "  Bridge Methods:"
+        end
+            
+        @plugins.each_pair do |key,plugin|
+            if plugin != self
+                pp.breakable
+                pp.text "    " + "#{key} (#{plugin.expected_ruby_type})" 
+                pp.breakable
+                pp.text "    " + "updateData (#{plugin.expected_ruby_type})" 
+            end
+        end
+        #end
+        pp.breakable 
     end
 end
+
 
 module VizkitPluginLoaderExtension
     def initialize_vizkit_extension
@@ -159,7 +249,7 @@ module VizkitPluginLoaderExtension
 	addPlugin(plugin)
 
         plugin.extend VizkitPluginExtension
-        #plugin.load_adapters(plugin_spec)
+        plugin.load_adapters(plugin_spec)
 
 	plugin.extend(QtTypelibExtension)
         extendUpdateMethods(plugin,plugin_spec)
