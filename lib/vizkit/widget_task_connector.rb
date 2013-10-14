@@ -46,6 +46,11 @@ module Vizkit
             "8#{str}"
         end
 
+        #Wrapper method to connect sub widgets which are plain Qt ruby classes
+        def wrap(widget)
+            WidgetTaskConnector.new(widget,@task,@options)
+        end
+
         def method_missing(m,*args)
             if @widget.respond_to? m
                 WidgetTaskConnector.new(@widget.send(m),@task,@options)
