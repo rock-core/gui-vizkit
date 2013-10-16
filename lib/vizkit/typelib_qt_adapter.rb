@@ -95,6 +95,7 @@ module Vizkit
             if cxx_type
                 return cxx_type, typelib_type, Typelib.from_ruby(ruby_value, typelib_type)
             end
+        rescue Typelib::UnknownConversionRequested
         end
 	
 	# This method calls a method on the qt_object associated with
