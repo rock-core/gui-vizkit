@@ -17,15 +17,22 @@ module Vizkit
             setEditable false
             @options ||= Hash.new
             @childs = Array.new
+            @expanded = false
         end
 
         def collapse(propagated = false)
+            @expanded = false
             each_child do |item|
                 item.collapse(true)
             end
         end
 
+        def expanded?
+            @expanded
+        end
+
         def expand(propagated = false)
+            @expanded = true
             each_child do |item|
                 item.expand(true)
             end
@@ -404,7 +411,13 @@ module Vizkit
             if port.input? 
                 appendRow([InputPortItem.new(port),InputPortItem.new(port,:item_type => :value)])
             elsif port.output?
-                appendRow([OutputPortItem.new(port),OutputPortItem.new(port,:item_type => :value)])
+                p1 = OutputPortItem.new(port)
+                p2 = OutputPortItem.new(port,:item_type => :value)
+                appendRow([p1,p2])
+                if expanded?
+                    p1.expand
+                    p2.expand
+                end
             else
                 raise "Port #{port} is neither an input nor an output port"
             end
@@ -584,6 +597,7 @@ module Vizkit
         end
 
         def collapse(propagated = false)
+            @expanded = false
             if @listener.listening?
                 @stop_propagated = propagated
                 @listener.stop
@@ -591,6 +605,7 @@ module Vizkit
         end
 
         def expand(propagated = false)
+            @expanded = true
             @listener.start if !propagated || @stop_propagated
         end
 
@@ -608,6 +623,7 @@ module Vizkit
             super if port.output?
         end
         def expand(propagated = false)
+            @expanded = true
             each_child do |item|
                 item.expand(propagated)
             end
@@ -655,13 +671,15 @@ module Vizkit
         end
 
         def collapse(propagated = false)
+            @expanded = false
             if @listener.listening?
-                @stop_propagated = propagated 
+                @stop_propagated = propagated
                 @listener.stop
             end
         end
 
         def expand(propagated = false)
+            @expanded = true
             @listener.start if !propagated || @stop_propagated
         end
 
@@ -727,7 +745,13 @@ module Vizkit
                     next if child?(property_name)
                     prop = task.property(property_name)
                     prop.once_on_reachable do
-                        appendRow [PropertyItem.new(prop,@options),PropertyItem.new(prop,:item_type => :value,:editable => @options[:editable])]
+                        prop1 = PropertyItem.new(prop,@options)
+                        prop2 = PropertyItem.new(prop,:item_type => :value,:editable => @options[:editable])
+                        appendRow [prop1,prop2]
+                        if expanded?
+                            prop1.expand
+                            prop2.expand
+                        end
                     end
                 end
             end
@@ -754,6 +778,7 @@ module Vizkit
         end
 
         def expand(propagated = false)
+            @expanded = true
             each_child do |item|
                 item.expand(propagated)
             end
