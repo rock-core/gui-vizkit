@@ -7,24 +7,24 @@ module Vizkit
         # TODO use this method as generalization in all following special cases. 
         def self.basic(elements, parent, pos)
             Kernel.raise "No array submitted." unless elements.respond_to? "each"
-            
+
             menu = Qt::Menu.new(parent)
-            
+
             elements.each do |e|
                 Kernel.raise "No conversion to a string from: #{e}" unless e.respond_to? "to_s"
                 menu.add_action(Qt::Action.new(e.to_s, parent))
             end
-            
+
             # Return text of selected action
             ret = advanced(menu, pos)
-            
+
             if ret
                 ret.text
             else
                 nil
             end
         end
-        
+
         # Like #basic but you have to submit your own Qt::Menu. Returns the chosen action or nil, not its text.
         def self.advanced(menu, pos)
             Kernel.raise "Not a valid menu: #{menu.class}" unless menu.is_a? Qt::Menu
@@ -35,11 +35,11 @@ module Vizkit
                 # TODO This should work generally, if you submit event.global_pos. Why use viewport elsewhere? The problem is that viewport is not a member of QWidget.
                 menu.exec(pos)
             end
-            
+
             # Return selected action
             action
         end
-        
+
         def self.widget_for(type_name,parent,pos)
             menu = Qt::Menu.new(parent)
 
@@ -99,47 +99,51 @@ module Vizkit
                 end
             end
 
+            menu.addSeparator
+            action= Qt::Action.new("Proxy Task", parent)
+            action.checkable = true
+            action.checked = true if task.ruby_task_context?
+            menu.add_action(action)
+
             # Display context menu at cursor position.
             action = menu.exec(parent.viewport.map_to_global(pos))
             if action
-                begin
-                    if action.text == "Start Task"
-                        task.start
-                    elsif action.text == "Configure Task"
-                        task.configure
-                    elsif action.text == "Stop Task"
-                        task.stop
-                    elsif action.text == "Reset Exception"
-                        task.reset_exception
-                    elsif action.text == "Cleanup Task"
-                        task.cleanup
-                    elsif action.text == "Reconfigure Task"
-                        task.stop
-                        task.cleanup
-                        task.configure
-                        task.start
-                    elsif action.text == "Load Configuration"
-                        file_name = Qt::FileDialog::getOpenFileName(nil,"Load Config",File.expand_path("."),"Config Files (*.yml)")
-                        task.apply_conf_file(file_name) if file_name
-                    elsif action.text == "Apply Configuration"
-                        task.apply_conf
-                    elsif action.text == "Save Configuration"
-                        file_name = Qt::FileDialog::getSaveFileName(nil,"Save Config",File.expand_path("."),"Config Files (*.yml)")
-                        #delete the file if it already exists (the dialog is asking the use)
-                        #TODO add code to merge the configuration with an existing file 
-                        if file_name
-                            File.delete file_name if File.exist? file_name
-                            task.save_conf(file_name) if file_name
-                        end
-                    elsif
-                        Vizkit.control task,:widget => action.text
+                if action.text == "Start Task"
+                    task.start
+                elsif action.text == "Configure Task"
+                    task.configure
+                elsif action.text == "Stop Task"
+                    task.stop
+                elsif action.text == "Reset Exception"
+                    task.reset_exception
+                elsif action.text == "Cleanup Task"
+                    task.cleanup
+                elsif action.text == "Reconfigure Task"
+                    task.stop
+                    task.cleanup
+                    task.configure
+                    task.start
+                elsif action.text == "Load Configuration"
+                    file_name = Qt::FileDialog::getOpenFileName(nil,"Load Config",File.expand_path("."),"Config Files (*.yml)")
+                    task.apply_conf_file(file_name) if file_name
+                elsif action.text == "Apply Configuration"
+                    task.apply_conf
+                elsif action.text == "Proxy Task"
+                    task.to_ruby
+                elsif action.text == "Save Configuration"
+                    file_name = Qt::FileDialog::getSaveFileName(nil,"Save Config",File.expand_path("."),"Config Files (*.yml)")
+                    #delete the file if it already exists (the dialog is asking the use)
+                    #TODO add code to merge the configuration with an existing file 
+                    if file_name
+                        File.delete file_name if File.exist? file_name
+                        task.save_conf(file_name) if file_name
                     end
-                rescue RuntimeError => e 
-                    Qt::MessageBox::warning(nil,"Failed",e.message)
+                elsif
+                    Vizkit.control task,:widget => action.text
                 end
             end
-        rescue Orocos::NotFound
-            # the task is not reachable 
+        rescue Exception => e
+            Qt::MessageBox::warning(nil,"Vizkit Error",e.to_s)
         end
 
         # displays the menu for a given Async::Log::TaskContext
@@ -152,7 +156,7 @@ module Vizkit
             else
                 action.connect SIGNAL("triggered(bool)") do |val|
                     begin
-                        task.to_ruby_task_context
+                        task.to_ruby
                     rescue Exception => e
                         Qt::MessageBox::warning(nil,"Export to CORBA",e.to_s)
                     end
