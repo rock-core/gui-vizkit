@@ -228,7 +228,7 @@ module Vizkit
                                    end
                              begin
                                  Qt::Variant.new(val)
-                             rescue Expetion => e
+                             rescue Exception => e
                                  setEditable(false)
                                  Qt::Variant.new(e.message)
                              end
