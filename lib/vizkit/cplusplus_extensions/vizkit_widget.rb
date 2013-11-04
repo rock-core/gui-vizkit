@@ -119,10 +119,14 @@ module VizkitPluginLoaderExtension
             @port_frame_associations ||= Hash.new
             @connected_transformation_producers ||= Hash.new
             task_name, port_name = Vizkit.vizkit3d_transformer_broadcaster_name
-            Orocos.load_typekit 'transformer'
-            if task_name
-                Vizkit.connect_port_to task_name, port_name, self
-                @connected_to_broadcaster = true
+            begin
+                Orocos.load_typekit 'transformer'
+                if task_name
+                    Vizkit.connect_port_to task_name, port_name, self
+                    @connected_to_broadcaster = true
+                end
+            rescue Orocos::NotFound => e
+                Vizkit.warn e
             end
         end
         @grid = createPlugin("vizkit3d","GridVisualization")
