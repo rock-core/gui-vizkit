@@ -243,7 +243,11 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "Plot2d" do
             end
         end
     end
-   
+  
+    def update_time(sample, name)
+        update(sample.to_f, name)
+    end
+ 
     def set_x_axis_scale(start,stop)
         getXAxis.setRange(start,stop)
     end 
@@ -307,4 +311,5 @@ Vizkit::UiLoader.register_widget_for("Plot2d",vector_types,:update_vector)
 Vizkit::UiLoader.register_widget_for("Plot2d","/base/Angle",:update_angle)
 Vizkit::UiLoader.register_widget_for("Plot2d","/base/Vector3d",:update_vector3d)
 Vizkit::UiLoader.register_widget_for("Plot2d","/base/VectorXd",:update_vectorXd)
+Vizkit::UiLoader.register_widget_for("Plot2d","/base/Time",:update_time)
 
