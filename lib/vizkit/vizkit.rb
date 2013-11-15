@@ -1,5 +1,17 @@
 #!usr/bin/env ruby
 
+module Qt
+    class Application
+        def self.new(*args)
+            if $qApp
+                raise "trying to construct more than one QApplication. Note that doing \"require 'vizkit'\" creates one"
+            end
+
+            super
+        end
+    end
+end
+
 module Vizkit
     extend Logger::Root('Vizkit', Logger::WARN)
 
@@ -21,7 +33,9 @@ module Vizkit
     if !ENV['VIZKIT_NO_GUI']
         old_lang = ENV['LC_ALL']
         ENV['LC_ALL'] = 'C'
-        Qt::Application.new(ARGV)
+        if !$qApp
+            Qt::Application.new(ARGV)
+        end
         ENV['LC_ALL'] = old_lang
     end
 
