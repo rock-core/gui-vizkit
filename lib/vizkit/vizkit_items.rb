@@ -1067,28 +1067,30 @@ module Vizkit
     end
     
     class SyskitActionItem < VizkitItem
-            
         attr_reader :name
         attr_reader :action
         attr_reader :arguments
+        attr_reader :state
+        attr_accessor :job_id
         
         # Mapping from action states to colors
-        @@state_colors = {
-            :model => Qt::Color.new("black"),
+        STATE_COLORS = {
+            :model   => Qt::Color.new("black"),
             :pending => Qt::Color.new("dodgerblue"),
             :planned => Qt::Color.new("dodgerblue"),
             :running => Qt::Color.new("limegreen"),
-            :failed => Qt::Color.new("orangered"),
-            :successful => Qt::Color.new("silver")
+            :failed  => Qt::Color.new("orangered"),
+            :successful => Qt::Color.new("silver"),
+            :finalized  => Qt::Color.new("orangered")
         }
         
-        def initialize(action)
-            Kernel.raise "Not an action or job." unless action.is_a? DummyRobyAction
+        def initialize(action, arguments)
             @action = action
             @base_name = @action.name
-            @arguments = @action.arguments
+            @arguments = arguments
             
             @name = generate_name(@base_name, arguments)
+            @state = :model
             
             super(@name)
 
@@ -1098,49 +1100,36 @@ module Vizkit
         
         # Updates the item display. Checks for state change and updates color, tooltip, etc.
         def update_view
-            set_foreground(Qt::Brush.new(@@state_colors[state]))
+            set_foreground(Qt::Brush.new(STATE_COLORS[state]))
             set_tool_tip("State: #{state}")
+        end
+
+        def update_state(new_state)
+            # This is not made a constant at class level as we don't want vizkit
+            # to depend on roby by default !
+            roby_to_vizkit_states = Hash[
+                Roby::Interface::JOB_MONITORED => :pending,
+                Roby::Interface::JOB_STARTED_PLANNING => :pending,
+                Roby::Interface::JOB_READY   => :planned,
+                Roby::Interface::JOB_STARTED => :running,
+                Roby::Interface::JOB_FAILED  => :failed,
+                Roby::Interface::JOB_SUCCESS => :successful,
+                Roby::Interface::JOB_FINALIZED => :finalized]
+            @state = roby_to_vizkit_states[new_state]
+            update_view
         end
         
         # Creates string of base name and arguments
         def generate_name(base_name, arguments)
-            
-            name = "" << base_name
-            name << " ("
-            if arguments
-                
-                arguments.each do |key,value|
-                    value ||= "nil"
-                    name << key.to_s << " => \"" << value.to_s << "\", "
-                end 
-                name.rstrip! # remove whitespace at the end
-                name.chop! if name.end_with?(",")   # remove last comma
-            end
-            name << ")"
-            name
-        end
-        
-        def state
-            @action.state
-        end
-        
-        #def data(role = Qt::UserRole + 1)
-        #    case role
-        #    when Qt::ForegroundRole
-        #        return Qt::Brush.new(@state_colors[:pending])
-        #    else
-        #        #TODO choose suitable default value.
-        #        #return Qt::Variant.new(@action.name)
-        #        super.data(role)
-        #    end
-        #    
-        #end
-       
-        # TODO rename
-        def running?
-            # Returns false if action has no state (e.g. if action is an action model, not a job)
-            return @action.state != :model
+            formatted_arguments = arguments.map do |key,value|
+                value = value.inspect if value.respond_to?(:to_str)
+                "#{key} => #{value || "(no default)"}"
+            end 
+            "#{base_name}(#{formatted_arguments.join(", ")})"
         end
 
+        def finished?
+            @state == :success || @state == :failed || @state == :finalized
+        end
     end
 end
