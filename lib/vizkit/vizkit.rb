@@ -223,27 +223,11 @@ module Vizkit
         # Vizkit.vizkit3d_transformer_configuration
         attr_accessor :vizkit3d_transformer_broadcaster_name
 
-        # Control of the output of the port proxy started by Vizkit
-        #
-        # If nil (the default), the output of the port proxy is discarded if the
-        # loglevel of Vizkit.logger is WARN or higher. Otherwise, the port proxy
-        # output is port_proxy-%p.log (where %p is the PID).
-        #
-        # If set to false, the output is always disabled
-        #
-        # If set to true, the output is always enabled with the default output file
-        # of port_proxy-%p.log (where %p is the PID).
-        #
-        # Finally, if set to a string, the output is always enabled and uses the
-        # provided file name.
-        attr_accessor :port_proxy_log
-
         # Allow to set the vizkit3d widget to a custom one. If it is not set by the
         # user Vizkit will automatically create one if accessed.
         attr_accessor :vizkit3d_widget
     end
     @vizkit3d_transformer_broadcaster_name = ['transformer_broadcaster', 'configuration_state']
-    @port_proxy_log = nil
 
     #returns the instance of the vizkit 3d widget
     def self.vizkit3d_widget
