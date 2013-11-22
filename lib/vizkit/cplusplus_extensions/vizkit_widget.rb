@@ -4,7 +4,7 @@ module VizkitPluginExtension
     attr_reader :plugins 
 
     def load_adapters(plugin_spec)
-        if !Orocos.master_project # Check if Orocos has been initialized
+        if !Orocos.initialized? # Check if Orocos has been initialized
    	    raise RuntimeError, 'you need to call Orocos.initialize before using the Ruby bindings for Vizkit3D'
 	end
         @bridges = Hash.new
