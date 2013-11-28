@@ -219,11 +219,10 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "Plot2d" do
     end
 
     def update_orientation(sample,name)
-        new_sample = sample.to_euler(2,1,0)
         rename_graph(name,name+"_yaw")
-        update(new_sample[0]*(180.00/Math::PI),name+"_yaw")
-        update(new_sample[1]*(180.00/Math::PI),name+"_pitch")
-        update(new_sample[2]*(180.00/Math::PI),name+"_roll")
+        update(sample.yaw   *(180.00/Math::PI),name+"_yaw")
+        update(sample.pitch *(180.00/Math::PI),name+"_pitch")
+        update(sample.roll   *(180.00/Math::PI),name+"_roll")
     end
 
     def update_vector3d(sample,name)

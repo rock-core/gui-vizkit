@@ -93,10 +93,9 @@ class RigidBodyStateEditor
                 y_start.setValue rigid_body_state.position.y
                 z_start.setValue rigid_body_state.position.z
 
-                angles = rigid_body_state.orientation.to_euler(2,1,0)
-                alpha_start.setValue angles[0]*180/Math::PI
-                beta_start.setValue angles[1]*180/Math::PI
-                gamma_start.setValue angles[2]*180/Math::PI
+                alpha_start.setValue rigid_body_state.orientation.yaw   * 180/Math::PI
+                beta_start.setValue  rigid_body_state.orientation.pitch * 180/Math::PI
+                gamma_start.setValue rigid_body_state.orientation.roll  * 180/Math::PI
             end
 
             @rigid_body_state = rigid_body_state
