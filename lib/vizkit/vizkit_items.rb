@@ -395,14 +395,9 @@ module Vizkit
                 task.on_port_reachable do |port_name|
                     next if child?(port_name)
                     port = task.port(port_name)
-                    p = proc do
-                        if port.reachable?
-                            append_port(port)
-                        else
-                            Orocos::Async.event_loop.once 0.1,&p
-                        end
+                    port.once_on_reachable do 
+                        append_port(port)
                     end
-                    p.call
                 end
             end
         end
