@@ -65,10 +65,18 @@ module Vizkit
                 if event.is_a?(Qt::HideEvent)
                     @on_hide.call if @on_hide
                 elsif event.is_a?(Qt::WindowStateChangeEvent)
-                    if Qt::WindowMinimized == obj.windowState
-                        @on_hide.call if @on_hide
-                    else
-                        @on_show.call if @on_show
+                    window = obj
+                    # Some objects are not windows, but we do want the window
+                    # state. Look for a window in the hierarchy
+                    while window && !window.respond_to?(:windowState)
+                        window = window.parent
+                    end
+                    if window
+                        if Qt::WindowMinimized == window.windowState
+                            @on_hide.call if @on_hide
+                        else
+                            @on_show.call if @on_show
+                        end
                     end
                 elsif event.is_a?(Qt::ShowEvent)
                     @on_show.call if @on_show
