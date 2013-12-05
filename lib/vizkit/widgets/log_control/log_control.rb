@@ -183,6 +183,27 @@ class LogControl
       display_info
     end
 
+    Grabber = Struct.new :name, :proc do
+      def call; proc.call end
+    end
+    def enable_grabbing(object)
+      # respond_to? is broken on qtruby ... do it the hard way
+      begin object.enableGrabbing
+      rescue NoMethodError
+      end
+      begin
+        object.grab # see comment on qtruby and respond_to above
+        Grabber.new(object.objectName, lambda { object.grab })
+      rescue NoMethodError
+        # Generic way to grab widgets, but we do it only on those that don't
+        # have a parent
+        if object.kind_of?(Qt::Widget) && !object.parent
+          image = Qt::Image.new(object.size, Qt::Image::Format_RGB888)
+          Grabber.new(object.objectName, lambda { object.render(image); image })
+        end
+      end
+    end
+
     # Exports all opened widgets to the given path (one widget per subfolder),
     # at the given period.
     #
@@ -190,19 +211,19 @@ class LogControl
     def export_to_images(destination_path = nil, sampling_period = 0.04)
       specs = Vizkit.default_loader.all_plugin_specs
       setup = Array.new
+      seen_widgets = Array.new
+
       specs.each do |spec|
-        widgets = spec.created_plugins.find_all do |w|
-          # respond_to? is broken on qtruby ... do it the hard way
-          begin w.enableGrabbing
-          rescue NoMethodError
-            puts "#{w.objectName} has no enableGrabbing method"
+        widgets = spec.created_plugins.map do |w|
+          next if seen_widgets.include?(w)
+
+          if grabber = enable_grabbing(w)
+            seen_widgets << w
+            grabber
           end
-          begin w.grab
-          rescue NoMethodError
-          end
-        end
+        end.compact
         widgets.each_with_index do |w, i|
-          setup << [w, File.join(i.to_s, "%06i.png")]
+          setup << [w, File.join(setup.size.to_s, "%06i.png")]
         end
       end
 
@@ -222,7 +243,7 @@ class LogControl
       progress.bar = bar
 
       progress.setLabelText "Exporting #{frame_count} frames for #{setup.size} widgets in #{destination_path}\n" +
-          setup.map { |w,p| " #{w.objectName}: #{p}" }.join("\n")
+          setup.map { |w,p| " #{w.name}: #{p}" }.join("\n")
       progress.minimum = 0
       progress.maximum = frame_count
       bar.format = "%v/%m"
@@ -242,8 +263,8 @@ class LogControl
         next_grab_time ||= current_time
         if next_grab_time <= current_time
           Vizkit.step
-          frames = setup.map do |widget, path|
-            [widget.grab, path]
+          frames = setup.map do |grabber, path|
+            [grabber.call, path]
           end
           while next_grab_time <= current_time
             frames.each do |image, path|
