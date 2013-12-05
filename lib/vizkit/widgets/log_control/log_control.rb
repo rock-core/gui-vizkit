@@ -145,6 +145,10 @@ class LogControl
         setEnabled(true)
       end
 
+      actionMovie.connect(SIGNAL("triggered()")) do
+        export_to_images
+      end
+
       actionViewer.connect(SIGNAL("triggered(bool)")) do |checked|
         widget = Vizkit.default_loader.LogMarkerViewer
         widget.config2(@log_replay.log_markers)
@@ -177,6 +181,88 @@ class LogControl
       end
       @timer.doc = "Log::Replay"
       display_info
+    end
+
+    # Exports all opened widgets to the given path (one widget per subfolder),
+    # at the given period.
+    #
+    # The default period gives a 25fps frame rate
+    def export_to_images(destination_path = nil, sampling_period = 0.04)
+      specs = Vizkit.default_loader.all_plugin_specs
+      setup = Array.new
+      specs.each do |spec|
+        widgets = spec.created_plugins.find_all do |w|
+          # respond_to? is broken on qtruby ... do it the hard way
+          begin w.enableGrabbing
+          rescue NoMethodError
+            puts "#{w.objectName} has no enableGrabbing method"
+          end
+          begin w.grab
+          rescue NoMethodError
+          end
+        end
+        widgets.each_with_index do |w, i|
+          setup << [w, File.join(i.to_s, "%06i.png")]
+        end
+      end
+
+      # Create the subdirectories
+      setup.each do |_, p|
+        FileUtils.mkdir_p File.dirname(p)
+      end
+
+      destination_path ||= Qt::FileDialog.getExistingDirectory(self)
+      if destination_path.empty?
+          return
+      end
+
+      frame_count = Integer(@log_replay.duration / sampling_period)
+      progress = Qt::ProgressDialog.new(self)
+      bar = Qt::ProgressBar.new(progress)
+      progress.bar = bar
+
+      progress.setLabelText "Exporting #{frame_count} frames for #{setup.size} widgets in #{destination_path}\n" +
+          setup.map { |w,p| " #{w.objectName}: #{p}" }.join("\n")
+      progress.minimum = 0
+      progress.maximum = frame_count
+      bar.format = "%v/%m"
+      progress.show       
+
+      grab_period = 0.1
+      grab_index  = 0
+      next_grab_time = nil
+      while true
+        sample = @log_replay.step
+        if @log_replay.sample_index >= timeline.getEndMarkerIndex || !sample
+          bplay_clicked
+          break
+        end
+
+        current_time = @log_replay.current_time
+        next_grab_time ||= current_time
+        if next_grab_time <= current_time
+          Vizkit.step
+          frames = setup.map do |widget, path|
+            [widget.grab, path]
+          end
+          while next_grab_time <= current_time
+            frames.each do |image, path|
+              image.save(path % [grab_index])
+            end
+            grab_index += 1
+            next_grab_time += grab_period
+          end
+        end
+        progress.value = grab_index
+        break if progress.wasCanceled
+      end
+
+      setup.each do |w, _|
+        begin w.disableGrabbing
+        rescue NoMethodError
+        end
+      end
+      progress.close
     end
 
     def playing?

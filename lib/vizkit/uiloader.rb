@@ -385,6 +385,11 @@ module Vizkit
                 spec.match?(pattern)
             end
         end
+        
+        # Return all plugin specs
+        def all_plugin_specs
+            @plugin_specs.values
+        end
 
         def find_plugin_spec!(*pattern)
             return if pattern.empty?
