@@ -395,8 +395,12 @@ module Vizkit
                 task.on_port_reachable do |port_name|
                     next if child?(port_name)
                     port = task.port(port_name)
-                    port.once_on_reachable do 
-                        append_port(port)
+                    port.once_on_reachable do
+                        append_port(port) unless child?(port_name)
+                    end
+                    port.on_error do |e|
+                        # add port to display the error
+                        append_port(port) unless child?(port_name)
                     end
                 end
             end
