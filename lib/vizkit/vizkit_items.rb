@@ -485,7 +485,9 @@ module Vizkit
 
         def write(&block)
             block ||= proc {}
-            @port.write(typelib_val,&block)
+            if (column == 1 && direct_type?) || (column == 0 && !direct_type?)
+                @port.write(typelib_val,&block)
+            end
             Typelib.copy(@sent_sample,Typelib.from_ruby(typelib_val,typelib_val.class))
             modified!(false)
         end
@@ -722,7 +724,9 @@ module Vizkit
 
         def write(&block)
             begin
-                @property.write(typelib_val,&block)
+                if (column == 1 && direct_type?) || (column == 0 && !direct_type?)
+                    @property.write(typelib_val,&block)
+                end
                 modified!(false)
             rescue Orocos::NotFound
             end
