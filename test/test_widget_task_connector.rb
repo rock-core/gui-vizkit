@@ -16,6 +16,8 @@ describe WidgetTaskConnector do
             @@widget = Vizkit.default_loader.create_plugin("vizkit3d::Vizkit3DWidget")
             @@widget.extend Vizkit::QtTypelibExtension
             @@widget.setTransformation("world","bla",Qt::Vector3D.new,Qt::Quaternion.new)
+            @@widget.setTransformation("world","world2",Qt::Vector3D.new,Qt::Quaternion.new)
+            @@widget.setTransformation("world","world3",Qt::Vector3D.new,Qt::Quaternion.new)
 
             @@task = Orocos::Async.proxy "test_task"
             @@connector = Vizkit::WidgetTaskConnector.new(@@widget,@@task)
@@ -73,36 +75,41 @@ describe WidgetTaskConnector do
         end
 
         describe "connect" do
-            before do 
+            before do
                 @@widget.disconnect
                 @@widget.close
                 @@ruby_task.string_oport.disconnect_all
                 @@ruby_task.string_port.disconnect_all
+                @@task.port("string_port").unreachable!
+                @@task.port("string_oport").unreachable!
                 Vizkit.process_events
             end
 
             it "directly connect signal to port" do
                 @@connector.connect @@connector.SIGNAL("propertyChanged(QString)"),@@connector.PORT("string_port")
+                Orocos::Async.steps
                 @@widget.setVisualizationFrame("world")
                 Vizkit.process_events
                 Orocos::Async.steps
                 assert_equal "frame",@@ruby_task.string_port.read_new
             end
 
-            it "uses a getter function" do 
+            it "uses a getter function" do
                 @@connector.connect @@connector.SIGNAL("propertyChanged"),@@connector.PORT("string_port"),:getter => @@connector.SLOT("QString getVisualizationFrame()")
-                @@widget.setVisualizationFrame "world"
+                Orocos::Async.steps
+                @@widget.setVisualizationFrame "world2"
                 Vizkit.process_events
                 Orocos::Async.steps
-                assert_equal "world",@@ruby_task.string_port.read_new
+                assert_equal "world2",@@ruby_task.string_port.read_new
             end
 
             it "uses a getter function (signal signature is not fully defined)" do 
                 @@connector.connect @@connector.SIGNAL("propertyChanged"),@@connector.PORT("string_port"),:getter => @@connector.SLOT("getVisualizationFrame")
-                @@widget.setVisualizationFrame "world"
+                Orocos::Async.steps
+                @@widget.setVisualizationFrame "world3"
                 Vizkit.process_events
                 Orocos::Async.steps
-                assert_equal "world",@@ruby_task.string_port.read_new
+                assert_equal "world3",@@ruby_task.string_port.read_new
             end
 
             it "connect a property to slot" do 
@@ -112,7 +119,8 @@ describe WidgetTaskConnector do
                 Orocos::Async.steps
 
                 @@ruby_task.prop1 = "bla"
-                sleep 0.3
+                Orocos::Async.steps
+                sleep 0.2
                 Orocos::Async.steps
                 Vizkit.process_events
                 assert_equal "bla" ,@@widget.getVisualizationFrame
