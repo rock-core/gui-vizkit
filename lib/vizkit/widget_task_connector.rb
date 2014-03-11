@@ -12,14 +12,17 @@ module Vizkit
             instance_exec @task, &block
         end
 
-        def connect(sender,receiver=nil,options= Hash.new)
+        def connect(sender,receiver=nil,options= Hash.new,&block)
             source = resolve(sender)
             receiver,options= if receiver.is_a? Hash
                                   [nil,receiver]
                               else
                                   [receiver,options]
                               end
-            receiver = resolve(receiver)
+            if receiver && block
+                raise ArgumentError "Code blocks act as receivers and are not supported if a reveiver is already given."
+            end
+            receiver = resolve(receiver || block)
 
             options[:getter] = resolve(options[:getter]) if options[:getter]
             options[:callback] = resolve(options[:callback]) if options[:callback]
