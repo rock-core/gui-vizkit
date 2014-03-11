@@ -80,8 +80,11 @@ describe WidgetTaskConnector do
                 @@widget.close
                 @@ruby_task.string_oport.disconnect_all
                 @@ruby_task.string_port.disconnect_all
+                Orocos::Async.steps
                 @@task.port("string_port").unreachable!
                 @@task.port("string_oport").unreachable!
+                Vizkit.process_events
+                Orocos::Async.steps
                 Vizkit.process_events
             end
 
@@ -103,6 +106,23 @@ describe WidgetTaskConnector do
                 assert_equal "world2",@@ruby_task.string_port.read_new
             end
 
+            it "uses a getter function and buffered connection" do
+                @@connector.connect(@@connector.SIGNAL("propertyChanged"),@@connector.PORT("string_port"),
+                                    :getter => @@connector.SLOT("QString getVisualizationFrame()"),:type =>:buffer,:size => 10)
+                Orocos::Async.steps
+                @@widget.setVisualizationFrame "world"
+                Vizkit.process_events
+                @@widget.setVisualizationFrame "world2"
+                Vizkit.process_events
+                @@widget.setVisualizationFrame "world3"
+                Vizkit.process_events
+
+                Orocos::Async.steps
+                assert_equal "world",@@ruby_task.string_port.read_new
+                assert_equal "world2",@@ruby_task.string_port.read_new
+                assert_equal "world3",@@ruby_task.string_port.read_new
+            end
+
             it "uses a getter function (signal signature is not fully defined)" do 
                 @@connector.connect @@connector.SIGNAL("propertyChanged"),@@connector.PORT("string_port"),:getter => @@connector.SLOT("getVisualizationFrame")
                 Orocos::Async.steps
@@ -114,7 +134,6 @@ describe WidgetTaskConnector do
 
             it "connect a property to slot" do 
                 @@widget.setVisualizationFrame("world")
-                Vizkit.process_events
                 @@connector.connect @@connector.PROPERTY(:prop1),@@connector.SLOT("setVisualizationFrame(QString)")
                 Orocos::Async.steps
 
@@ -137,6 +156,28 @@ describe WidgetTaskConnector do
                 Orocos::Async.steps
                 Vizkit.process_events
                 assert_equal "world",@@widget.getVisualizationFrame
+            end
+
+            it "connect a port to a proc using bufferd connection" do
+                values = Array.new
+                # clear buffer
+
+                @@connector.connect @@connector.PORT("string_oport"),:type => :buffer,:size => 10 do |data|
+                    values << data
+                end
+                Orocos::Async.steps
+
+                @@ruby_task.string_oport.write "world"
+                @@ruby_task.string_oport.write "world2"
+                @@ruby_task.string_oport.write "world3"
+
+                sleep 0.2
+                Orocos::Async.steps
+                sleep 0.2
+                Orocos::Async.steps
+                sleep 0.2
+                Orocos::Async.steps
+                assert_equal ["world","world2","world3"],values
             end
 
             it "connect a signal to a property" do
