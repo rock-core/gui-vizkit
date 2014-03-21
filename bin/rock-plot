@@ -31,27 +31,22 @@ if remaining.empty?
 end
 
 Orocos.initialize
-Vizkit::ReaderWriterProxy.default_policy[:port_proxy] = nil
 plot_widget = Vizkit.default_loader.Plot2d
 remaining.each do |spec|
     plots = spec.split(' ')
     plots.each do |plot| 
         begin
-            task,port_name,*subfields = plot.split('.')
+            task,port_name = plot.split('.',2)
+            
             raise "No task name was given!" if(!task)
             raise "No port name was given!" if(!port_name)
-            subfields << nil if subfields.empty?
-            subsubfields = subfields.pop.split(':').to_a
-            subfields = subfields.map{|s| s.to_i.to_s == s ? s.to_i : s}
-            subsubfields.each do |subsubfield|
-                subsubfield =  if(subsubfield.to_i.to_s == subsubfield)
-                                   subsubfield.to_i
-                               else
-                                   subsubfield
-                               end
-                port =Vizkit::PortProxy.new(task,port_name,:subfield => subfields + [subsubfield])
-                Vizkit.display port, :widget=> plot_widget
+
+            task_proxy = Orocos::Async.proxy(task)
+            task_proxy.port(port_name).once_on_reachable do
+                puts "Connected to #{task}.#{port_name}"
+                Vizkit.display task_proxy.port(port_name), :widget=> plot_widget
             end
+            
         rescue ArgumentError,RuntimeError => e
             Vizkit.warn "cannot plot #{task}:#{port_name}:#{subfields.to_a.join(":")}"
             Vizkit.warn e
