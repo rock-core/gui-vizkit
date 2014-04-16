@@ -111,14 +111,7 @@ describe Vizkit do
         it "should automatically find the right widget and connect it" do 
             t1 = Vizkit.proxy("task",:retry_period => 0.08,:period => 0.1)
             p = t1.port("position")
-
-            sleep 0.1
-            Orocos::Async.step
-            sleep 0.1
-            Orocos::Async.step
-            sleep 0.1
-            Orocos::Async.step
-
+            p.wait
             w = Vizkit.display p
             w.must_be_instance_of Qt::Widget
         end
@@ -185,10 +178,15 @@ describe Vizkit do
             Vizkit.connect_port_to "task","position" do |sample,_|
                 data = sample
             end
+            #wait that the underlying port proxy got connected
+            Orocos::Async.proxy("task").port("position").wait
             Orocos::Async.steps
-            sleep 0.1
+
+            # wait because we use pulled connections
             @port.write @port.new_sample
+            sleep 0.3
             Orocos::Async.steps
+
             assert data
         end
     end
