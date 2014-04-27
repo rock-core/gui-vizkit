@@ -131,8 +131,6 @@ module VizkitPluginLoaderExtension
         end
         @grid = createPlugin("vizkit3d","GridVisualization")
         @grid.setPluginName("Grid")
-        @grid = createPlugin("vizkit3d","TextureBoxVisualization")
-        @grid.setPluginName("TextureBox")
     end
 
     def grid
