@@ -299,6 +299,7 @@ module Vizkit
                 spec = find_plugin_spec!({:plugin_name => class_name})
                 spec.extend_plugin(widget) if spec
             end
+            return widget unless children
 
             #extend childs and add accessor for QObject
             #find will find children recursive 
