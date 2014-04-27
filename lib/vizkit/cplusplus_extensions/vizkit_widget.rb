@@ -115,6 +115,7 @@ end
 module VizkitPluginLoaderExtension
     def initialize_vizkit_extension
         super
+        Vizkit.ensure_orocos_initialized
         if !@connected_to_broadcaster
             @port_frame_associations ||= Hash.new
             @connected_transformation_producers ||= Hash.new

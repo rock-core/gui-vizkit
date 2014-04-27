@@ -37,7 +37,6 @@ module Vizkit
                 lib_name = lib_name || ruby_name
                 plugin_name = plugin_name || ruby_name
                 spec = current_loader_instance.register_plugin(ruby_name,:vizkit3d_plugin) do |parent|
-                    Vizkit.ensure_orocos_initialized
                     widget = Vizkit.vizkit3d_widget
                     widget.show if widget.hidden?
                     if !widget.respond_to? :createPlugin
