@@ -1,24 +1,69 @@
 require 'rake'
-require 'utilrb/doc/rake'
-
 begin
     require 'hoe'
-    namespace 'dist' do
-        config = Hoe.spec('orocos.rb') do |p|
-            self.developer("Alexander Duda", "alexander.duda@dfki.de")
+    Hoe::plugin :yard
 
-            self.summary = 'Provides a Qt ruby based framework for visualisation of rock data items'
-            self.description = ""
-            self.urls = ["http://rock-robotics.org"]
-            self.changes = ""
+    hoe_spec = Hoe.spec('vizkit') do |p|
+        self.version = '0.1'
+        self.developer("Alexander Duda", "alexander.duda@dfki.de")
 
-            self.extra_deps <<
-                ['utilrb', ">= 1.1"] <<
-                ['qtruby'] <<
-                ['rake', ">= 0.8"]
-        end
-        Rake.clear_tasks(/dist:(re|clobber_|)docs/)
+        self.summary = 'Provides a Qt ruby based framework for visualisation of rock data items'
+        self.readme_file = FileList['README*'].first
+        self.description = paragraphs_of(history_file, 3..5).join("\n\n")
+        self.urls = ["http://rock-robotics.org"]
+
+        self.extra_deps <<
+            ['utilrb', ">= 1.1"] <<
+            ['qtruby'] <<
+            ['rake', ">= 0.8"] <<
+            ["rake-compiler",   "~> 0.8.0"] <<
+            ["hoe-yard",   ">= 0.1.2"]
     end
+    Rake.clear_tasks(/default/)
+
+    # Making sure that native extension will be build with gem
+    require 'rubygems/package_task'
+    Gem::PackageTask.new(hoe_spec.spec) do |pkg|
+        pkg.need_zip = true
+        pkg.need_tar = true
+    end
+
+    # Leave in top level namespace to allow rake-compiler to build native gem: 'rake native gem'
+    require 'rake/extensiontask'
+    desc "builds Vizkit's Typelib - C extension"
+    vizkitypelib_task = Rake::ExtensionTask.new('vizkittypelib', hoe_spec.spec) do |ext|
+        # Same info as in ext/rocoros/extconf.rb where cmake
+        # is used to generate the Makefile
+        ext.name = "vizkittypelib"
+        ext.ext_dir = "ext/vizkittypelib"
+        ext.lib_dir = "lib/vizkit"
+        ext.gem_spec = hoe_spec.spec
+        ext.source_pattern = "*.{c,cpp,cc}"
+
+        if not Dir.exists?(ext.tmp_dir)
+            FileUtils.mkdir_p ext.tmp_dir
+        end
+    end
+
+    typelib_qt_adapter_task = Rake::ExtensionTask.new('typelib_qt_adapter', hoe_spec.spec) do |ext|
+        # Same info as in ext/rocoros/extconf.rb where cmake
+        # is used to generate the Makefile
+        ext.name = "TypelibQtAdapter"
+        ext.ext_dir = "ext/vizkittypelib"
+        ext.lib_dir = "lib/vizkit"
+        ext.gem_spec = hoe_spec.spec
+        ext.source_pattern = "*.{c,cpp,cc}"
+
+        if not Dir.exists?(ext.tmp_dir)
+            FileUtils.mkdir_p ext.tmp_dir
+        end
+    end
+
+    task :default => :compile
+    task :doc => :yard
+    task :docs => :yard
+    task :redoc => :yard
+    task :redocs => :yard
 
 rescue LoadError
     STDERR.puts "cannot load the Hoe gem. Distribution is disabled"
@@ -29,47 +74,4 @@ rescue Exception => e
     end
 end
 
-task :default => ["setup:ext"]
-namespace :setup do
-    desc "builds typlib qt extension"
-    task :ext do
-        builddir = File.join('ext', 'build')
-        #prefix   = File.join(Dir.pwd, 'ext')
-        prefix = ENV['CMAKE_PREFIX_PATH'].split(":").first
-
-        FileUtils.mkdir_p builddir
-        orocos_target = ENV['OROCOS_TARGET'] || 'gnulinux'
-        Dir.chdir(builddir) do
-            FileUtils.rm_f "CMakeCache.txt"
-            if !system("cmake", "-DRUBY_PROGRAM_NAME=#{FileUtils::RUBY}", "-DCMAKE_INSTALL_PREFIX=#{prefix}", "-DOROCOS_TARGET=#{orocos_target}", "-DCMAKE_BUILD_TYPE=Debug", "..")
-                raise "unable to configure the extension using CMake"
-            end
-            if !system("make") || !system("make", "install")
-                STDERR.puts "unable to build the extension"
-            end
-        end
-      #  FileUtils.ln_sf "../ext/rorocos_ext.so", "lib/rorocos_ext.so"
-    end
-end
-task :setup => "setup:ext"
-desc "remove by-products of setup"
-task :clean do
-    FileUtils.rm_rf "ext/build"
-    FileUtils.rm_rf "ext/rorocos_ext.so"
-    FileUtils.rm_rf "lib/rorocos_ext.so"
-end
-
-if Utilrb.doc?
-    namespace 'doc' do
-        Utilrb.doc 'api', :include => ['lib/**/*.rb'],
-            :exclude => [],
-            :target_dir => 'doc',
-            :title => 'vizkit'
-    end
-
-    task 'redocs' => 'doc:reapi'
-    task 'doc' => 'doc:api'
-else
-    STDERR.puts "WARN: cannot load yard or rdoc , documentation generation disabled"
-end
 

@@ -1,5 +1,5 @@
 begin 
-require 'TypelibQtAdapter'
+require 'vizkit/TypelibQtAdapter'
 rescue Exception => e
     #no logger is available at this point so create one 
     log = Logger.new(STDOUT)

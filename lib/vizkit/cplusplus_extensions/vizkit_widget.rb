@@ -1,4 +1,4 @@
-require 'vizkittypelib'
+require 'vizkit/vizkittypelib'
 module Vizkit
 module VizkitPluginExtension
     attr_reader :plugins 

@@ -1,0 +1,2 @@
+===  / 2014-05-19
+ * adapt format to allow gem packaging
