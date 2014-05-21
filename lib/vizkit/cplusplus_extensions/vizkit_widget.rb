@@ -280,7 +280,8 @@ module VizkitPluginLoaderExtension
         # Push the data to the underlying transformer
         data.static_transformations.each do |trsf|
             Vizkit.debug "pushing static transformation #{trsf.sourceFrame} => #{trsf.targetFrame}"
-            setTransformation(trsf.sourceFrame,trsf.targetFrame,
+            # target and source are exchanged because the transformer defines its transformations as Source_In_Target
+            setTransformation(trsf.targetFrame,trsf.sourceFrame,
                               Qt::Vector3D.new(trsf.position.x,trsf.position.y,trsf.position.z),
                               Qt::Quaternion.new(trsf.orientation.w,trsf.orientation.x,trsf.orientation.y,trsf.orientation.z))
         end
@@ -308,7 +309,8 @@ module VizkitPluginLoaderExtension
                         @connected_transformation_producers[[producer.task, producer.port]] = true
                     end
                     Vizkit.debug "pushing dynamic transformation #{data.sourceFrame} => #{data.targetFrame}"
-                    setTransformation(data.sourceFrame,data.targetFrame,
+                    # target and source are exchanged because the transformer defines its transformations as Source_In_Target
+                    setTransformation(data.targetFrame,data.sourceFrame,
                                       Qt::Vector3D.new(data.position.x,data.position.y,data.position.z),
                                       Qt::Quaternion.new(data.orientation.w,data.orientation.x,data.orientation.y,data.orientation.z))
                 end
