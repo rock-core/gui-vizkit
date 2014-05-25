@@ -1,9 +1,7 @@
 #include "TypelibQtAdapter.h"
 #include <rtt/typelib/TypelibMarshallerBase.hpp>
-#include <Qt/qmetaobject.h>
-#include <Qt/qbytearray.h>
+#include <QtCore>
 #include <iostream>
-#include <Qt/qcoreapplication.h>
 
 #include <rtt/typelib/TypelibMarshallerBase.hpp>
 #include <rice/Constructor.hpp>
