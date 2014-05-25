@@ -167,10 +167,10 @@ module VizkitPluginLoaderExtension
                    ENV['VIZKIT_PLUGIN_RUBY_PATH']
                end
         path.split(':').each do |path|
-            path = File.join(path, "lib#{plugin_name}-viz.so")
-            if File.file?(path)
-                return path
-            end
+            p = File.join(path, "lib#{plugin_name}-viz.so")
+            return p if File.file?(p)
+            p = File.join(path, "lib#{plugin_name}-viz.bundle")
+            return p if File.file?(p)
         end
         nil
     end
