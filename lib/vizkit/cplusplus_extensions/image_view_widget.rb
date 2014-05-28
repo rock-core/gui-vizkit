@@ -14,6 +14,7 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "ImageView" do
           @options ||= default_options
           #connect(SIGNAL("activityChanged(bool)"),self,:setActive)
           @init = true
+          @fallback = false
       end
   end
 
@@ -37,11 +38,18 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "ImageView" do
           addTextWrapper(time.strftime("%F %H:%M:%S"), :bottomright, Qt::Color.new(Qt::black), false)
       end
 
-      @typelib_adapter ||= Vizkit::TypelibQtAdapter.new(self)
-      if !@typelib_adapter.call_qt_method("setFrame",frame)
-          Vizkit.warn "Cannot reach method setFrame."
-          Vizkit.warn "This happens if an old log file is replayed and the type has changed."
-          Vizkit.warn "Call rock-convert to update the logfile."
+      if @fallback
+          setRawImage(frame.frame_mode.to_s,frame.pixel_size,frame.size.width,frame.size.height,frame.image.to_byte_array[8..-1],frame.image.size)
+      else
+          @typelib_adapter ||= Vizkit::TypelibQtAdapter.new(self)
+          if !@typelib_adapter.call_qt_method("setFrame",frame)
+              Vizkit.warn "Cannot reach method setFrame."
+              Vizkit.warn "This happens if an old log file is replayed and the type has changed."
+              Vizkit.warn "Call rock-convert to update the logfile."
+              Vizkit.warn "Falling back to use raw access."
+              @fallback = true
+              display(frame,port_name)
+          end
       end
       update2
   end

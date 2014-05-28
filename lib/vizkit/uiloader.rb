@@ -38,7 +38,7 @@ module Vizkit
                 plugin_name = plugin_name || ruby_name
                 spec = current_loader_instance.register_plugin(ruby_name,:vizkit3d_plugin) do |parent|
                     widget = Vizkit.vizkit3d_widget
-                    widget.show if widget.hidden?
+                    widget.show # if widget.hidden?
                     if !widget.respond_to? :createPlugin
                         raise "Extension for Vizkit3d widget was not loaded. Cannot create any Vizkit3dPlugin"
                     end
