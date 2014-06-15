@@ -1,14 +1,6 @@
-require File.join(File.dirname(__FILE__),"test_helper")
-start_simple_cov("test_uiloader")
+require 'vizkit/test'
 
-require 'test/unit'
-require 'vizkit'
-
-Orocos.initialize
-Orocos.load_typekit "base"
-
-class LoaderUiTest < Test::Unit::TestCase
-
+class LoaderUiTest < MiniTest::Test
     def setup
         @loader = Vizkit.default_loader
         Vizkit::UiLoader.current_loader_instance = @loader

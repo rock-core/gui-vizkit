@@ -1,16 +1,6 @@
-require File.join(File.dirname(__FILE__),"test_helper")
-start_simple_cov("test_widget_task_connector")
+require 'vizkit/test'
 
-require 'vizkit'
-require 'minitest/spec'
-
-Orocos.initialize
-Orocos.load_typekit "base"
-Vizkit.default_loader.add_plugin_path File.join(File.dirname(__FILE__),"..","..","build","test","test_vizkit_widget")
-MiniTest::Unit.autorun
-include Vizkit
-
-describe WidgetTaskConnector do
+describe Vizkit::WidgetTaskConnector do
     class SandBoxWidgetTaskConnector < MiniTest::Spec
         def self.prepare
             @@widget = Vizkit.default_loader.create_plugin("vizkit3d::Vizkit3DWidget")

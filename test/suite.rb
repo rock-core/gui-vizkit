@@ -1,6 +1,4 @@
-require './test_helper'
-start_simple_cov("suite")
-require 'test/unit'
+require 'vizkit/test'
 require "./test_vizkit"
 require './test_uiloader'
 require "./test_widgets"

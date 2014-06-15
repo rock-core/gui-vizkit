@@ -1,8 +1,4 @@
-require './test_helper'
-require 'vizkit'
-
-MiniTest::Unit.autorun
-Orocos.initialize
+require 'vizkit/test'
 
 class TestWidget < Qt::Object
     attr_accessor :sample

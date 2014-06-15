@@ -1,8 +1,4 @@
-require './test_helper'
-require 'vizkit'
-
-MiniTest::Unit.autorun
-Orocos.initialize
+require 'vizkit/test'
 
 describe Vizkit do
     before do

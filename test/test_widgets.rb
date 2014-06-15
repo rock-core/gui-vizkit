@@ -1,12 +1,6 @@
-require File.join(File.dirname(__FILE__),"test_helper")
-start_simple_cov("test_widgets")
+require 'vizkit/test'
 
-require 'vizkit'
-require 'test/unit'
-Orocos.initialize
-Orocos.load_typekit "base"
-
-class WidgetTest < Test::Unit::TestCase
+class WidgetTest < Minitest::Test
     def setup
 
     end

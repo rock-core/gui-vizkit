@@ -1,13 +1,6 @@
-require File.join(File.dirname(__FILE__),"test_helper")
-start_simple_cov("test_typelib_qt_adapter")
+require 'vizkit/test'
 
-require 'vizkit'
-require 'minitest/spec'
-
-Orocos.initialize
-Orocos.load_typekit "base"
 Vizkit.default_loader.add_plugin_path File.join(File.dirname(__FILE__),"..","..","build","test","test_vizkit_widget")
-MiniTest::Unit.autorun
 
 describe Vizkit::TypelibQtAdapter do
     before do

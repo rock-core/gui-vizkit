@@ -1,13 +1,5 @@
-require File.join(File.dirname(__FILE__),"test_helper")
-start_simple_cov("test_tree_view")
-
-require 'vizkit'
-require 'vizkit/tree_view.rb'
-require 'minitest/spec'
-
-Orocos.initialize
-Orocos.load_typekit "base"
-MiniTest::Unit.autorun
+require 'vizkit/test'
+require 'vizkit/tree_view'
 
 # TODO
 # update to the QStandartItemModel

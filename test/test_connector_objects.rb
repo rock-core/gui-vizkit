@@ -1,14 +1,5 @@
-require File.join(File.dirname(__FILE__),"test_helper")
-start_simple_cov("test_connector_objects")
-
-require 'vizkit'
-require 'minitest/spec'
-
-Orocos.initialize
-Orocos.load_typekit "base"
+require 'vizkit/test'
 Vizkit.default_loader.add_plugin_path File.join(File.dirname(__FILE__),"..","..","build","test","test_vizkit_widget")
-MiniTest::Unit.autorun
-include Vizkit
 
 describe "ConnectorObjects" do
     class SandBoxConnectorObjects < MiniTest::Spec
