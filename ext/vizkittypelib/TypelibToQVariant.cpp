@@ -1,8 +1,8 @@
-#include "TypelibToQVariant.hpp"
 #include <rtt/typelib/TypelibMarshallerBase.hpp>
 #include <rice/Constructor.hpp>
 #include <typelib_ruby.hh>
 #include <rtt/base/ChannelElementBase.hpp>
+#include "TypelibToQVariant.hpp"
 
 using namespace Rice;
 
