@@ -79,7 +79,6 @@ lib/vizkit/vizkit.rb
 lib/vizkit/widget_task_connector.rb
 lib/vizkit/typelib_qt_adapter.rb
 lib/vizkit/qt_orocos.rb
-lib/vizkit/port_proxy_extensions.rb
 lib/vizkit/uiloader.rb
 lib/vizkit/plugin_extensions.rb
 lib/vizkit/plugin_accessor.rb
