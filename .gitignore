@@ -3,3 +3,4 @@ doc/Doxyfile
 ruby/coverage
 ruby/doc
 *.swp
+tmp/
