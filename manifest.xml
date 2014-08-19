@@ -8,6 +8,7 @@
 	DFKI/robotik@dfki.de
     </copyright>
     <depend package="base/cmake"/>
+    <depend package="drivers/orogen/transformer"/>
     <depend package="tools/orocos.rb"/>
     <depend package="qtruby"/>
     <depend package="gui/rock_widget_collection"/>
