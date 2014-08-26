@@ -1,15 +1,14 @@
-#include "TypelibQtAdapter.h"
+#include <linux/types.h>
 #include <rtt/typelib/TypelibMarshallerBase.hpp>
-#include <Qt/qmetaobject.h>
-#include <Qt/qbytearray.h>
 #include <iostream>
-#include <Qt/qcoreapplication.h>
 
 #include <rtt/typelib/TypelibMarshallerBase.hpp>
 #include <rice/Constructor.hpp>
 #include <rice/Array.hpp>
 #include <typelib_ruby.hh>
 #include <rtt/base/ChannelElementBase.hpp>
+#include "TypelibQtAdapter.h"
+#include <QtCore>
 
 using namespace Rice;
 

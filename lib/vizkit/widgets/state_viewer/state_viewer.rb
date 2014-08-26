@@ -24,27 +24,11 @@ class StateViewer < Qt::Widget
         @font = Qt::Font.new
         @font.setPointSize(9)
         @font.setBold(true)
-
-        @timer = Qt::Timer.new
-        @timer.connect(SIGNAL('timeout()')) do 
-            @tasks.each do |task|
-                if task.reachable?
-                    if task.running?
-                        update(task.state ,task.name,@green)
-                    else
-                        update(task.state ,task.name,@blue)
-                    end
-                else
-                    update(task.state,task.name,@red)
-                end
-            end
-        end
     end
 
     def default_options
         options = Hash.new
         options[:max_rows] = 6
-        options[:update_frequency] = 2
         options
     end
 
@@ -54,13 +38,21 @@ class StateViewer < Qt::Widget
     end
 
     def add(task,options=Hash.new)
-        @tasks << if task.is_a?(Vizkit::TaskProxy)
-                    task
-                  else
-                      Vizkit::TaskProxy.new(task)
-                  end
-        if !@timer.active
-            @timer.start(1000/@options[:update_frequency])
+        task = if task.is_a?(Orocos::Async::TaskContextProxy)
+                   task
+               else
+                   Orocos::Async.proxy(task)
+               end
+        @tasks << task
+        task.on_state_change do |state|
+            if(task.running?)
+                update(state,task.name,@green)
+            else
+                update(state,task.name,@blue)
+            end
+        end
+        task.on_unreachable do
+            update("UNREACHABLE",task.name,@red)
         end
     end
 
@@ -72,7 +64,7 @@ class StateViewer < Qt::Widget
             label.instance_variable_set :@task_inspector, @task_inspector
             label.instance_eval do
                 def mouseDoubleClickEvent(event)
-                    @task_inspector.config @task_name
+                    @task_inspector.add_task @task_name
                     @task_inspector.show
                 end
             end
@@ -97,5 +89,5 @@ class StateViewer < Qt::Widget
 end
 
 Vizkit::UiLoader.register_ruby_widget("StateViewer",StateViewer.method(:new))
-Vizkit::UiLoader.register_control_for("StateViewer",Orocos::TaskContext,:add)
+Vizkit::UiLoader.register_control_for("StateViewer",Orocos::Async::TaskContextProxy,:add)
 #Vizkit::UiLoader.register_control_for("StateViewer",Vizkit::TaskProxy,:add)

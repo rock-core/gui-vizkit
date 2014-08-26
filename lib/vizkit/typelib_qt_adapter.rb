@@ -1,5 +1,5 @@
 begin 
-require 'TypelibQtAdapter'
+require 'vizkit/TypelibQtAdapter'
 rescue Exception => e
     #no logger is available at this point so create one 
     log = Logger.new(STDOUT)
@@ -78,7 +78,9 @@ module Vizkit
                 rescue Typelib::NotFound
                 end
 
-            return Orocos.registry.get(typename), typelib_type
+            if typelib_type
+                return Orocos.registry.get(typename), typelib_type
+            end
         end
 
         # Given a ruby value and a requested C++ type name, finds which typelib
@@ -95,6 +97,8 @@ module Vizkit
             if cxx_type
                 return cxx_type, typelib_type, Typelib.from_ruby(ruby_value, typelib_type)
             end
+        rescue Typelib::ConversionToMismatchedType
+            raise
         rescue Typelib::UnknownConversionRequested
         end
 	
@@ -156,6 +160,8 @@ module Vizkit
                 end
 	    end
             false
+        rescue Typelib::ConversionToMismatchedType => e
+            raise e, "cannot call #{method_name}: #{e.message}", e.backtrace
 	end
     end  
 
@@ -180,8 +186,6 @@ module Vizkit
 			backtrace = ["#{backtrace[0].gsub(/in `\w+'/, "exception from C++ method #{plugin_spec.plugin_name}::#{m.to_s}")}"] + backtrace[1..-1]
 		    end
                     Kernel.raise e, e.message, backtrace
-                rescue 
-                    [false,nil]
                 end
 
             if successful

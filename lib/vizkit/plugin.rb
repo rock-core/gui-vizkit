@@ -100,8 +100,7 @@ module Vizkit
         def self.classes(klass,include_super=true)
             return Array.new unless klass && klass.name
             raise ArgumentError, "#{klass} is not a class" unless klass.respond_to? :name
-
-            arry = if include_super && klass.respond_to?(:superclass) && klass.superclass && klass != klass.superclass
+            arry = if include_super && klass.respond_to?(:superclass) && klass.superclass && (klass <=> klass.superclass) != 0
                     Array(klass.name) + classes(klass.superclass)
                 else
                     Array(klass.name)

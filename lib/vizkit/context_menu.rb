@@ -45,6 +45,7 @@ module Vizkit
 
             # Determine applicable widgets for the output port
             widgets = Vizkit.default_loader.find_all_plugin_names(:argument=>type_name, :callback_type => :display,:flags => {:deprecated => false})
+            widgets << "StructViewer" # always add StructViewer even if Typelib resolution fails (Mac OS)
             widgets.uniq!
             widgets.each do |w|
                 menu.add_action(Qt::Action.new(w, parent))

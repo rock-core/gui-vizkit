@@ -12,6 +12,10 @@ module Vizkit
         # def on_data(options,&block)
         # end
 
+        def initialize
+            @supports_options = true
+        end
+
         # used to filter underlaying method specs
         def arity=(value)
         end
@@ -42,10 +46,24 @@ module Vizkit
             @name
         end
 
+        # returns true if the object supports options for writing or reading
+        def options?
+            @supports_options
+        end
+
         def connect_to(receiver,options)
-            objects,options = Kernel.filter_options options,:getter => nil,:callback => nil
+            objects,options = Kernel.filter_options options,:getter => nil,:callback => nil,:write_options => Hash.new,:getter_options => Hash.new
             getter = objects[:getter]
             callback = objects[:callback]
+            write_opt= objects[:write_options]
+            getter_opt= objects[:getter_options]
+
+            # options are for the writing part if the source does not support
+            # options
+            if !options? && write_opt.empty?
+                write_opt = options
+                options = Hash.new
+            end
 
             raise ArgumentError, "#{name} cannot be used as :source object" unless respond_to?(:on_data)
             raise ArgumentError, "#{receiver.name} cannot be used as :receiver object" unless receiver.respond_to?(:write)
@@ -75,8 +93,6 @@ module Vizkit
            #         end
 
             # connect objects
-            write_opt = Hash.new
-            getter_opt = Hash.new
             p = proc do |result,error|
                 if callback
                     message = if error
@@ -100,7 +116,10 @@ module Vizkit
     end
 
     class ConnectorSlot < ConnectorObject
+
         def initialize(widget,signature,options = Hash.new)
+            super()
+            @supports_options = false
             @widget = widget
             @method_info = if @widget.respond_to? :method_info
                                @widget.method_info
@@ -269,6 +288,7 @@ module Vizkit
 
     class ConnectorOperation < ConnectorObject
         def initialize(task,signature,options)
+            super()
             @task = task
             @name = signature
         end
@@ -311,6 +331,7 @@ module Vizkit
 
     class ConnectorPort < ConnectorObject
         def initialize(task,signature,options)
+            super()
             @port = task.port(signature)
         end
 
@@ -348,7 +369,7 @@ module Vizkit
                   else
                       arg
                   end
-            @port.write arg,&block
+            @port.write arg,options,&block
         end
 
         def on_data(options,&block)
@@ -358,6 +379,7 @@ module Vizkit
 
     class ConnectorProperty < ConnectorObject
         def initialize(task,signature,options)
+            super()
             @property = task.property(signature)
         end
 
@@ -399,6 +421,8 @@ module Vizkit
 
     class ConnectorEvent < ConnectorObject
         def initialize(task,signature,options)
+            super()
+            @supports_options = false
             @task = task
             @name = signature
             @task.validate_event @name.to_sym
@@ -417,8 +441,10 @@ module Vizkit
     end
 
     class ConnectorProc < ConnectorObject
-        def initialize(widget,proc_,options = Hash.new)
-            @widget = widget
+        def initialize(task,proc_,options = Hash.new)
+            super()
+            @supports_options = false
+            @task=task
             @proc = proc_
             @name = "code block"
         end

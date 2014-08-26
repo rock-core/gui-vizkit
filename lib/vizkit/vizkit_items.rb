@@ -235,7 +235,7 @@ module Vizkit
                                    end
                              begin
                                  Qt::Variant.new(val)
-                             rescue Expetion => e
+                             rescue Exception => e
                                  setEditable(false)
                                  Qt::Variant.new(e.message)
                              end
@@ -395,14 +395,13 @@ module Vizkit
                 task.on_port_reachable do |port_name|
                     next if child?(port_name)
                     port = task.port(port_name)
-                    p = proc do
-                        if port.reachable?
-                            append_port(port)
-                        else
-                            Orocos::Async.event_loop.once 0.1,&p
-                        end
+                    port.once_on_reachable do
+                        append_port(port) unless child?(port_name)
                     end
-                    p.call
+                    port.on_error do |e|
+                        # add port to display the error
+                        append_port(port) unless child?(port_name)
+                    end
                 end
             end
         end
@@ -486,7 +485,9 @@ module Vizkit
 
         def write(&block)
             block ||= proc {}
-            @port.write(typelib_val,&block)
+            if (column == 1 && direct_type?) || (column == 0 && !direct_type?)
+                @port.write(typelib_val,&block)
+            end
             Typelib.copy(@sent_sample,Typelib.from_ruby(typelib_val,typelib_val.class))
             modified!(false)
         end
@@ -723,7 +724,9 @@ module Vizkit
 
         def write(&block)
             begin
-                @property.write(typelib_val,&block)
+                if (column == 1 && direct_type?) || (column == 0 && !direct_type?)
+                    @property.write(typelib_val,&block)
+                end
                 modified!(false)
             rescue Orocos::NotFound
             end

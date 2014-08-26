@@ -10,8 +10,7 @@
     <depend package="base/cmake"/>
     <depend package="tools/orocos.rb"/>
     <depend package="qtruby"/>
+    <depend package="gui/rock_widget_collection"/>
 
-    <depend package="tools/typelib"  optional="1"/>
     <depend package="gui/vizkit3d"  optional="1"/>
-    <depend package="gui/rock_widget_collection"  optional="1"/>
 </package>

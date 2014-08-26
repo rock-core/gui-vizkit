@@ -23,7 +23,7 @@ class TaskInspector
             action = form.menuWidgets.addAction(name)
             action.connect SIGNAL("triggered()") do
                 w = Vizkit.default_loader.create_plugin name
-                w.show if w.respond_to? :show
+                w.show if w.respond_to?(:show) || w.kind_of?(Qt::Widget)
             end
         end
 

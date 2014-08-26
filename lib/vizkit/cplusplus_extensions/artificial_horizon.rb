@@ -11,9 +11,8 @@ Vizkit::UiLoader.extend_cplusplus_widget_class "ArtificialHorizon" do
           sample = Eigen::Quaternion.new(sample.re, *sample.im.to_a)
       end
 
-      angles = sample.to_euler(2,1,0)
-      setPitchAngle(angles.y)
-      setRollAngle(angles.z)
+      setPitchAngle(sample.pitch)
+      setRollAngle(sample.roll)
   end
 end
 

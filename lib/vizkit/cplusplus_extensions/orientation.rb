@@ -11,10 +11,9 @@ Vizkit::UiLoader.extend_cplusplus_widget_class "OrientationView" do
           sample = Eigen::Quaternion.new(sample.re, *sample.im.to_a)
       end
 
-      angles = sample.to_euler(2,1,0)
-      setPitchAngle(angles.y)
-      setRollAngle(angles.z)
-      setHeadingAngle(angles.x)
+      setPitchAngle(sample.pitch)
+      setRollAngle(sample.roll)
+      setHeadingAngle(sample.yaw)
   end
 end
 

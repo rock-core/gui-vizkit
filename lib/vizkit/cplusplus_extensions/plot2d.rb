@@ -24,6 +24,8 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "Plot2d" do
         options[:multi_use_menu] = true
         options[:update_period] = 0.25   # repaint periode if new data are available
                                          # this prevents repainting for each new sample
+        options[:plot_timestamps] = true
+        options[:is_time_plot] = false
         return options 
     end
 
@@ -89,6 +91,17 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "Plot2d" do
                 menu.addSeparator
                 action_saving = Qt::Action.new("Save to File", self)
                 menu.add_action(action_saving)
+                if @options[:is_time_plot]
+                    menu.addSeparator
+                    action_timestamp = Qt::Action.new("Show timestamps", self)
+                    action_timestamp.checkable = true
+                    action_timestamp.checked = @options[:plot_timestamps]
+                    menu.add_action(action_timestamp)
+                    action_sample_period = Qt::Action.new("Show sample period", self)
+                    action_sample_period.checkable = true
+                    action_sample_period.checked = !@options[:plot_timestamps]
+                    menu.add_action(action_sample_period)
+                end
 
                 action = menu.exec(mapToGlobal(event.pos))
                 if(action == action_scrolling)
@@ -106,6 +119,8 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "Plot2d" do
                 elsif action == action_saving
                     file_path = Qt::FileDialog::getSaveFileName(nil,"Save Plot to Pdf",File.expand_path("."),"Pdf (*.pdf)")
                     savePdf(file_path,false,0,0) if file_path
+                elsif ((action == action_timestamp) || (action == action_sample_period))
+                    @options[:plot_timestamps] =! @options[:plot_timestamps]
                 end
             end
         end
@@ -219,11 +234,10 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "Plot2d" do
     end
 
     def update_orientation(sample,name)
-        new_sample = sample.to_euler(2,1,0)
         rename_graph(name,name+"_yaw")
-        update(new_sample[0]*(180.00/Math::PI),name+"_yaw")
-        update(new_sample[1]*(180.00/Math::PI),name+"_pitch")
-        update(new_sample[2]*(180.00/Math::PI),name+"_roll")
+        update(sample.yaw   *(180.00/Math::PI),name+"_yaw")
+        update(sample.pitch *(180.00/Math::PI),name+"_pitch")
+        update(sample.roll   *(180.00/Math::PI),name+"_roll")
     end
 
     def update_vector3d(sample,name)
@@ -245,8 +259,28 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "Plot2d" do
     end
   
     def update_time(sample, name)
-        update(sample.to_f, name)
+        # So that the time related options of the right click menu are not shown for other types
+        @options[:is_time_plot] = true
+        if @options[:plot_timestamps]
+            update(sample.to_f, name)
+        else
+            update_time_diff(sample, name)
+        end
     end
+  
+    def update_time_diff(sample, name)
+        # For each data source an entry in the dictionary is created
+        if @previous_time == nil
+            @previous_time = {}
+        end
+        if @previous_time[name] == nil 
+            @previous_time[name] = sample.to_f
+        end
+        difference = sample.to_f - @previous_time[name]
+        @previous_time[name] = sample.to_f
+        update(difference, name)
+    end
+
  
     def set_x_axis_scale(start,stop)
         getXAxis.setRange(start,stop)

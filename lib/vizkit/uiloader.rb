@@ -37,9 +37,8 @@ module Vizkit
                 lib_name = lib_name || ruby_name
                 plugin_name = plugin_name || ruby_name
                 spec = current_loader_instance.register_plugin(ruby_name,:vizkit3d_plugin) do |parent|
-                    Vizkit.ensure_orocos_initialized
                     widget = Vizkit.vizkit3d_widget
-                    widget.show if widget.hidden?
+                    widget.show # if widget.hidden?
                     if !widget.respond_to? :createPlugin
                         raise "Extension for Vizkit3d widget was not loaded. Cannot create any Vizkit3dPlugin"
                     end
@@ -299,6 +298,7 @@ module Vizkit
                 spec = find_plugin_spec!({:plugin_name => class_name})
                 spec.extend_plugin(widget) if spec
             end
+            return widget unless children
 
             #extend childs and add accessor for QObject
             #find will find children recursive 
@@ -384,6 +384,11 @@ module Vizkit
             @plugin_specs.values.find_all do |spec|
                 spec.match?(pattern)
             end
+        end
+        
+        # Return all plugin specs
+        def all_plugin_specs
+            @plugin_specs.values
         end
 
         def find_plugin_spec!(*pattern)
