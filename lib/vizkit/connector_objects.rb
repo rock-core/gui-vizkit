@@ -105,7 +105,7 @@ module Vizkit
             end
             on_data options do |*args|
                 if getter
-                    getter.read getter_opt do |*args|
+                    getter.read getter_opt,*args do |*args|
                         receiver.write(write_opt,*args,&p)
                     end
                 else
