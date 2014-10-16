@@ -4,10 +4,8 @@ class StateViewer < Qt::Widget
     def initialize(parent=nil)
         super
         #add layout to the widget
-        @layout = Qt::GridLayout.new
-        self.setLayout @layout
-
-        @task_inspector = Vizkit.default_loader.TaskInspector 
+        @layout = Qt::GridLayout.new(self)
+        @layout.spacing = 0
 
         @hash_labels = Hash.new
         @tasks = Array.new
@@ -18,12 +16,13 @@ class StateViewer < Qt::Widget
         @red = Qt::Palette.new
         @green = Qt::Palette.new
         @blue = Qt::Palette.new
-        @red.setColor(Qt::Palette::Window,Qt::Color.new(255,0,0))
-        @green.setColor(Qt::Palette::Window,Qt::Color.new(0,255,0))
-        @blue.setColor(Qt::Palette::Window,Qt::Color.new(0,0,255))
-        @font = Qt::Font.new
-        @font.setPointSize(9)
-        @font.setBold(true)
+        @red.setColor(Qt::Palette::Window,Qt::Color.new(0xFF,0x44,0x44))
+        @green.setColor(Qt::Palette::Window,Qt::Color.new(0x99,0xCC,0x00))
+        @blue.setColor(Qt::Palette::Window,Qt::Color.new(0x33,0xB5,0xE5))
+    end
+
+    def task_inspector
+        @task_inspector ||= Vizkit.default_loader.TaskInspector 
     end
 
     def default_options
@@ -56,31 +55,44 @@ class StateViewer < Qt::Widget
         end
     end
 
-    def update(data, port_name, color = @red)
-        label = @hash_labels[port_name]
-        if !label
-            label = Qt::Label.new 
-            label.instance_variable_set :@task_name, port_name
-            label.instance_variable_set :@task_inspector, @task_inspector
-            label.instance_eval do
-                def mouseDoubleClickEvent(event)
-                    @task_inspector.add_task @task_name
-                    @task_inspector.show
-                end
-            end
-            label.setFont(@font)
-            label.setAutoFillBackground true
-            @hash_labels[port_name] = label
-            @layout.addWidget(label,@row,@col)
-            @row += 1
-            if @row == @options[:max_rows]
-                @row = 0
-                @col += 1
+    def self.create_state_label(task_name, task_inspector)
+        label = Qt::Label.new 
+        label.margin = 5
+        singleton_class = (class << label; self end)
+        singleton_class.class_eval do
+            define_method :mouseDoubleClickEvent do |event|
+                task_inspector.add_task task_name
+                task_inspector.show
             end
         end
+        label.setAutoFillBackground true
+        label
+    end
 
-        label.setText(port_name.to_s + " : " + data.to_s)
-        label.setPalette color if label.palette != color
+    def add_label_to_layout(label)
+        @layout.addWidget(label,@row,@col)
+        @row += 1
+        if @row == @options[:max_rows]
+            @row = 0
+            @col += 1
+        end
+    end
+
+    def label_for(task_name)
+        if !(label = @hash_labels[task_name])
+            label = self.class.create_state_label(task_name, task_inspector)
+            @hash_labels[task_name] = label
+            add_label_to_layout(label)
+        end
+        label
+    end
+
+    def update(data, task_name, color = @red)
+        label = label_for(task_name)
+        label.setText("<b>#{task_name}</b>: #{data}")
+        if label.palette != color
+            label.setPalette color 
+        end
     end
 
     def multi_value?
