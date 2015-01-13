@@ -128,15 +128,6 @@ module Vizkit
         obj = ShortCutFilter.new
         $qApp.installEventFilter(obj)
 
-        # the garbage collector has to be called manually for now 
-        # because ruby does not now how many objects were created from 
-        # the typelib side 
-        gc_timer = Qt::Timer.new
-        gc_timer.connect(SIGNAL(:timeout)) do 
-            GC.start
-        end
-        gc_timer.start(5000)
-
         timer = Qt::Timer.new
         timer.connect SIGNAL("timeout()") do
             Orocos::Async.step
@@ -144,7 +135,6 @@ module Vizkit
         timer.start 10
 
         $qApp.exec
-        gc_timer.stop
     end
 
     def self.process_events()
