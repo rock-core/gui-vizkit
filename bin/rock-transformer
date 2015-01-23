@@ -1,0 +1,107 @@
+#! /usr/bin/env ruby
+
+require 'vizkit'
+
+class TransformerStatusWindow < Qt::Widget
+    attr_reader :vizkit3d, :rbs_setter_toolbox, :reload_button
+
+    def initialize(parent = nil, options = Hash.new)
+        options = Kernel.validate_options options,
+            live: false
+
+        @live = options[:live]
+        @reference_frame = "world_osg"
+        super(parent)
+        create_ui
+    end
+
+    attr_predicate :live?
+
+    def create_ui
+        main_layout = Qt::VBoxLayout.new(self)
+        splitter = Qt::Splitter.new
+        main_layout.add_widget(splitter)
+
+        @rbs_setter_toolbox = Qt::ToolBox.new
+        splitter.add_widget(rbs_setter_toolbox)
+
+        right_pane = Qt::Widget.new
+        layout   = Qt::VBoxLayout.new(right_pane)
+        @vizkit3d = Vizkit.vizkit3d_widget
+        vizkit3d.setAxes(false)
+        @reload_button = Qt::PushButton.new("Reload")
+        reload_button.connect(SIGNAL("clicked()")) do
+            reload
+        end
+        vizkit3d.setTransformer(true)
+        layout.add_widget(reload_button)
+        layout.add_widget(vizkit3d)
+        splitter.add_widget(right_pane)
+
+    end
+
+    attr_reader :reference_frame
+
+    def reference_frame=(frame)
+        @reference_frame = frame
+        vizkit3d.setPluginDataFrame(frame.dup, vizkit3d.grid)
+        vizkit3d.setVisualizationFrame(frame.dup)
+    end
+
+    def load_conf(path)
+        conf = Transformer::Configuration.new
+        conf.load(ARGV.first)
+        conf.each_static_transform do |trsf|
+            vizkit3d.setTransformation(trsf.to.dup, trsf.from.dup, trsf.translation.to_qt, trsf.rotation.to_qt)
+        end
+
+        conf.each_dynamic_transform do |trsf|
+            *task, port = *trsf.producer.split('.')
+            vizkit3d.setTransformation(trsf.to.dup, trsf.from.dup, Eigen::Vector3.Zero.to_qt, Eigen::Quaternion.Identity.to_qt)
+
+            if live?
+                Orocos::Async.proxy(task).port(port).on_data do |sample|
+                    vizkit3d.setTransformation(sample.targetFrame.dup, sample.sourceFrame.dup, sample.position.to_qt, sample.orientation.to_qt)
+                end
+            else
+                widget = Qt::Widget.new
+                layout = Qt::VBoxLayout.new(widget)
+                rbs_editor = Vizkit.default_loader.RigidBodyStateEditor
+                rbs_editor.source_frame.setText trsf.from
+                rbs_editor.target_frame.setText trsf.to
+                layout.add_widget rbs_editor
+                layout.add_stretch
+
+                rbs = Types::Base::Samples::RigidBodyState.Invalid
+                rbs.sourceFrame = trsf.from
+                rbs.targetFrame = trsf.to
+                rbs.position = Eigen::Vector3.Zero
+                rbs.orientation = Eigen::Quaternion.Identity
+                rbs_editor.edit(rbs) do |sample|
+                    vizkit3d.setTransformation(trsf.to.dup, trsf.from.dup, sample.position.to_qt, sample.orientation.to_qt)
+                end
+                rbs_setter_toolbox.add_item widget, "#{trsf.producer} (#{trsf.from} > #{trsf.to})"
+            end
+        end
+
+        @current_conf_path = path
+    end
+
+    def reload
+        while rbs_setter_toolbox.count > 0
+            rbs_setter_toolbox.remove_item 0
+        end
+        if @current_conf_path
+            load_conf(@current_conf_path)
+        end
+    end
+end
+
+w = TransformerStatusWindow.new
+w.load_conf(ARGV.first)
+
+if reference_frame = ARGV[1]
+    w.reference_frame = reference_frame
+end
+w.show
+Vizkit.exec
