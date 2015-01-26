@@ -3,6 +3,7 @@
 require 'vizkit'
 
 class TransformerStatusWindow < Qt::Widget
+    attr_reader :main_layout
     attr_reader :vizkit3d, :rbs_setter_toolbox, :reload_button
 
     attr_reader :rbs_cache
@@ -21,7 +22,7 @@ class TransformerStatusWindow < Qt::Widget
     attr_predicate :live?
 
     def create_ui
-        main_layout = Qt::VBoxLayout.new(self)
+        @main_layout = Qt::VBoxLayout.new(self)
         splitter = Qt::Splitter.new
         main_layout.add_widget(splitter)
 
@@ -53,7 +54,7 @@ class TransformerStatusWindow < Qt::Widget
 
     def load_conf(path)
         conf = Transformer::Configuration.new
-        conf.load(ARGV.first)
+        conf.load(path)
         conf.each_static_transform do |trsf|
             vizkit3d.setTransformation(trsf.to.dup, trsf.from.dup, trsf.translation.to_qt, trsf.rotation.to_qt)
         end
@@ -106,11 +107,35 @@ class TransformerStatusWindow < Qt::Widget
     end
 end
 
-w = TransformerStatusWindow.new
-w.load_conf(ARGV.first)
+options = Hash.new
+replay = Array.new
+ref_frame = nil
+option_parser = OptionParser.new do |opt|
+    opt.on '--live' do |flag|
+        options[:live] = flag
+    end
+    opt.on '--replay=FILE_OR_DIR', String do |arg|
+        replay << arg
+        options[:live] = true
+    end
+    opt.on '--ref=FRAME', String do |arg|
+        ref_frame = arg
+    end
+end
 
-if reference_frame = ARGV[1]
-    w.reference_frame = reference_frame
+args = option_parser.parse(ARGV)
+
+if !replay.empty?
+    replay = Orocos::Log::Replay.open(*replay)
+    replay.register_tasks
+    replay_control = Vizkit.control replay
+end
+
+w = TransformerStatusWindow.new(nil, options)
+w.load_conf(args.first)
+if ref_frame
+    w.reference_frame = ref_frame
 end
 w.show
 Vizkit.exec
+
