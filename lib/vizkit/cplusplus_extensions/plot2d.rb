@@ -186,26 +186,23 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "Plot2d" do
     end
 
     def graph2(name)	
-        graph = if(@graphs.has_key?(name))	            
-                    @graphs[name]		    
-                else    		    
-                    graph = if @options[:use_y_axis2] == true
-                                getYAxis2.setVisible(true)
-                                getYAxis2.setLabel(name.split(".").last)
-                                addGraph(getXAxis(),getYAxis2())
-                            else
-                                getYAxis.setLabel(name.split(".").last)                                
-                                addGraph(getXAxis(),getYAxis())						
-                            end
+        if(!@graphs.has_key?(name))
+            axis = if @options[:use_y_axis2] then getYAxis2
+                   else getYAxis
+                   end
 
-                    graph.setName(name)
-                    graph_style(graph,@options[:plot_style])
-                    graph.addToLegend
-                    if(@graphs.size < @options[:colors].size)
-                        graph.setPen(Qt::Pen.new(Qt::Brush.new(@options[:colors][@graphs.size]),1))
-                    end
-                    @graphs[name] = graph
-                end
+            axis.setLabel(name.split(".").last)
+            graph = addGraph(getXAxis(),axis)
+            graph.setName(name)
+            graph_style(graph,@options[:plot_style])
+            graph.addToLegend
+            if color = @options[:colors][@graphs.size]
+                graph.setPen(Qt::Pen.new(Qt::Brush.new(color),1))
+            end
+            @graphs[name] = graph
+        end
+
+        @graphs[name]
     end
 
     def multi_value?
