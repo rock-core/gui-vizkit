@@ -118,6 +118,9 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "Plot2d" do
                 elsif(action == action_use_y2)
                     update_zoom_range_flag(false, @options[:use_y_axis2])
                     @options[:use_y_axis2] = !@options[:use_y_axis2]
+                    if @options[:use_y_axis2]
+                        getYAxis2.setVisible(true)
+                    end
                     update_zoom_range_flag(!@options[:auto_scrolling], @options[:use_y_axis2])
  		elsif(action == action_plotdot)
                     plot_style(:Dot)
@@ -189,18 +192,10 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "Plot2d" do
                     graph = if @options[:use_y_axis2] == true
                                 getYAxis2.setVisible(true)
                                 getYAxis2.setLabel(name.split(".").last)
-                                org = $VERBOSE
-                                $VERBOSE = nil
-                                graph = addGraph(getXAxis(),getYAxis2())
-                                $VERBOSE = org 
-                                graph
+                                addGraph(getXAxis(),getYAxis2())
                             else
                                 getYAxis.setLabel(name.split(".").last)                                
-                                org = $VERBOSE
-                                $VERBOSE = nil
-                                graph = addGraph(getXAxis(),getYAxis())						
-                                $VERBOSE = org 
-                                graph
+                                addGraph(getXAxis(),getYAxis())						
                             end
 
                     graph.setName(name)
