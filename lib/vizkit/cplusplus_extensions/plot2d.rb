@@ -47,6 +47,12 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "Plot2d" do
         getYAxis.setLabel(value.to_s)
     end
 
+    def update_zoom_range_flag(flag, use_2nd_axis)
+        y_axis = Hash[true => 1, false => 0][use_2nd_axis]
+        setZoomAble flag, y_axis
+        setRangeAble flag, y_axis
+    end
+
     def initialize_vizkit_extension
         @options = default_options
         @graphs = Hash.new
@@ -106,12 +112,16 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "Plot2d" do
                 action = menu.exec(mapToGlobal(event.pos))
                 if(action == action_scrolling)
                     @options[:auto_scrolling] = !@options[:auto_scrolling]
-                    setZoomAble !@options[:auto_scrolling]
-                    setRangeAble !@options[:auto_scrolling]
+                    update_zoom_range_flag(!@options[:auto_scrolling], @options[:use_y_axis2])
                 elsif(action == action_reuse)
                     @options[:reuse] = !@options[:reuse]
                 elsif(action == action_use_y2)
+                    update_zoom_range_flag(false, @options[:use_y_axis2])
                     @options[:use_y_axis2] = !@options[:use_y_axis2]
+                    if @options[:use_y_axis2]
+                        getYAxis2.setVisible(true)
+                    end
+                    update_zoom_range_flag(!@options[:auto_scrolling], @options[:use_y_axis2])
  		elsif(action == action_plotdot)
                     plot_style(:Dot)
 		elsif(action == action_plotline)
@@ -176,34 +186,23 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "Plot2d" do
     end
 
     def graph2(name)	
-        graph = if(@graphs.has_key?(name))	            
-                    @graphs[name]		    
-                else    		    
-                    graph = if @options[:use_y_axis2] == true
-                                getYAxis2.setVisible(true)
-                                getYAxis2.setLabel(name.split(".").last)
-                                org = $VERBOSE
-                                $VERBOSE = nil
-                                graph = addGraph(getXAxis(),getYAxis2())
-                                $VERBOSE = org 
-                                graph
-                            else
-                                getYAxis.setLabel(name.split(".").last)                                
-                                org = $VERBOSE
-                                $VERBOSE = nil
-                                graph = addGraph(getXAxis(),getYAxis())						
-                                $VERBOSE = org 
-                                graph
-                            end
+        if(!@graphs.has_key?(name))
+            axis = if @options[:use_y_axis2] then getYAxis2
+                   else getYAxis
+                   end
 
-                    graph.setName(name)
-                    graph_style(graph,@options[:plot_style])
-                    graph.addToLegend
-                    if(@graphs.size < @options[:colors].size)
-                        graph.setPen(Qt::Pen.new(Qt::Brush.new(@options[:colors][@graphs.size]),1))
-                    end
-                    @graphs[name] = graph
-                end
+            axis.setLabel(name.split(".").last)
+            graph = addGraph(getXAxis(),axis)
+            graph.setName(name)
+            graph_style(graph,@options[:plot_style])
+            graph.addToLegend
+            if color = @options[:colors][@graphs.size]
+                graph.setPen(Qt::Pen.new(Qt::Brush.new(color),1))
+            end
+            @graphs[name] = graph
+        end
+
+        @graphs[name]
     end
 
     def multi_value?
