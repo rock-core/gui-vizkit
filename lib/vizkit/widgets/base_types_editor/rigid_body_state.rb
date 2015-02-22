@@ -8,13 +8,15 @@ class RigidBodyStateEditor
     end
 
     module Functions
+        attr_reader :edited_sample
+
         def init
-            @rigid_body_state = nil 
+            @edited_sample = Types::Base::Samples::RigidBodyState.new
             @callback_fct = nil
             @timer = Qt::Timer.new
             start_value.connect(SIGNAL('clicked()')) do
                 begin
-                    sample = generate_sample(@rigid_body_state)
+                    sample = generate_sample(edited_sample)
                     @callback_fct.call(sample) if @callback_fct
                 rescue RuntimeError => e
                     pp e
@@ -31,7 +33,7 @@ class RigidBodyStateEditor
             end
             @timer.connect(SIGNAL('timeout()')) do 
                 begin
-                    sample = generate_sample(@rigid_body_state,@step)
+                    sample = generate_sample(edited_sample,@step)
                     @callback_fct.call(sample) if @callback_fct
                     @step += 1
                     if @step > number_of_steps.value 
@@ -49,11 +51,7 @@ class RigidBodyStateEditor
         end
 
         def generate_sample(sample,step=0)
-            sample = if @rigid_body_state
-                         @rigid_body_state
-                     else
-                         Types::Base::Samples::RigidBodyState.new
-                     end
+            sample = edited_sample
             sample.time = Time.now
             sample.sourceFrame = source_frame.text
             sample.targetFrame = target_frame.text
@@ -73,7 +71,7 @@ class RigidBodyStateEditor
             gamma = gamma/180*Math::PI
 
             sample.orientation = Eigen::Quaternion.from_euler(Eigen::Vector3.new(alpha,beta,gamma),2,1,0)
-            sample
+            sample.dup
         end
 
         def default_options
@@ -85,20 +83,24 @@ class RigidBodyStateEditor
             @options.merge!(hash)
         end
 
+        def update
+            source_frame.setText edited_sample.sourceFrame
+            target_frame.setText edited_sample.targetFrame
+            x_start.setValue edited_sample.position.x
+            y_start.setValue edited_sample.position.y
+            z_start.setValue edited_sample.position.z
+
+            alpha_start.setValue edited_sample.orientation.yaw   * 180/Math::PI
+            beta_start.setValue  edited_sample.orientation.pitch * 180/Math::PI
+            gamma_start.setValue edited_sample.orientation.roll  * 180/Math::PI
+        end
+
         def edit(rigid_body_state=nil,options=nil,&block)
             if rigid_body_state
-                source_frame.setText rigid_body_state.sourceFrame
-                target_frame.setText rigid_body_state.targetFrame
-                x_start.setValue rigid_body_state.position.x
-                y_start.setValue rigid_body_state.position.y
-                z_start.setValue rigid_body_state.position.z
-
-                alpha_start.setValue rigid_body_state.orientation.yaw   * 180/Math::PI
-                beta_start.setValue  rigid_body_state.orientation.pitch * 180/Math::PI
-                gamma_start.setValue rigid_body_state.orientation.roll  * 180/Math::PI
+                @edited_sample = rigid_body_state
+                update
             end
 
-            @rigid_body_state = rigid_body_state
             @callback_fct = block
         end
     end
