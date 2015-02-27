@@ -8,6 +8,8 @@ class TransformerStatusWindow < Qt::Widget
 
     attr_reader :rbs_cache, :rbs_editors
 
+    attr_reader :bad_frame_warnings
+
     def initialize(parent = nil, options = Hash.new)
         options = Kernel.validate_options options,
             live: false
@@ -16,6 +18,7 @@ class TransformerStatusWindow < Qt::Widget
         @reference_frame = "world_osg"
         @rbs_cache = Hash.new
         @rbs_editors = Hash.new
+        @bad_frame_warnings = Set.new
         super(parent)
         create_ui
     end
@@ -57,6 +60,7 @@ class TransformerStatusWindow < Qt::Widget
         conf = Transformer::Configuration.new
         begin
             conf.load(path)
+            bad_frame_warnings.clear
         rescue Exception => e
             Qt::MessageBox.warning(nil, "Load Error", "Error loading #{path}: #{e.message}")
             return
@@ -101,7 +105,10 @@ class TransformerStatusWindow < Qt::Widget
             if live?
                 Orocos::Async.proxy(task).port(port).on_data do |sample|
                     if trsf.from != sample.sourceFrame || trsf.to != sample.targetFrame
-                        puts "received sample from #{task}.#{port} for #{sample.sourceFrame} => #{sample.targetFrame} but expected #{trsf.from} => #{trsf.to}"
+                        if !bad_frame_warnings.include?(trsf.producer)
+                            Qt::MessageBox.warning(self, 'rock-transformer', "Received sample from #{task}.#{port} for #{sample.sourceFrame} => #{sample.targetFrame}.\nExpected #{trsf.from} => #{trsf.to} instead.\nThere will be no further warnings about this problem until you reload the configuration file.")
+                            bad_frame_warnings << trsf.producer
+                        end
                     end
                     rbs.position = sample.position
                     rbs.orientation = sample.orientation
