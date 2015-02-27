@@ -272,6 +272,11 @@ module VizkitPluginLoaderExtension
     # frame transform), and true otherwise
     attr_reader :connected_transformation_producers
 
+    # Controls whether transformation configuration should be loaded from the transformer broadcaster
+    #
+    # @see load_transformer_config_from_broadcaster?
+    attr_predicate :use_transformer_broadcaster?, true
+
     # Updates the connections and internal configuration of the Vizkit3D widget
     # to use the transformer configuration information in +data+
     #
@@ -322,7 +327,7 @@ module VizkitPluginLoaderExtension
 
     def update(data, port_name)
         if @connected_to_broadcaster
-            if data.class == Types::Transformer::ConfigurationState
+            if use_transformer_broadcaster? && data.class == Types::Transformer::ConfigurationState
                 pushTransformerConfiguration(data)
                 return
             end

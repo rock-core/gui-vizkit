@@ -127,6 +127,7 @@ class TransformerStatusWindow < Qt::Widget
         right_pane = Qt::Widget.new
         layout   = Qt::VBoxLayout.new(right_pane)
         @vizkit3d = Vizkit.vizkit3d_widget
+        vizkit3d.use_transformer_broadcaster = false
         vizkit3d.setAxes(false)
         @reload_button = Qt::PushButton.new("Reload")
         reload_button.connect(SIGNAL("clicked()")) do
