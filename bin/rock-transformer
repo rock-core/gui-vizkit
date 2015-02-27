@@ -55,7 +55,13 @@ class TransformerStatusWindow < Qt::Widget
 
     def load_conf(path)
         conf = Transformer::Configuration.new
-        conf.load(path)
+        begin
+            conf.load(path)
+        rescue Exception => e
+            Qt::MessageBox.warning(nil, "Load Error", "Error loading #{path}: #{e.message}")
+            return
+        end
+
         conf.each_static_transform do |trsf|
             vizkit3d.setTransformation(trsf.to.dup, trsf.from.dup, trsf.translation.to_qt, trsf.rotation.to_qt)
         end
