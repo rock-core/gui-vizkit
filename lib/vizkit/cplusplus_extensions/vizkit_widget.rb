@@ -139,7 +139,7 @@ module VizkitPluginLoaderExtension
     end
 
     def setGrid(val)
-        @grid.enabled(val)
+        @grid.enabled = val
     end
 
     def isGridEnabled
