@@ -170,7 +170,14 @@ class LogControl
               end
           rescue Exception => e
               bplay_clicked
-              Qt::MessageBox::warning(nil,"Corrupted Log-File",e.to_s)
+              Qt::MessageBox::warning(nil,"Corrupted logfile", e.to_s)
+              Vizkit.debug do
+                  Vizkit.debug e.message
+                  e.backtrace.each do |bt|
+                      Vizkit.debug "  #{bt}"
+                  end
+                  nil
+              end
           end
           #we do not display the info every step to save cpu time
           if Time.now - @last_info > 0.1
@@ -325,11 +332,18 @@ class LogControl
 
     def slider_released(index)
   #    return if !@log_replay.replay?
-      @log_replay.reset_time_sync
-      @log_replay.seek(timeline.getSliderIndex)
-      display_info
-      rescue Exception => e
-          Qt::MessageBox::warning(nil,"Corrupted Log-File",e.to_s)
+        @log_replay.reset_time_sync
+        @log_replay.seek(timeline.getSliderIndex)
+        display_info
+    rescue Exception => e
+        Qt::MessageBox::warning(nil,"Corrupted logfile",e.to_s)
+        Vizkit.debug do
+            Vizkit.debug e.message
+            e.backtrace.each do |bt|
+                Vizkit.debug "  #{bt}"
+            end
+            nil
+        end
     end
 
     def update_target_speed value
