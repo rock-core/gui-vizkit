@@ -2,11 +2,104 @@
 
 require 'vizkit'
 
+# Edition class for the transformer. We aren't using Rock's default
+# RigidBodyStateEditor because it is really way too bloated
+class TransformEditor < Qt::Widget
+    attr_reader :translation, :rotation
+    attr_reader :translation_editors, :rotation_editors
+    attr_reader :source_frame, :target_frame
+    attr_reader :producer
+
+    def initialize(producer, source_frame, target_frame, parent = nil)
+        super(parent)
+        @producer = producer
+        @source_frame = source_frame
+        @target_frame = target_frame
+        @translation = [0, 0, 0]
+        @rotation    = [0, 0, 0]
+        create_ui
+        update(translation_vector, rotation_quat)
+    end
+
+    def translation_vector
+        Qt::Vector3D.new(*translation)
+    end
+
+    def rotation_quat
+        Eigen::Quaternion.from_euler(Eigen::Vector3.new(*rotation.reverse), 2, 1, 0).to_qt
+    end
+
+    def create_ui
+        header = Qt::VBoxLayout.new(self)
+        layout.add_widget Qt::Label.new("<b>Producer</b>: #{producer}")
+        layout.add_widget Qt::Label.new("<b>Source</b>: #{source_frame}")
+        layout.add_widget Qt::Label.new("<b>Target</b>: #{target_frame}")
+
+        layout = Qt::GridLayout.new
+        layout.add_widget Qt::Label.new("<b>Translation</b>"), 0, 0, 1, 2
+        layout.add_widget(Qt::Label.new("X"), 1, 0)
+        layout.add_widget(Qt::Label.new("Y"), 2, 0)
+        layout.add_widget(Qt::Label.new("Z"), 3, 0)
+
+        @translation_editors = Array.new
+        layout.add_widget(translation_editors[0] = Qt::DoubleSpinBox.new, 1, 1)
+        layout.add_widget(translation_editors[1] = Qt::DoubleSpinBox.new, 2, 1)
+        layout.add_widget(translation_editors[2] = Qt::DoubleSpinBox.new, 3, 1)
+
+        layout.add_widget Qt::Label.new("<b>Rotation</b>"), 0, 2, 1, 2
+        layout.add_widget(Qt::Label.new("X"), 1, 2)
+        layout.add_widget(Qt::Label.new("Y"), 2, 2)
+        layout.add_widget(Qt::Label.new("Z"), 3, 2)
+
+        @rotation_editors = Array.new
+        layout.add_widget(rotation_editors[0] = Qt::SpinBox.new, 1, 3)
+        layout.add_widget(rotation_editors[1] = Qt::SpinBox.new, 2, 3)
+        layout.add_widget(rotation_editors[2] = Qt::SpinBox.new, 3, 3)
+
+        header.add_layout(layout)
+
+        translation_editors.each_with_index do |editor, editor_idx|
+            editor.minimum = -10_000
+            editor.maximum = 10_000
+            editor.single_step = 0.1
+            editor.connect(SIGNAL('valueChanged(double)')) do |value|
+                translation[editor_idx] = value
+                emit valueChanged(translation_vector, rotation_quat)
+            end
+        end
+
+        rotation_editors.each_with_index do |editor, editor_idx|
+            editor.minimum = -180
+            editor.maximum = 180
+            editor.single_step = 1
+            editor.connect(SIGNAL('valueChanged(int)')) do |value|
+                rotation[editor_idx] = value * Math::PI / 180
+                emit valueChanged(translation_vector, rotation_quat)
+            end
+        end
+    end
+
+    def update(translation, rotation)
+        self.translation_editors[0].setValue(translation.x)
+        self.translation_editors[1].setValue(translation.y)
+        self.translation_editors[2].setValue(translation.z)
+
+        yaw, pitch, roll = *Eigen::Quaternion.new(rotation.scalar, rotation.x, rotation.y, rotation.z).to_euler.to_a
+        self.rotation_editors[0].setValue(yaw * 180 / Math::PI)
+        self.rotation_editors[1].setValue(pitch * 180 / Math::PI)
+        self.rotation_editors[2].setValue(roll * 180 / Math::PI)
+    end
+
+    signals 'valueChanged(QVector3D, QQuaternion)'
+end
+
 class TransformerStatusWindow < Qt::Widget
     attr_reader :main_layout
     attr_reader :vizkit3d, :rbs_setter_toolbox, :reload_button
 
     attr_reader :rbs_cache, :rbs_editors
+
+    attr_reader :bad_frame_warnings
 
     def initialize(parent = nil, options = Hash.new)
         options = Kernel.validate_options options,
@@ -16,6 +109,7 @@ class TransformerStatusWindow < Qt::Widget
         @reference_frame = "world_osg"
         @rbs_cache = Hash.new
         @rbs_editors = Hash.new
+        @bad_frame_warnings = Set.new
         super(parent)
         create_ui
     end
@@ -33,6 +127,7 @@ class TransformerStatusWindow < Qt::Widget
         right_pane = Qt::Widget.new
         layout   = Qt::VBoxLayout.new(right_pane)
         @vizkit3d = Vizkit.vizkit3d_widget
+        vizkit3d.use_transformer_broadcaster = false
         vizkit3d.setAxes(false)
         @reload_button = Qt::PushButton.new("Reload")
         reload_button.connect(SIGNAL("clicked()")) do
@@ -55,7 +150,14 @@ class TransformerStatusWindow < Qt::Widget
 
     def load_conf(path)
         conf = Transformer::Configuration.new
-        conf.load(path)
+        begin
+            conf.load(path)
+            bad_frame_warnings.clear
+        rescue Exception => e
+            Qt::MessageBox.warning(nil, "Load Error", "Error loading #{path}: #{e.message}")
+            return
+        end
+
         conf.each_static_transform do |trsf|
             vizkit3d.setTransformation(trsf.to.dup, trsf.from.dup, trsf.translation.to_qt, trsf.rotation.to_qt)
         end
@@ -81,25 +183,28 @@ class TransformerStatusWindow < Qt::Widget
             if !rbs_editor
                 widget = Qt::Widget.new
                 layout = Qt::VBoxLayout.new(widget)
-                rbs_editor = Vizkit.default_loader.RigidBodyStateEditor
+                rbs_editor = TransformEditor.new(trsf.producer, trsf.from, trsf.to, widget)
                 layout.add_widget rbs_editor
                 layout.add_stretch
 
-                rbs_editor.edit(rbs) do |sample|
-                    vizkit3d.setTransformation(trsf.to.dup, trsf.from.dup, sample.position.to_qt, sample.orientation.to_qt)
+                rbs_editor.connect(SIGNAL('valueChanged(QVector3D,QQuaternion)')) do |pos, rot|
+                    rbs.position = Eigen::Vector3.new(pos.x, pos.y, pos.z)
+                    rbs.orientation = Eigen::Quaternion.new(rot.scalar, rot.x, rot.y, rot.z)
+                    vizkit3d.setTransformation(trsf.to.dup, trsf.from.dup, pos, rot)
                 end
                 rbs_editors[cache_key] = rbs_editor
-                rbs_setter_toolbox.add_item widget, "#{trsf.producer} (#{trsf.from} > #{trsf.to})"
+                rbs_setter_toolbox.add_item widget, "#{trsf.from}>#{trsf.to}"
             end
 
             if live?
                 Orocos::Async.proxy(task).port(port).on_data do |sample|
                     if trsf.from != sample.sourceFrame || trsf.to != sample.targetFrame
-                        puts "received sample from #{task}.#{port} for #{sample.sourceFrame} => #{sample.targetFrame} but expected #{trsf.from} => #{trsf.to}"
+                        if !bad_frame_warnings.include?(trsf.producer)
+                            Qt::MessageBox.warning(self, 'rock-transformer', "Received sample from #{task}.#{port} for #{sample.sourceFrame} => #{sample.targetFrame}.\nExpected #{trsf.from} => #{trsf.to} instead.\nThere will be no further warnings about this problem until you reload the configuration file.")
+                            bad_frame_warnings << trsf.producer
+                        end
                     end
-                    rbs.position = sample.position
-                    rbs.orientation = sample.orientation
-                    rbs_editor.update
+                    rbs_editor.update(sample.position.to_qt, sample.orientation.to_qt)
                     vizkit3d.setTransformation(sample.targetFrame.dup, sample.sourceFrame.dup, sample.position.to_qt, sample.orientation.to_qt)
                 end
             end
