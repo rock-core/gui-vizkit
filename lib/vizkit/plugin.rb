@@ -282,8 +282,7 @@ module Vizkit
             end
 
             def bind(object)
-                @object = object
-                self
+                BlockAdapter.new(@block, object)
             end
 
             # Name of the code block which is used for pretty_print of 
