@@ -31,7 +31,7 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "Plot2d" do
 
     def time 
         time = if @log_replay
-                   @log_replay.time
+                   @log_replay.current_time
                else
                    Time.now
                end
