@@ -1,6 +1,7 @@
 #! /usr/bin/env ruby
 
 require 'vizkit'
+require 'transformer'
 
 class TransformerStatusWindow < Qt::Widget
     attr_reader :main_layout
