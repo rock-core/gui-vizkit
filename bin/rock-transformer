@@ -153,6 +153,7 @@ eos
 end
 
 args = option_parser.parse(ARGV)
+raise ArgumentError, "Please, specify transformer configuration file" unless args.first || new_file
 
 if !replay.empty?
     replay = Orocos::Log::Replay.open(*replay)
