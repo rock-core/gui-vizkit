@@ -1,6 +1,7 @@
 #! /usr/bin/env ruby
 
 require 'vizkit'
+require 'transformer'
 
 # Edition class for the transformer. We aren't using Rock's default
 # RigidBodyStateEditor because it is really way too bloated
@@ -229,7 +230,12 @@ end
 options = Hash.new
 replay = Array.new
 ref_frame = nil
+new_file = nil
 option_parser = OptionParser.new do |opt|
+    opt.banner = <<-eos
+Loads and displays a transformer configuration file.
+USAGE: rock-transformer CONFIG_FILE_NAME
+eos
     opt.on '--live' do |flag|
         options[:live] = flag
     end
@@ -240,9 +246,19 @@ option_parser = OptionParser.new do |opt|
     opt.on '--ref=FRAME', String do |arg|
         ref_frame = arg
     end
+
+    opt.on '--create=FILE_NAME','creates a configuration file and loads it', String do |arg|
+        new_file = arg
+        file = File.open(arg,"w")
+        file.puts "dynamic_transform '','laser' => 'body_center'"
+        file.puts "static_transform( Eigen::Vector3.new(0.22,0.0,0.0),"
+        file.puts "                  Eigen::Quaternion.from_euler(Eigen::Vector3.new(0,0,0),2,1,0),'body_center' => 'odometry')"
+        file.close
+    end
 end
 
 args = option_parser.parse(ARGV)
+raise ArgumentError, "Please, specify transformer configuration file" unless args.first || new_file
 
 if !replay.empty?
     replay = Orocos::Log::Replay.open(*replay)
@@ -251,7 +267,7 @@ if !replay.empty?
 end
 
 w = TransformerStatusWindow.new(nil, options)
-w.load_conf(args.first)
+w.load_conf(new_file || args.first)
 if ref_frame
     w.reference_frame = ref_frame
 end
