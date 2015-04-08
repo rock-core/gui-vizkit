@@ -159,6 +159,10 @@ class TransformerStatusWindow < Qt::Widget
             return
         end
 
+        conf.each_example_transform do |trsf|
+            vizkit3d.setTransformation(trsf.to.dup, trsf.from.dup, trsf.translation.to_qt, trsf.rotation.to_qt)
+        end
+
         conf.each_static_transform do |trsf|
             vizkit3d.setTransformation(trsf.to.dup, trsf.from.dup, trsf.translation.to_qt, trsf.rotation.to_qt)
         end
@@ -171,11 +175,13 @@ class TransformerStatusWindow < Qt::Widget
 
             rbs = rbs_cache[cache_key]
             if !rbs
+                example = conf.example_transform_for(trsf.from, trsf.to)
+
                 rbs = Types::Base::Samples::RigidBodyState.Invalid
                 rbs.sourceFrame = trsf.from
                 rbs.targetFrame = trsf.to
-                rbs.position = Eigen::Vector3.Zero
-                rbs.orientation = Eigen::Quaternion.Identity
+                rbs.position = example.translation
+                rbs.orientation = example.rotation
                 rbs_cache[cache_key] = rbs
             end
             vizkit3d.setTransformation(trsf.to.dup, trsf.from.dup, rbs.position.to_qt, rbs.orientation.to_qt)
