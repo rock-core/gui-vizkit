@@ -4,6 +4,36 @@ require 'vizkit'
 require 'transformer'
 require 'optparse'
 
+# Edition class for joint values (when loading SDF)
+class JointEditor < Qt::Widget
+    attr_reader :layout
+    attr_reader :editors
+
+    def initialize(parent = nil)
+        super
+        @editors = Hash.new
+        create_ui
+    end
+
+    def create_ui
+        @layout = Qt::GridLayout.new(self)
+    end
+
+    def add_joint(from, to, joint)
+        row = layout.row_count
+        label  = Qt::Label.new("<b>#{joint.full_name}</b>")
+        editor = Qt::SpinBox.new
+        layout.add_widget label, row, 1
+        layout.add_widget editor, row, 2
+        editors[joint.full_name] = editor
+        editor
+    end
+
+    def get(joint_name)
+        editors[joint.full_name].value * Math::PI / 180
+    end
+end
+
 # Edition class for the transformer. We aren't using Rock's default
 # RigidBodyStateEditor because it is really way too bloated
 class TransformEditor < Qt::Widget
@@ -153,9 +183,15 @@ class TransformerStatusWindow < Qt::Widget
     def load_conf(path)
         conf = Transformer::Configuration.new
         begin
-            conf.load(path)
+            if path =~ /\.rb$/
+                conf.load(path)
+            elsif path =~ /\.sdf$/ || path =~ /\.world$/ || path =~ /model:\/\//
+                require 'transformer/sdf'
+                conf.load_sdf(path)
+            end
             bad_frame_warnings.clear
         rescue Exception => e
+            pp e.backtrace
             Qt::MessageBox.warning(nil, "Load Error", "Error loading #{path}: #{e.message}")
             return
         end
@@ -166,6 +202,22 @@ class TransformerStatusWindow < Qt::Widget
 
         conf.each_static_transform do |trsf|
             vizkit3d.setTransformation(trsf.to.dup, trsf.from.dup, trsf.translation.to_qt, trsf.rotation.to_qt)
+        end
+
+        # If not in live mode (i.e. not replaying, to displaying runtime data),
+        # we want to be able to move joints around. In live mode, we want to
+        # test the joint-to-transformer components instead
+        if !live? && conf.has_joints?
+            joint_editor = JointEditor.new
+            rbs_setter_toolbox.add_item joint_editor, "Joints"
+            conf.each_joint do |from, to, j|
+                editor = joint_editor.add_joint(from, to, j)
+                editor.connect(SIGNAL('valueChanged(int)')) do |deg|
+                    rad = deg * Math::PI / 180
+                    transform = j.transform_for(rad)
+                    vizkit3d.setTransformation(to, from, transform.translation.to_qt, transform.rotation.to_qt)
+                end
+            end
         end
 
         conf.each_dynamic_transform do |trsf|
@@ -216,7 +268,6 @@ class TransformerStatusWindow < Qt::Widget
                     vizkit3d.setTransformation(sample.targetFrame.dup, sample.sourceFrame.dup, sample.position.to_qt, sample.orientation.to_qt)
                 end
             end
-
         end
 
         @current_conf_path = path
