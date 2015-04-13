@@ -448,7 +448,7 @@ module Vizkit
                 Vizkit.error "The following plugins are registered:"
                 names = available_plugins.sort
                 Vizkit.error names.join(", ")
-                raise e 
+                Kernel.raise e 
             end
         end
 
