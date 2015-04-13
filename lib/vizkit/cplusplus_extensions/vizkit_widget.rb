@@ -320,6 +320,36 @@ module VizkitPluginLoaderExtension
         end
     end
 
+    def listen_to_transformation_producer(trsf)
+        return if @connected_transformation_producers.has_key?(trsf.producer)
+
+        task, *port = trsf.producer.split('.')
+        port = port.join(".")
+        Vizkit.debug "connecting producer #{task}.#{port} for #{trsf.from} => #{trsf.to}"
+        producer_name = task.gsub(/.*\//, '')
+        Vizkit.connect_port_to producer_name, port do |data, port_name|
+            if data.sourceFrame != trsf.from || data.targetFrame != trsf.to
+                if @connected_transformation_producers[trsf.producer]
+                    Vizkit.warn "#{task}.#{port} produced a transformation for"
+                    Vizkit.warn "    #{data.sourceFrame} => #{data.targetFrame},"
+                    Vizkit.warn "    but I was expecting #{trsf.from} => #{trsf.to}"
+                    Vizkit.warn "  I am ignoring this transformation. You will get this message only once,"
+                    Vizkit.warn "  but get a notification if the right transformation is received later."
+                    @connected_transformation_producers[trsf.producer] = false
+                end
+            else
+                if !@connected_transformation_producers[trsf.producer]
+                    Vizkit.warn "received the expected transformation from #{task}.#{port}"
+                    @connected_transformation_producers[trsf.producer] = true
+                end
+                Vizkit.debug "pushing dynamic transformation #{data.sourceFrame} => #{data.targetFrame}"
+                # target and source are exchanged because the transformer defines its transformations as Source_In_Target
+                setTransformation(data.targetFrame.dup,data.sourceFrame.dup,data.position.to_qt,data.orientation.to_qt)
+            end
+            data
+        end
+    end
+
     def apply_transformer_configuration(conf)
         conf.each_static_transform do |trsf|
             Vizkit.debug "pushing static transformation #{trsf.from} => #{trsf.to}"
@@ -327,33 +357,7 @@ module VizkitPluginLoaderExtension
             setTransformation(trsf.to.dup,trsf.from.dup,trsf.translation.to_qt,trsf.rotation.to_qt)
         end
         conf.each_dynamic_transform do |trsf|
-            next if @connected_transformation_producers.has_key?(trsf.producer)
-
-            task, *port = trsf.producer.split('.')
-            port = port.join(".")
-            Vizkit.debug "connecting producer #{task}.#{port} for #{trsf.from} => #{trsf.to}"
-            producer_name = task.gsub(/.*\//, '')
-            Vizkit.connect_port_to producer_name, port do |data, port_name|
-                if data.sourceFrame != trsf.from || data.targetFrame != trsf.to
-                    if @connected_transformation_producers[trsf.producer]
-                        Vizkit.warn "#{task}.#{port} produced a transformation for"
-                        Vizkit.warn "    #{data.sourceFrame} => #{data.targetFrame},"
-                        Vizkit.warn "    but I was expecting #{trsf.from} => #{trsf.to}"
-                        Vizkit.warn "  I am ignoring this transformation. You will get this message only once,"
-                        Vizkit.warn "  but get a notification if the right transformation is received later."
-                        @connected_transformation_producers[trsf.producer] = false
-                    end
-                else
-                    if !@connected_transformation_producers[trsf.producer]
-                        Vizkit.warn "received the expected transformation from #{task}.#{port}"
-                        @connected_transformation_producers[trsf.producer] = true
-                    end
-                    Vizkit.debug "pushing dynamic transformation #{data.sourceFrame} => #{data.targetFrame}"
-                    # target and source are exchanged because the transformer defines its transformations as Source_In_Target
-                    setTransformation(data.targetFrame.dup,data.sourceFrame.dup,data.position.to_qt,data.orientation.to_qt)
-                end
-                data
-            end
+            listen_to_transformation_producer(trsf)
             @connected_transformation_producers[trsf.producer] = true
         end
     end
