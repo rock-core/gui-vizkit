@@ -17,5 +17,6 @@
     <depend package="gui/rock_widget_collection"/>
     <depend package="base/scripts"/>
 
+    <depend package="control/ruby_sdformat" optional="1" />
     <depend package="gui/vizkit3d"  optional="1"/>
 </package>
