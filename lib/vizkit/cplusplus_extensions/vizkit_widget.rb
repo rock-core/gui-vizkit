@@ -325,7 +325,7 @@ module VizkitPluginLoaderExtension
 
         task, *port = trsf.producer.split('.')
         port = port.join(".")
-        Vizkit.debug "connecting producer #{task}.#{port} for #{trsf.from} => #{trsf.to}"
+        Vizkit.debug "connecting producer task #{task}, port #{port} for #{trsf.from} => #{trsf.to}"
         producer_name = task.gsub(/.*\//, '')
         Vizkit.connect_port_to producer_name, port do |data, port_name|
             if data.sourceFrame != trsf.from || data.targetFrame != trsf.to
