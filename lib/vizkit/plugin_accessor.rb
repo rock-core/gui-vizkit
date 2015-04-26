@@ -60,7 +60,7 @@ module Vizkit
                 Vizkit.error "The following plugins are registered under the namespace #{@namespace}"
                 names = available_plugins.sort
                 Vizkit.error names.join(", ")
-                raise e 
+                Kernel.raise e 
             end
         end
     end
