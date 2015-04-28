@@ -11,6 +11,7 @@
     <depend package="tools/orocos.rb"/>
     <depend package="qtruby"/>
     <depend package="gui/rock_widget_collection"/>
+    <depend package="base/scripts"/>
 
     <depend package="gui/vizkit3d"  optional="1"/>
 </package>
