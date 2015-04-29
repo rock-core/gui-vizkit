@@ -19,5 +19,4 @@ end
 
 Vizkit::UiLoader.register_default_widget_for("OrientationView",'/base/samples/RigidBodyState',:update)
 Vizkit::UiLoader.register_widget_for("OrientationView",'/base/Orientation',:update)
-Vizkit::UiLoader.register_widget_for("OrientationView",'/base/samples/RigidBodyState',:update)
 Vizkit::UiLoader.register_widget_for("OrientationView",'/base/Pose',:update)
