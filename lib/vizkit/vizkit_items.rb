@@ -426,73 +426,6 @@ module Vizkit
         end
     end
 
-    class InputPortItem < PortItem
-        def initialize(port,options = Hash.new)
-            options[:editable] = true unless options.has_key?(:editable)
-            options,other_options = Kernel.filter_options options,:accept => true
-	    super(port,other_options)
-            @options.merge! options
-            @sent_sample = nil
-
-            port.once_on_reachable do
-                begin
-                    update port.new_sample.zero!
-                    @sent_sample = port.new_sample.zero!
-                    setEditable @options[:editable] if @options[:item_type] != :label
-                rescue Orocos::TypekitTypeNotFound
-                    setForeground(ErrorBrush)
-                    if @options[:item_type] != :label
-                        @options[:text] = "No typekit for: #{port.type.name}"
-                    end
-                end
-            end
-        end
-
-        def data(role = Qt::UserRole+1)
-            if role == Qt::EditRole && !direct_type?
-                # we have to use the one from the first row
-                # the other one has a copy which was not changed
-                i = index.sibling(row,0)
-                if i.isValid
-                    # workaround memeroy leak qt-ruby
-                    # the returned Qt::Variant is never be deleted
-                    @last_value.dispose if @last_value
-                    @last_value = Qt::Variant.from_ruby i.model.itemFromIndex(i)
-                else
-                    super
-                end
-            else
-                super
-            end
-        end
-
-        def modified!(value = true, items = [],update_parent = false)
-            return if value == @modified
-            super(value,items,false)
-            if !value
-                update @sent_sample
-            elsif direct_type?
-                write
-            end
-            if column == 0 && !direct_type?
-                i = index.sibling(row,1)
-                if i.isValid
-                    item = i.model.itemFromIndex i
-                    item.modified!(value,items)
-                end
-            end
-        end
-
-        def write(&block)
-            block ||= proc {}
-            if (column == 1 && direct_type?) || (column == 0 && !direct_type?)
-                @port.write(typelib_val,&block)
-            end
-            Typelib.copy(@sent_sample,Typelib.from_ruby(typelib_val,typelib_val.class))
-            modified!(false)
-        end
-    end
-
     class InputPortsItem < PortsItem
         def initialize(task,options = Hash.new)
             super
@@ -564,6 +497,75 @@ module Vizkit
             val = Qt::MimeData.new
             val.setText URI::Orocos.from_port(port_temp).to_s if defined? URI::DEFAULT_PARSER
             val
+        end
+    end
+
+    class InputPortItem < PortItem
+        include PortItemUserInteraction
+
+        def initialize(port,options = Hash.new)
+            options[:editable] = true unless options.has_key?(:editable)
+            options,other_options = Kernel.filter_options options,:accept => true
+	    super(port,other_options)
+            @options.merge! options
+            @sent_sample = nil
+
+            port.once_on_reachable do
+                begin
+                    update port.new_sample.zero!
+                    @sent_sample = port.new_sample.zero!
+                    setEditable @options[:editable] if @options[:item_type] != :label
+                rescue Orocos::TypekitTypeNotFound
+                    setForeground(ErrorBrush)
+                    if @options[:item_type] != :label
+                        @options[:text] = "No typekit for: #{port.type.name}"
+                    end
+                end
+            end
+        end
+
+        def data(role = Qt::UserRole+1)
+            if role == Qt::EditRole && !direct_type?
+                # we have to use the one from the first row
+                # the other one has a copy which was not changed
+                i = index.sibling(row,0)
+                if i.isValid
+                    # workaround memeroy leak qt-ruby
+                    # the returned Qt::Variant is never be deleted
+                    @last_value.dispose if @last_value
+                    @last_value = Qt::Variant.from_ruby i.model.itemFromIndex(i)
+                else
+                    super
+                end
+            else
+                super
+            end
+        end
+
+        def modified!(value = true, items = [],update_parent = false)
+            return if value == @modified
+            super(value,items,false)
+            if !value
+                update @sent_sample
+            elsif direct_type?
+                write
+            end
+            if column == 0 && !direct_type?
+                i = index.sibling(row,1)
+                if i.isValid
+                    item = i.model.itemFromIndex i
+                    item.modified!(value,items)
+                end
+            end
+        end
+
+        def write(&block)
+            block ||= proc {}
+            if (column == 1 && direct_type?) || (column == 0 && !direct_type?)
+                @port.write(typelib_val,&block)
+            end
+            Typelib.copy(@sent_sample,Typelib.from_ruby(typelib_val,typelib_val.class))
+            modified!(false)
         end
     end
 

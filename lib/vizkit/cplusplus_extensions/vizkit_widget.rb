@@ -4,7 +4,7 @@ module VizkitPluginExtension
     attr_reader :plugins 
 
     def load_adapters(plugin_spec)
-        if !Orocos.master_project # Check if Orocos has been initialized
+        if !Orocos.initialized? # Check if Orocos has been initialized
    	    raise RuntimeError, 'you need to call Orocos.initialize before using the Ruby bindings for Vizkit3D'
 	end
         @bridges = Hash.new
@@ -115,6 +115,7 @@ end
 module VizkitPluginLoaderExtension
     def initialize_vizkit_extension
         super
+        @load_transformer_config_from_broadcaster = true
         Vizkit.ensure_orocos_initialized
         if !@connected_to_broadcaster
             @port_frame_associations ||= Hash.new
@@ -139,7 +140,7 @@ module VizkitPluginLoaderExtension
     end
 
     def setGrid(val)
-        @grid.enabled(val)
+        @grid.enabled = val
     end
 
     def isGridEnabled
@@ -272,57 +273,104 @@ module VizkitPluginLoaderExtension
     # frame transform), and true otherwise
     attr_reader :connected_transformation_producers
 
+    # @deprecated renamed to push_transformer_configuration
+    def pushTransformerConfiguration(data)
+        push_transformer_configuration(data)
+    end
+
+    # Controls whether the transformer configuration should be loaded from a
+    # running transformer broadcaster component
+    #
+    # This controls only the static and dynamic transformations. The
+    # port-to-frame associations are still loaded from the broadcaster unless
+    # {use_transformer_broadcaster?} is false
+    #
+    # @see load_transformer_config_from_broadcaster?, load_transformer_config
+    attr_predicate :load_transformer_config_from_broadcaster?, true
+
+    # Controls whether transformation configuration should be loaded from the transformer broadcaster
+    #
+    # @see load_transformer_config_from_broadcaster?
+    attr_predicate :use_transformer_broadcaster?, true
+
     # Updates the connections and internal configuration of the Vizkit3D widget
     # to use the transformer configuration information in +data+
     #
     # +data+ is supposed to be a transformer/ConfigurationState value
-    def pushTransformerConfiguration(data)
-        # Push the data to the underlying transformer
-        data.static_transformations.each do |trsf|
-            Vizkit.debug "pushing static transformation #{trsf.sourceFrame} => #{trsf.targetFrame}"
-            # target and source are exchanged because the transformer defines its transformations as Source_In_Target
-            setTransformation(trsf.targetFrame,trsf.sourceFrame,
-                              Qt::Vector3D.new(trsf.position.x,trsf.position.y,trsf.position.z),
-                              Qt::Quaternion.new(trsf.orientation.w,trsf.orientation.x,trsf.orientation.y,trsf.orientation.z))
+    def push_transformer_configuration(data)
+        if load_transformer_config_from_broadcaster?
+            # Convert the broadcaster's configuration to a transformer configuration
+            # object
+            conf = Transformer::Configuration.new
+            # Push the data to the underlying transformer
+            data.static_transformations.each do |trsf|
+                conf.static_transform trsf.position, trsf.orientation,
+                    trsf.sourceFrame => trsf.targetFrame
+            end
+            data.port_transformation_associations.each do |producer|
+                conf.dynamic_transform "#{producer.task}.#{producer.port}",
+                    producer.from_frame => producer.to_frame
+            end
+            applyTransformerConfiguration(conf)
         end
+
         self.port_frame_associations.clear
         data.port_frame_associations.each do |data_frame|
             port_frame_associations["#{data_frame.task}.#{data_frame.port}"] = data_frame.frame
         end
-        data.port_transformation_associations.each do |producer|
-            next if @connected_transformation_producers.has_key?([producer.task, producer.port])
+    end
 
-            Vizkit.debug "connecting producer #{producer.task}.#{producer.port} for #{producer.from_frame} => #{producer.to_frame}"
-            Vizkit.connect_port_to producer.task, producer.port do |data, port_name|
-                if data.sourceFrame != producer.from_frame || data.targetFrame != producer.to_frame
-                    if @connected_transformation_producers[[producer.task, producer.port]]
-                        Vizkit.warn "#{producer.task}.#{producer.port} produced a transformation for"
-                        Vizkit.warn "    #{data.sourceFrame} => #{data.targetFrame},"
-                        Vizkit.warn "    but I was expecting #{producer.from_frame} => #{producer.to_frame}"
-                        Vizkit.warn "  I am ignoring this transformation. You will get this message only once,"
-                        Vizkit.warn "  but get a notification if the right transformation is received later."
-                        @connected_transformation_producers[[producer.task, producer.port]] = false
-                    end
-                else
-                    if !@connected_transformation_producers[[producer.task, producer.port]]
-                        Vizkit.warn "received the expected transformation from #{producer.task}.#{producer.port}"
-                        @connected_transformation_producers[[producer.task, producer.port]] = true
-                    end
-                    Vizkit.debug "pushing dynamic transformation #{data.sourceFrame} => #{data.targetFrame}"
-                    # target and source are exchanged because the transformer defines its transformations as Source_In_Target
-                    setTransformation(data.targetFrame,data.sourceFrame,
-                                      Qt::Vector3D.new(data.position.x,data.position.y,data.position.z),
-                                      Qt::Quaternion.new(data.orientation.w,data.orientation.x,data.orientation.y,data.orientation.z))
+    def listen_to_transformation_producer(trsf)
+        return if @connected_transformation_producers.has_key?(trsf.producer)
+
+        task, *port = trsf.producer.split('.')
+        port = port.join(".")
+        Vizkit.debug "connecting producer task #{task}, port #{port} for #{trsf.from} => #{trsf.to}"
+        producer_name = task.gsub(/.*\//, '')
+        Vizkit.connect_port_to producer_name, port do |data, port_name|
+            if data.sourceFrame != trsf.from || data.targetFrame != trsf.to
+                if @connected_transformation_producers[trsf.producer]
+                    Vizkit.warn "#{task}.#{port} produced a transformation for"
+                    Vizkit.warn "    #{data.sourceFrame} => #{data.targetFrame},"
+                    Vizkit.warn "    but I was expecting #{trsf.from} => #{trsf.to}"
+                    Vizkit.warn "  I am ignoring this transformation. You will get this message only once,"
+                    Vizkit.warn "  but get a notification if the right transformation is received later."
+                    @connected_transformation_producers[trsf.producer] = false
                 end
-                data
+            else
+                if !@connected_transformation_producers[trsf.producer]
+                    Vizkit.warn "received the expected transformation from #{task}.#{port}"
+                    @connected_transformation_producers[trsf.producer] = true
+                end
+                Vizkit.debug "pushing dynamic transformation #{data.sourceFrame} => #{data.targetFrame}"
+                # target and source are exchanged because the transformer defines its transformations as Source_In_Target
+                setTransformation(data.targetFrame.dup,data.sourceFrame.dup,data.position.to_qt,data.orientation.to_qt)
             end
-            @connected_transformation_producers[[producer.task, producer.port]] = true
+            data
         end
+    end
+
+    def apply_transformer_configuration(conf)
+        conf.each_static_transform do |trsf|
+            Vizkit.debug "pushing static transformation #{trsf.from} => #{trsf.to}"
+            # target and source are exchanged because the transformer defines its transformations as Source_In_Target
+            setTransformation(trsf.to.dup,trsf.from.dup,trsf.translation.to_qt,trsf.rotation.to_qt)
+        end
+        conf.each_dynamic_transform do |trsf|
+            listen_to_transformation_producer(trsf)
+            @connected_transformation_producers[trsf.producer] = true
+        end
+    end
+
+    def load_transformer_configuration(path)
+        conf = Transformer::Configuration.new
+        conf.load(path)
+        apply_transformer_configuration(conf)
     end
 
     def update(data, port_name)
         if @connected_to_broadcaster
-            if data.class == Types::Transformer::ConfigurationState
+            if use_transformer_broadcaster? && data.class == Types::Transformer::ConfigurationState
                 pushTransformerConfiguration(data)
                 return
             end

@@ -107,8 +107,8 @@ module Vizkit
                 end
 
             # add opaque type if intermediate or m_type
-            if Orocos.registry && Orocos.registry.include?(klass.name) && Orocos.master_project.intermediate_type?(klass)
-                type = Orocos.master_project.find_opaque_for_intermediate(klass)
+            if Orocos.registry.include?(klass.name) && Orocos.default_loader.intermediate_type?(klass)
+                type = Orocos.default_loader.opaque_type_for(klass)
                 if type.respond_to? :intermediate
                     Array(type.type.name) + arry
                 else
@@ -282,8 +282,7 @@ module Vizkit
             end
 
             def bind(object)
-                @object = object
-                self
+                BlockAdapter.new(@block, object)
             end
 
             # Name of the code block which is used for pretty_print of 

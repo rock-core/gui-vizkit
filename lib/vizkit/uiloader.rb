@@ -1,6 +1,7 @@
 #!/usr/bin/env ruby
 
 begin
+require 'thread'
 require 'Qt4'
 require  File.join(File.dirname(__FILE__),'qt_bugfix')
 require 'qtuitools'
@@ -447,7 +448,7 @@ module Vizkit
                 Vizkit.error "The following plugins are registered:"
                 names = available_plugins.sort
                 Vizkit.error names.join(", ")
-                raise e 
+                Kernel.raise e 
             end
         end
 

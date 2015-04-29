@@ -18,8 +18,8 @@ module Qt
   def Internal.connect(src, signal, target, block)
           @@storage ||= Array.new
           args = (signal =~ /\((.*)\)/) ? $1 : ""
-          @@storage <<  Qt::BlockInvocation.new(target, block, signature)
           signature = Qt::MetaObject.normalizedSignature("invoke(%s)" % args).to_s
+          @@storage <<  Qt::BlockInvocation.new(target, block, signature)
           return Qt::Object.connect(	src,
                                                                   signal,
                                                                   @@storage.last,

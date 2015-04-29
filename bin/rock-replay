@@ -9,6 +9,8 @@ replay_into = nil
 replay_connections = []
 replay_configuration = nil
 use_sample_time = false
+transformer_config = nil
+export_all = false
 parser = OptionParser.new do |opt|
     opt.banner = <<-EOT
 
@@ -62,8 +64,13 @@ Examples:
     opt.on('--use-sample-time', String, 'makes the alignment algorithm use sample timestamp time for alignment') do
         use_sample_time = true
     end
+    opt.on('--transformer CONFIG', 'use this transformer configuration file instead of getting it from the transformer broadcaster. This loads a Vizkit3D view') do |path|
+        transformer_config = path
+    end
+    opt.on('--export-all', 'exports all replayed tasks to CORBA') do
+        export_all = true
+    end
 end
-
 
 remaining = parser.parse(ARGV)
 if remaining.empty? 
@@ -98,6 +105,19 @@ def replay(log)
     Vizkit.exec
 end
 
+if transformer_config
+    v3d = Vizkit.vizkit3d_widget
+    v3d.load_transformer_config_from_broadcaster = false
+    v3d.load_transformer_configuration(transformer_config.dup)
+end
+
+if export_all
+    async_tasks = []
+    log.each_task do |task|
+        async_tasks << task.to_async
+        async_tasks.last.to_ruby
+    end
+end
 
 if @show_and_exit
     pp log

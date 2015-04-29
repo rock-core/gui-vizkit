@@ -1,7 +1,8 @@
-Vizkit::UiLoader.register_control_for("VirtualJoystick", "/base/MotionCommand2D") do |widget,port,options,block|
+Vizkit::UiLoader.register_control_for("VirtualJoystick", "/base/commands/Motion2D") do |widget,port,options,block|
     unless port.to_orocos_port.is_a? Orocos::InputPort || block
         raise "VirtualJostick can only be connected to Orocos::InputPorts or code blocks"
     end
+
     widget.connect(SIGNAL('axisChanged(double,double)')) do |x, y|
         value = Types::Base::MotionCommand2D.new
 	value.translation = x
@@ -11,10 +12,11 @@ Vizkit::UiLoader.register_control_for("VirtualJoystick", "/base/MotionCommand2D"
 	    else
 		-y.abs() * Math::atan2(y, x.abs())
 	    end
-        if block 
+        if block
 	    block.call(value)
         else
-            Vizkit.warn "No block given: Cannot write motion command!"
+            port.write value do
+            end
         end
     end
 end
