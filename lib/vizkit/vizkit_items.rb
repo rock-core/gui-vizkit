@@ -288,8 +288,13 @@ module Vizkit
                     end
                 else
                     @typelib_val = data
-                    rb_sample = @typelib_val.to_ruby
-                    @direct_type = DIRECTLY_DISPLAYED_RUBY_TYPES.any? { |rt| rt === rb_sample }
+                    if @typelib_val.class.convertion_to_ruby
+                        rb_sample = @typelib_val.class.convertion_to_ruby[0]
+                        @direct_type = DIRECTLY_DISPLAYED_RUBY_TYPES.include? rb_sample
+                    else
+                        @direct_type = false
+                    end
+
                     if !@direct_type || @options[:item_type] == :label
                         setEditable false
                     else
