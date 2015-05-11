@@ -115,6 +115,7 @@ end
 module VizkitPluginLoaderExtension
     def initialize_vizkit_extension
         super
+        @use_transformer_broadcaster = true
         @load_transformer_config_from_broadcaster = true
         Vizkit.ensure_orocos_initialized
         if !@connected_to_broadcaster
@@ -311,7 +312,7 @@ module VizkitPluginLoaderExtension
                 conf.dynamic_transform "#{producer.task}.#{producer.port}",
                     producer.from_frame => producer.to_frame
             end
-            applyTransformerConfiguration(conf)
+            apply_transformer_configuration(conf)
         end
 
         self.port_frame_associations.clear
