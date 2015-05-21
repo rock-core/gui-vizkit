@@ -175,7 +175,7 @@ module Vizkit
     end
 
     class TypelibItem < VizkitItem
-        DIRECTLY_DISPLAYED_RUBY_TYPES = [String,Numeric,Symbol,Time,TrueClass,FalseClass]
+        DIRECTLY_DISPLAYED_RUBY_TYPES = [String,Numeric,Symbol,Time,TrueClass,FalseClass,Float]
         MAX_NUMBER_OF_CHILDS = 20
         attr_reader :typelib_val
 
