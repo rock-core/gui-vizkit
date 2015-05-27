@@ -290,7 +290,7 @@ module Vizkit
                     @typelib_val = data
                     if @typelib_val.class.convertion_to_ruby
                         rb_sample = @typelib_val.class.convertion_to_ruby[0]
-                        @direct_type = DIRECTLY_DISPLAYED_RUBY_TYPES.include? rb_sample
+                        @direct_type = DIRECTLY_DISPLAYED_RUBY_TYPES.any? {|t| rb_sample <= t }
                     else
                         @direct_type = false
                     end
