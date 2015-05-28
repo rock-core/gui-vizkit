@@ -8,6 +8,7 @@ pkg_check_modules(TYPELIB "rtt_typelib-${OROCOS_TARGET}")
 pkg_check_modules(TYPELIBRUBY "typelib_ruby")
 pkg_check_modules(QT "QtCore" REQUIRED)
 include_directories(${QT_HEADER_DIR})
+link_directories(${QT_LIBRARY_DIRS})
 
 if (TYPELIB_FOUND AND TYPELIBRUBY_FOUND AND GEM_FOUND)
     rock_ruby_rice_extension(vizkittypelib MODULE
