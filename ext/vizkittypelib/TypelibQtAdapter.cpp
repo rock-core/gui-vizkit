@@ -1,4 +1,7 @@
+#ifndef __APPLE__
 #include <linux/types.h>
+#endif
+
 #include <rtt/typelib/TypelibMarshallerBase.hpp>
 #include <iostream>
 
