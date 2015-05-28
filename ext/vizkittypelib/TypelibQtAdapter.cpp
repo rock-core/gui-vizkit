@@ -10,8 +10,11 @@
 #include <rice/Array.hpp>
 #include <typelib_ruby.hh>
 #include <rtt/base/ChannelElementBase.hpp>
-#include "TypelibQtAdapter.h"
+#include <Qt/qcoreapplication.h>
+#include <Qt/qmetaobject.h>
+#include <Qt/qbytearray.h>
 #include <QtCore>
+#include "TypelibQtAdapter.h"
 
 using namespace Rice;
 
