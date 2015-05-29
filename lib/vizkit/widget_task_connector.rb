@@ -1,5 +1,8 @@
 module Vizkit
     class WidgetTaskConnector
+        attr_reader :widget
+        attr_reader :task
+
         def initialize(widget,task,options = Hash.new)
             raise ArgumentError,"#{widget} is not a qt object" unless widget.is_a? Qt::Object
             @widget = widget
