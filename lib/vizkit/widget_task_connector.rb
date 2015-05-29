@@ -52,6 +52,10 @@ module Vizkit
             "8#{str}"
         end
 
+        def METHOD(str)
+            "9#{str}"
+        end
+
         #Wrapper method to connect sub widgets which are plain Qt ruby classes
         def wrap(widget)
             WidgetTaskConnector.new(widget,@task,@options)
@@ -83,6 +87,8 @@ module Vizkit
                     ConnectorEvent.new(@task,$2,options)
                 when 8
                     ConnectorProperty.new(@task,$2,options)
+                when 9
+                    ConnectorProc.new(@task,@widget.method($2),options)
                 else
                     if signature.is_a? Symbol
                         ConnectorSlot.new(@widget,signature.to_s,options)
