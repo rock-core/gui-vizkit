@@ -23,6 +23,10 @@ class StateViewer < Qt::Widget
         self.set_size_policy(Qt::SizePolicy::Preferred, Qt::SizePolicy::Minimum)
     end
 
+    def reachable_color; @blue end
+    def running_color; @green end
+    def unreachable_color; @red end
+
     def task_inspector
         @task_inspector ||= Vizkit.default_loader.TaskInspector 
     end
@@ -47,13 +51,13 @@ class StateViewer < Qt::Widget
         @tasks << task
         task.on_state_change do |state|
             if(task.running?)
-                update(state,task.name,@green)
+                update(state,task.name,running_color)
             else
-                update(state,task.name,@blue)
+                update(state,task.name,reachable_color)
             end
         end
         task.on_unreachable do
-            update("UNREACHABLE",task.name,@red)
+            update("UNREACHABLE",task.name,unreachable_color)
         end
     end
 
