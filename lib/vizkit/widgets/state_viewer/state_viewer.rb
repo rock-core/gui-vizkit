@@ -71,13 +71,72 @@ class StateViewer < Qt::Widget
         label
     end
 
+    # Whether labels are laid out row-first or column-first
+    #
+    # In row-first mode, a row is first filled with a maximum set by
+    # {row_first=}, and then a new row is created
+    #
+    # In column-first mode, a column is first filled with a maximum set by
+    # {col_first=}, and then a new column is created
+    #
+    # The default is to be column-first
+    def row_first?
+        !@options[:max_rows]
+    end
+
+    # Make the widget lay itself out row-first
+    #
+    # After this call, the widget will fill a row with 'value' labels before
+    # going to the next row. The default is col-first
+    #
+    # Note that calling this method does not re-layout the existing labels. New
+    # labels will be added starting at the last label added
+    #
+    # @see row_first? max_rows=
+    def max_cols=(value)
+        @options.delete(:max_rows)
+        @options[:max_cols] = value
+    end
+
+    # Make the widget lay itself out column-first
+    #
+    # After this call, the widget will fill a column with 'value' labels before
+    # going to the next column. This is the default
+    #
+    # Note that calling this method does not re-layout the existing labels. New
+    # labels will be added starting at the last label added
+    #
+    # @see row_first? max_cols=
+    def max_rows=(value)
+        @options.delete(:max_cols)
+        @options[:max_rows] = value
+    end
+
+    # Add a new label to the layout and return its position
+    #
+    # Where the label is added is controlled by the max_cols or max_rows
+    # setting.
+    #
+    # @see row_first? max_col= max_row=
+    # @return [(Integer,Integer)] the row and column of the new label
     def add_label_to_layout(label)
-        @layout.addWidget(label,@row,@col)
-        @row += 1
-        if @row == @options[:max_rows]
-            @row = 0
+        row, col = @row, @col
+        @layout.addWidget(label,row,col)
+        if row_first?
             @col += 1
+            if @col == @options[:max_cols]
+                @col = 0
+                @row += 1
+            end
+        else
+            @row += 1
+            if @row == @options[:max_rows]
+                @row = 0
+                @col += 1
+            end
         end
+
+        return row, col
     end
 
     def label_for(task_name)
