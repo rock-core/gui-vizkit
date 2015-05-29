@@ -19,6 +19,8 @@ class StateViewer < Qt::Widget
         @red.setColor(Qt::Palette::Window,Qt::Color.new(0xFF,0x44,0x44))
         @green.setColor(Qt::Palette::Window,Qt::Color.new(0x99,0xCC,0x00))
         @blue.setColor(Qt::Palette::Window,Qt::Color.new(0x33,0xB5,0xE5))
+
+        self.set_size_policy(Qt::SizePolicy::Preferred, Qt::SizePolicy::Minimum)
     end
 
     def task_inspector
