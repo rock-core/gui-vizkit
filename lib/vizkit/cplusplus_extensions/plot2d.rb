@@ -220,9 +220,10 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "Plot2d" do
 
     #diplay is called each time new data are available on the orocos output port
     #this functions translates the orocos data struct to the widget specific format
-    def update(sample,name)        
+    def update(sample,name,time: self.time)
         graph = graph2(name)
-        x = time.to_f-@time.to_f
+        @time ||= time
+        x = time-@time
         graph.removeDataBefore(x-@options[:cached_time_window])
         graph.addData(x,sample.to_f)
         if @options[:auto_scrolling] || @options[:auto_scrolling_x]
