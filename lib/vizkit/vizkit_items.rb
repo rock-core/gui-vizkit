@@ -228,7 +228,7 @@ module Vizkit
                                            item_val.is_a?(TrueClass) || item_val.is_a?(FalseClass)
                                            item_val
                                        elsif item_val.is_a? Time
-                                           "#{item_val.strftime("%-d %b %Y %H:%M:%S")}.#{item_val.usec.to_s}"
+                                           "#{item_val.strftime("%-d %b %Y %H:%M:%S")}.#{"%06d" % item_val.usec}"
                                        else
                                            item_val.to_s
                                        end
