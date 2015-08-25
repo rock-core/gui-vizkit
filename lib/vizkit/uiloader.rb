@@ -107,7 +107,14 @@ module Vizkit
         
         def initialize(parent = nil)
             super(Qt::UiLoader.new(parent))
-            Orocos.load
+            # This should NOT be here. If that is required, then one that wants
+            # to use Vizkit should be required to load/initialize it FIRST
+            #
+            # Keep it there for backward compatibility though :(
+            if !Orocos.loaded?
+                Vizkit.warn "one must call Orocos.load before using Vizkit.default_loader"
+                Orocos.load
+            end
             @plugin_specs = Hash.new
 
             load_extensions(File.join(File.dirname(__FILE__),"cplusplus_extensions"))
