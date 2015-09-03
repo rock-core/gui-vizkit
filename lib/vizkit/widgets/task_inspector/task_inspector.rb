@@ -68,7 +68,7 @@ class TaskInspector
                     to_remove = []
                     @model.rowCount.times do |i|
                         item = @model.item(i, 0)
-                        if item.respond_to?(:name_service) && item.name_service = removed_ns
+                        if item.respond_to?(:name_service) && item.name_service == removed_ns
                             to_remove << i
                         end
                     end
