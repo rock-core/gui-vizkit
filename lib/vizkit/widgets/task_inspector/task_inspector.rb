@@ -18,15 +18,18 @@ class TaskInspector
 
         #populate widget menu
         Vizkit.default_loader.plugin_specs.keys.sort.each do |name|
-            # do not add qt base widgets
-            next if name[0] == "Q" && Qt.const_defined?(name[1..-1])
-            action = form.menuWidgets.addAction(name)
-            action.connect SIGNAL("triggered()") do
-                w = Vizkit.default_loader.create_plugin name
-                w.show if w.respond_to?(:show) || w.kind_of?(Qt::Widget)
+            begin
+                # do not add qt base widgets
+                next if name[0] == "Q" && Qt.const_defined?(name[1..-1])
+                action = form.menuWidgets.addAction(name)
+                action.connect SIGNAL("triggered()") do
+                    w = Vizkit.default_loader.create_plugin name
+                    w.show if w.respond_to?(:show) || w.kind_of?(Qt::Widget)
+                end
+            rescue
+                Vizkit.warn "#{name} widget could not been added"
             end
         end
-
         form
     end
 
