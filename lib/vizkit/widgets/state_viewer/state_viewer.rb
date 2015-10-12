@@ -48,9 +48,10 @@ class StateViewer < Qt::Widget
                else
                    Orocos::Async.proxy(task)
                end
+        running_states = Orocos::TaskContextBase::RUNNING_STATES
         @tasks << task
         task.on_state_change do |state|
-            if(task.running?)
+            if task.runtime_state?(state)
                 update(state,task.name,running_color)
             else
                 update(state,task.name,reachable_color)
@@ -143,6 +144,15 @@ class StateViewer < Qt::Widget
         return row, col
     end
 
+    # @api private
+    #
+    # Returns the Qt label used to display information about a given task
+    #
+    # If it does not exist, one is created and added to the viewer
+    #
+    # @param [#to_str] task_name the task name
+    #
+    # @return [Qt::Label]
     def label_for(task_name)
         if !(label = @hash_labels[task_name])
             label = self.class.create_state_label(task_name, task_inspector)
@@ -152,10 +162,17 @@ class StateViewer < Qt::Widget
         label
     end
 
-    def update(data, task_name, color = @red)
+    # Update the display for a single task
+    #
+    # @param [#to_s] data the label that should be displayed after the task
+    #   name, usually the state name
+    # @param [#to_str] task_name the name of the task that should be displayed
+    # @param [Qt::Palette,nil] color the label's color. If nil, it is left
+    #   unchanged
+    def update(data, task_name, color = unreachable_color)
         label = label_for(task_name)
         label.setText("<b>#{task_name}</b>: #{data}")
-        if label.palette != color
+        if color && (label.palette != color)
             label.setPalette color 
         end
     end
