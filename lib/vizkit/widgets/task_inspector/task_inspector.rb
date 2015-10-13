@@ -59,6 +59,20 @@ class TaskInspector
             @model.appendRow([item1,item2])
         end
 
+        def remove_task(task)
+            name = if task.respond_to?(:name) then task.name
+                   else task.to_str
+                   end
+
+            idx = (0...@model.rowCount).find do |i|
+                item = @model.item(i, 0)
+                item.respond_to?(:task) && item.task.name == name
+            end
+            if idx
+                @model.takeRow(idx)
+            end
+        end
+
         def add_name_service(service,options=Hash.new)
             if service.respond_to?(:on_name_service_added) # This is a "global" name service
                 service.on_name_service_added do |new_ns|
@@ -68,7 +82,7 @@ class TaskInspector
                     to_remove = []
                     @model.rowCount.times do |i|
                         item = @model.item(i, 0)
-                        if item.respond_to?(:name_service) && item.name_service = removed_ns
+                        if item.respond_to?(:name_service) && item.name_service == removed_ns
                             to_remove << i
                         end
                     end
