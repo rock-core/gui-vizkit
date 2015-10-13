@@ -351,7 +351,7 @@ module VizkitPluginLoaderExtension
         end
     end
 
-    def apply_transformer_configuration(conf)
+    def apply_transformer_configuration(conf, apply_examples: true)
         conf.each_static_transform do |trsf|
             Vizkit.debug "pushing static transformation #{trsf.from} => #{trsf.to}"
             # target and source are exchanged because the transformer defines its transformations as Source_In_Target
@@ -360,6 +360,11 @@ module VizkitPluginLoaderExtension
         conf.each_dynamic_transform do |trsf|
             listen_to_transformation_producer(trsf)
             @connected_transformation_producers[trsf.producer] = true
+        end
+        if apply_examples
+            conf.each_example_transform do |trsf|
+                setTransformation(trsf.to.dup, trsf.from.dup, trsf.translation.to_qt, trsf.rotation.to_qt)
+            end
         end
     end
 
