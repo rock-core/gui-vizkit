@@ -110,7 +110,11 @@ module Vizkit
                 model = data.to_ruby
                 Vizkit::AcknowledgeEditor.new(parent,model,self)
             else
-                super
+                editor = super
+                if editor.is_a? Qt::DoubleSpinBox
+                    editor.setDecimals 10
+                end
+                editor
             end
         end
 
