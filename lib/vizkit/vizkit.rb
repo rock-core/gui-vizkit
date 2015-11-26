@@ -103,6 +103,15 @@ module Vizkit
         widget
     end
 
+    def self.task_inspector
+        @task_inspector ||= begin
+                                task = default_loader.TaskInspector
+                                raise "Cannot find plugin TaskInspector" unless task
+                                task.add_name_service Orocos::Async.name_service
+                                task
+                            end
+    end
+
     def self.display value,options=Hash.new,&block
         value = value.to_proxy
         options[:widget_type] = :display

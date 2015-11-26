@@ -73,9 +73,7 @@ end
 
 task_inspector,widget = nil,nil
 if remaining.empty?
-    task_inspector = Vizkit.default_loader.TaskInspector
-    raise "Cannot find plugin TaskInspector" unless task_inspector
-    task_inspector.add_name_service Orocos::Async.name_service
+    task_inspector = Vizkit.task_inspector
     task_inspector.show
 else
     remaining.each do |spec|
