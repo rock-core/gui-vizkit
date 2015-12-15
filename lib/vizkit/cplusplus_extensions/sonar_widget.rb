@@ -30,3 +30,4 @@ end
 # accessible via rock tooling (rock-replay,...)
 # multiple register_widget_for are allowed for each widget
  Vizkit::UiLoader.register_widget_for("SonarWidget","/base/samples/SonarScan",:update)
+ Vizkit::UiLoader.register_widget_for("SonarWidget","/base/samples/Sonar",:update)
