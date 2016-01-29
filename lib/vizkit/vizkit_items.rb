@@ -291,7 +291,7 @@ module Vizkit
                     if @typelib_val.class.convertion_to_ruby
                         rb_sample = @typelib_val.class.convertion_to_ruby[0]
                         @direct_type = DIRECTLY_DISPLAYED_RUBY_TYPES.any? {|t| rb_sample <= t }
-                    elsif @typelib_val.is_a?(Typelib::EnumType)
+                    elsif @typelib_val.kind_of?(Typelib::EnumType)
                         @direct_type = true
                     else
                         @direct_type = false
