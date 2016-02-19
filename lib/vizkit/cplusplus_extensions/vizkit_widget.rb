@@ -164,7 +164,7 @@ module VizkitPluginLoaderExtension
 
     def findPluginPath(plugin_name)
         path = if !ENV['VIZKIT_PLUGIN_RUBY_PATH']
-                   "/usr/local/lib:/usr/lib"
+                   "/usr/local/lib:/usr/lib:/usr/local/lib"
                else
                    ENV['VIZKIT_PLUGIN_RUBY_PATH']
                end
@@ -172,6 +172,8 @@ module VizkitPluginLoaderExtension
             p = File.join(path, "lib#{plugin_name}-viz.so")
             return p if File.file?(p)
             p = File.join(path, "lib#{plugin_name}-viz.bundle")
+            return p if File.file?(p)
+            p = File.join(path, "lib#{plugin_name}-viz.dylib")
             return p if File.file?(p)
         end
         nil
