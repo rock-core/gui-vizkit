@@ -75,6 +75,7 @@ task_inspector,widget = nil,nil
 if remaining.empty?
     task_inspector = Vizkit.task_inspector
     task_inspector.show
+    task_inspector.raise
 else
     remaining.each do |spec|
         task_name, port_name = spec.split('.')
@@ -89,11 +90,13 @@ else
             task_inspector ||= Vizkit.default_loader.TaskInspector
             task_inspector.add_task(task)
             task_inspector.show
+            task_inspector.raise
         else
             begin
                 port = task.port(port_name)
                 port.wait
                 widget = Vizkit.display port
+                widget.raise
                 Vizkit.warn "Cannot find a display widget for #{port_name}" unless widget
             rescue Orocos::NotFound => e
                 Vizkit.warn "Skipping #{task_name}.#{port_name}: cannot be found"
