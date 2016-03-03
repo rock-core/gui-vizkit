@@ -324,8 +324,7 @@ module VizkitPluginLoaderExtension
     def listen_to_transformation_producer(trsf)
         return if @connected_transformation_producers.has_key?(trsf.producer)
 
-        task, bla, *port = trsf.producer.rpartition('.')
-        port = port.join(".")
+        task, _, port = trsf.producer.rpartition('.')
         Vizkit.debug "connecting producer task #{task}, port #{port} for #{trsf.from} => #{trsf.to}"
         producer_name = task.gsub(/.*\//, '')
         Vizkit.connect_port_to producer_name, port do |data, port_name|
