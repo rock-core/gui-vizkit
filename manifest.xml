@@ -7,6 +7,7 @@
     <copyright>
 	DFKI/robotik@dfki.de
     </copyright>
+    <depend package="rice" />
     <depend package="base/cmake"/>
     <depend package="drivers/orogen/transformer"/>
     <depend package="tools/orocos.rb"/>
