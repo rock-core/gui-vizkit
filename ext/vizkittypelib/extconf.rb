@@ -4,12 +4,14 @@ name = "vizkittypelib"
 ext_dir = "ext/vizkittypelib"
 lib_dir = "lib/vizkit"
 # Use absolute main package directory as starting point, since rake-compiler uses a build directory which depends on the system architecture and ruby version
+#
+# Adapt the target installation path for the ruby extension through the environment variable RUBY_CMAKE_INSTALL_PREFIX
 main_dir = File.join(File.dirname(__FILE__),"..","..")
-if prefix = ENV['CMAKE_PREFIX_PATH']
-    prefix = ENV['CMAKE_PREFIX_PATH'].split(":").first
-    prefix = File.join(prefix,"lib","ruby",RbConfig::CONFIG['ruby_version'],RbConfig::CONFIG['arch'],"orocos")
+if prefix = ENV['RUBY_CMAKE_INSTALL_PREFIX']
+    prefix = ENV['RUBY_CMAKE_INSTALL_PREFIX'].split(":").first
+    prefix = File.absolute_path( File.join(main_dir, prefix) )
 else
-    prefix = File.join(main_dir,lib_dir,"vizkit")
+    prefix = File.join(main_dir,lib_dir)
 end
 
 

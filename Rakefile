@@ -44,6 +44,8 @@ begin
         if not Dir.exists?(ext.tmp_dir)
             FileUtils.mkdir_p ext.tmp_dir
         end
+
+        ext.gem_spec.extensions << "ext/vizkittypelib/extconf.rb"
     end
 
     # TODO move each target into a separate folder or merge targets
