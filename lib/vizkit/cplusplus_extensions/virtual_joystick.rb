@@ -4,7 +4,7 @@ Vizkit::UiLoader.register_control_for("VirtualJoystick", "/base/commands/Motion2
     end
 
     widget.connect(SIGNAL('axisChanged(double,double)')) do |x, y|
-        value = Types::Base::MotionCommand2D.new
+        value = Types.base.commands.Motion2D.new
 	value.translation = x
 	value.rotation =
 	    if x == 0 && y == 0
