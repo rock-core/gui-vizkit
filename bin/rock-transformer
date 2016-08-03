@@ -2,6 +2,7 @@
 
 require 'vizkit'
 require 'transformer'
+require 'optparse'
 
 # Edition class for the transformer. We aren't using Rock's default
 # RigidBodyStateEditor because it is really way too bloated
