@@ -11,7 +11,7 @@ class RigidBodyStateEditor
         attr_reader :edited_sample
 
         def init
-            @edited_sample = Types::Base::Samples::RigidBodyState.new
+            @edited_sample = Types.base.samples.RigidBodyState.new
             @callback_fct = nil
             @timer = Qt::Timer.new
             start_value.connect(SIGNAL('clicked()')) do
