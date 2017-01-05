@@ -378,7 +378,7 @@ module VizkitPluginLoaderExtension
 
     def update(data, port_name)
         if @connected_to_broadcaster
-            if use_transformer_broadcaster? && data.class == Types::Transformer::ConfigurationState
+            if use_transformer_broadcaster? && data.class == Types.transformer.ConfigurationState
                 pushTransformerConfiguration(data)
                 return
             end

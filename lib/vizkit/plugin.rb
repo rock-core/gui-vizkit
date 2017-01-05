@@ -65,8 +65,8 @@ module Vizkit
         # @example
         #   normalize_obj(123) => ["Fixnum", "Integer", "Numeric", "Object", "BasicObject"]
         #   normalize_obj("/base/samples/frame/Frame") => ["/base/samples/frame/Frame", "Typelib::CompoundType", "Typelib::Type", "Object", "BasicObject"]
-        #   normalize_obj(Types::Base::Samples::Frame::Frame) => ["/base/samples/frame/Frame", "Typelib::CompoundType", "Typelib::Type", "Object", "BasicObject"]
-        #   normalize_obj(Types::Base::Samples::Frame::Frame.new) => ["/base/samples/frame/Frame", "Typelib::CompoundType", "Typelib::Type", "Object", "BasicObject"]
+        #   normalize_obj(Types.base.samples.frame.Frame) => ["/base/samples/frame/Frame", "Typelib::CompoundType", "Typelib::Type", "Object", "BasicObject"]
+        #   normalize_obj(Types.base.samples.frame.Frame.new) => ["/base/samples/frame/Frame", "Typelib::CompoundType", "Typelib::Type", "Object", "BasicObject"]
         def self.normalize_obj(object,include_super=true)
             return Array.new unless object
             names = if object.respond_to? :superclass
@@ -128,7 +128,7 @@ module Vizkit
         #   if the given string does not match a ruby class name of a typelib
         #   class.
         # @example
-        #   to_typelib_name("Types::Base::Angle" => "/base/Angle"
+        #   to_typelib_name("Types.base.Angle" => "/base/Angle"
         #
         def self.to_typelib_name(class_name)
             class_name =~ /^Types(::.*::)(\w*)/

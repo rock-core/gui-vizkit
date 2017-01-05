@@ -33,7 +33,7 @@ class AngleEditor < Qt::Widget
         @button.connect(SIGNAL("clicked()")) do 
             if(@callback_angle)
                 Orocos.load_typekit_for("/base/Angle",false)
-                angle = @angle ? @angle : Types::Base::Angle.new
+                angle = @angle ? @angle : Types.base.Angle.new
                 angle.rad = @spin_box.value()*Math::PI/180
                 @callback_angle.call(angle)
             else

@@ -85,7 +85,7 @@ describe "ConnectorObjects" do
 
             describe "write" do 
                 it "must write a value to the slot" do
-                    sample = Types::Base::Samples::Frame::Frame.new.zero!
+                    sample = Types.base.samples.frame.Frame.new.zero!
                     sample.time = Time.now
                     obj = ConnectorSlot.new(@@widget,"setFrame")
                     obj.write Hash.new,sample
@@ -93,7 +93,7 @@ describe "ConnectorObjects" do
                 end
 
                 it "must write a value if the slot is a ruby method" do
-                    sample = Types::Base::Samples::Frame::Frame.new.zero!
+                    sample = Types.base.samples.frame.Frame.new.zero!
                     sample.time = Time.now
                     obj = ConnectorSlot.new(@@widget,"ruby_method")
                     obj.write Hash.new,sample
