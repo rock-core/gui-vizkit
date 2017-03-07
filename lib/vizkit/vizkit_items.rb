@@ -803,6 +803,30 @@ module Vizkit
         end
     end
 
+    class TaskModelItem < VizkitItem
+        attr_reader :model
+
+        def initialize(task, item_type: :label)
+            super()
+
+            @options[:item_type] = item_type
+
+            if item_type == :value
+                task.on_reachable do
+                    begin
+                        @model = task.to_async.model
+                        setText @model.name
+                    rescue
+                    end
+                end
+            elsif item_type == :label
+                setText "TaskModel"
+            else
+                raise ArgumentError, "#{item_type} is not a valid value for the item_type option of #{self.class}. Expected either :label or :value"
+            end
+        end
+    end
+
     class TaskContextItem < VizkitItem
         attr_reader :task
 
@@ -817,6 +841,8 @@ module Vizkit
                 else
                     setText task.name
                 end
+                @task_model = TaskModelItem.new(task)
+                @task_model2 = TaskModelItem.new(task, :item_type => :value)
                 @input_ports = InputPortsItem.new(task)
                 @input_ports2 = InputPortsItem.new(task,:item_type => :value)
                 @output_ports = OutputPortsItem.new(task)
@@ -825,6 +851,7 @@ module Vizkit
                 @properties2 = PropertiesItem.new(task,:item_type => :value)
                 @properties2.setEditable true
 
+                appendRow [@task_model, @task_model2]
                 appendRow [@input_ports,@input_ports2]
                 appendRow [@output_ports,@output_ports2]
                 appendRow [@properties,@properties2]

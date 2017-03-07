@@ -5,6 +5,7 @@ module Vizkit
         delegator = ItemDelegate.new(tree_view,nil)
         tree_view.setItemDelegate(delegator)
         tree_view.setSortingEnabled true
+        tree_view.sortByColumn(0, Qt::AscendingOrder)
         tree_view.setAlternatingRowColors(true)
         tree_view.setContextMenuPolicy(Qt::CustomContextMenu)
         tree_view.setDragEnabled(true)
