@@ -56,6 +56,7 @@ class TaskInspector
                   end
             item1 = Vizkit::TaskContextItem.new obj
             item2 = Vizkit::TaskContextItem.new obj,:item_type => :value
+            treeView.disconnected_items.clear
             @model.appendRow([item1,item2])
         end
 
@@ -69,6 +70,7 @@ class TaskInspector
                 item.respond_to?(:task) && item.task.name == name
             end
             if idx
+                treeView.disconnected_items.clear
                 @model.takeRow(idx)
             end
         end
