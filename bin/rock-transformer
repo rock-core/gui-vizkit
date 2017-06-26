@@ -25,6 +25,9 @@ class JointEditor < Qt::Widget
         editor = Qt::SpinBox.new
         layout.add_widget label, row, 1
         layout.add_widget editor, row, 2
+        editor.minimum = -180
+        editor.maximum = 180
+        editor.value = 0
         editors[joint.full_name] = editor
         editor
     end
