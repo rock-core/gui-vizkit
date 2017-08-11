@@ -20,6 +20,29 @@ module Vizkit
             @expanded = false
         end
 
+        def downsize_children(rows)
+            @childs[rows..-1].each do |items|
+                items[0].clear
+                items[1].clear
+                removeRow items[0].index.row
+            end
+
+            @childs =
+                if rows < 1 then []
+                else
+                    @childs[0, rows]
+                end
+        end
+
+        def clear
+            @childs.each do |items|
+                items[0].clear
+                items[1].clear
+                removeRow(items[0].index.row)
+            end
+            @childs = []
+        end
+
         def collapse(propagated = false)
             @expanded = false
             each_child do |item|
@@ -179,13 +202,27 @@ module Vizkit
         MAX_NUMBER_OF_CHILDS = 20
         attr_reader :typelib_val
 
-        def initialize(typelib_val=nil,options = Hash.new)
+        def initialize(typelib_val=nil,bitfield_type: nil, **options)
             super()
-            @options = Kernel.validate_options options,:text => nil,:item_type => :label,:editable => false
+            @options = Kernel.validate_options options,:text => nil,:item_type => :label,:editable => false,bitfield_type: nil
             @typelib_val = nil
             @truncated = false
+            @bitfield_type = bitfield_type
             setEditable false
             update typelib_val if typelib_val
+        end
+
+        def resolve_bitfield_type(metadata)
+            if metadata.include?('bitfield')
+                if bitfield_typename = metadata.get('bitfield').first
+                    begin
+                        return Orocos.registry.get(bitfield_typename)
+                    rescue Typelib::NotFound
+                        Vizkit.warn "Could not find bitfield type #{bitfield_typename}"
+                    end
+                end
+            end
+            nil
         end
 
         def setData(data,role = Qt::UserRole+1)
@@ -214,6 +251,8 @@ module Vizkit
                                        @options[:text]
                                    elsif !@typelib_val
                                        "no data"
+                                   elsif @bitfield_type
+                                       "bitfield #{@bitfield_type.name}"
                                    elsif !@direct_type
                                        if modified?
                                            @typelib_val.class.name + " (modified)"
@@ -266,16 +305,17 @@ module Vizkit
         end
 
         def clear
-            @childs.each do |items|
-                items[0].clear
-                items[1].clear
-                removeRow(items[0].index.row)
-            end
-            @childs = []
+            super
             @typelib_val = nil
         end
 
         def updated_typelib_val
+            if @bitfield_type && @typelib_val.kind_of?(Typelib::NumericType) && @typelib_val.class.integer?
+                numeric = Typelib.to_ruby(typelib_val)
+                @bitfield_values = @bitfield_type.keys.map do |name, value|
+                    name if (numeric & value) != 0
+                end.compact
+            end
         end
 
         def update_typelib_val(data)
@@ -310,7 +350,9 @@ module Vizkit
         end
 
         def typelib_val_children_count
-            if @direct_type
+            if @bitfield_values
+                @bitfield_values.size
+            elsif @direct_type
                 0
             elsif @typelib_val.class.respond_to? :fields
                 @typelib_val.class.fields.size
@@ -326,20 +368,6 @@ module Vizkit
             else
                 0
             end
-        end
-
-        def downsize_children(rows)
-            @childs[rows..-1].each do |items|
-                items[0].clear
-                items[1].clear
-                removeRow items[0].index.row
-            end
-
-            @childs =
-                if rows < 1 then []
-                else
-                    @childs[0, rows]
-                end
         end
 
         def add_or_update_child(row, field, val, **add_options)
@@ -367,7 +395,17 @@ module Vizkit
         end
 
         def resolve_and_update_child(row)
-            if @typelib_val.class.respond_to? :fields
+            if @bitfield_values
+                if row >= @childs.size
+                    field_item = VizkitItem.new("")
+                    val_item   = VizkitItem.new(@bitfield_values[row])
+                    appendRow [field_item,val_item]
+                else
+                    field_item, val_item = @childs[row]
+                    val_item.text = @bitfield_values[row]
+                end
+
+            elsif @typelib_val.class.respond_to? :fields
                 field_name, field_type = @typelib_val.class.fields[row]
                 field_value = @typelib_val.raw_get(field_name)
 
