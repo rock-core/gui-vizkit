@@ -582,7 +582,7 @@ module Vizkit
 
         def initialize(port,options = Hash.new)
             super
-            @listener = port.on_data do |data|
+            @listener = port.on_raw_data do |data|
                 # depending on the type we receive none typelip objects
                 # therefore if have to initialize it with a new sample
                 begin 
@@ -653,7 +653,7 @@ module Vizkit
             @options.merge! options
 
             @property = property
-            @listener = @property.on_change do |data|
+            @listener = @property.on_raw_change do |data|
                 # depending on the type we receive none typelip objects
                 # therefore if have to initialize it with a new sample
                 begin
