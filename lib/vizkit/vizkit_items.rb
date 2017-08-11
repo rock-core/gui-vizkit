@@ -275,55 +275,131 @@ module Vizkit
             @typelib_val = nil
         end
 
-        def update(data = nil)
-            if !data.nil?
-                if !@typelib_val.nil?
-                    begin
-                        Typelib.copy(@typelib_val,Typelib.from_ruby(data,@typelib_val.class))
-                    rescue ArgumentError => e
-                        Vizkit.error "error during copying #{@typelib_val.class.name}: #{e}"
-                        Vizkit.log_nest(2) do
-                            Vizkit.log_pp(:debug, e.backtrace)
-                        end
-                    end
-                else
-                    @typelib_val = data
-                    if @typelib_val.class.convertion_to_ruby
-                        rb_sample = @typelib_val.class.convertion_to_ruby[0]
-                        @direct_type = DIRECTLY_DISPLAYED_RUBY_TYPES.any? {|t| rb_sample <= t }
-                    elsif @typelib_val.kind_of?(Typelib::EnumType)
-                        @direct_type = true
-                    else
-                        @direct_type = false
-                    end
+        def updated_typelib_val
+        end
 
-                    if !@direct_type || @options[:item_type] == :label
-                        setEditable false
-                    else
-                        setEditable @options[:editable]
-                    end
+        def update_typelib_val(data)
+            Typelib.copy(@typelib_val, Typelib.from_ruby(data,@typelib_val.class))
+            updated_typelib_val
+
+        rescue ArgumentError => e
+            Vizkit.error "error during copying #{@typelib_val.class.name}: #{e}"
+            Vizkit.log_nest(2) do
+                Vizkit.log_pp(:debug, e.backtrace)
+            end
+        end
+
+        def initialize_from_first_sample(data)
+            @typelib_val = data
+            if @typelib_val.class.convertion_to_ruby
+                rb_sample = @typelib_val.class.convertion_to_ruby[0]
+                @direct_type = DIRECTLY_DISPLAYED_RUBY_TYPES.any? {|t| rb_sample <= t }
+            elsif @typelib_val.kind_of?(Typelib::EnumType)
+                @direct_type = true
+            else
+                @direct_type = false
+            end
+
+            updated_typelib_val
+
+            if !@direct_type || @options[:item_type] == :label
+                setEditable false
+            else
+                setEditable @options[:editable]
+            end
+        end
+
+        def typelib_val_children_count
+            if @direct_type
+                0
+            elsif @typelib_val.class.respond_to? :fields
+                @typelib_val.class.fields.size
+            elsif @typelib_val.respond_to? :raw_get
+                r = @typelib_val.size
+                if r > MAX_NUMBER_OF_CHILDS
+                    @truncated = true
+                    MAX_NUMBER_OF_CHILDS
+                else
+                    @truncated = false
+                    r
+                end
+            else
+                0
+            end
+        end
+
+        def downsize_children(rows)
+            @childs[rows..-1].each do |items|
+                items[0].clear
+                items[1].clear
+                removeRow items[0].index.row
+            end
+
+            @childs =
+                if rows < 1 then []
+                else
+                    @childs[0, rows]
+                end
+        end
+
+        def add_or_update_child(row, field, val, **add_options)
+            if row >= @childs.size
+                add_child(row, field, val, **add_options)
+            else
+                update_child(row, field, val)
+            end
+        end
+
+        def has_child_for_row?(row)
+            @childs[row]
+        end
+
+        def add_child(row, field, val, **options)
+            field_item = TypelibItem.new(val, text: field.to_s, editable: @options[:editable], **options)
+            val_item   = TypelibItem.new(val, item_type: :value, editable: @options[:editable], **options)
+            appendRow [field_item,val_item]
+        end
+
+        def update_child(row, field, val)
+            field_item, val_item = @childs[row]
+            field_item.update val
+            val_item.update val
+        end
+
+        def resolve_and_update_child(row)
+            if @typelib_val.class.respond_to? :fields
+                field_name, field_type = @typelib_val.class.fields[row]
+                field_value = @typelib_val.raw_get(field_name)
+
+                if has_child_for_row?(row)
+                    update_child(row, field_name, field_value)
+                else
+                    field_metadata = @typelib_val.class.field_metadata[field_name]
+                    bitfield_type  = resolve_bitfield_type(field_metadata)
+                    add_child(row, field_name, field_value, bitfield_type: bitfield_type)
+                end
+            else
+                add_or_update_child(row, row, @typelib_val.raw_get(row))
+            end
+        end
+
+        def update(data)
+            if @typelib_val
+                if @typelib_val.invalidated? || (@typelib_val.class != data.class)
+                    clear
                 end
             end
+
+            if @typelib_val
+                update_typelib_val(data)
+            else
+                initialize_from_first_sample(data)
+            end
+
             # this might be called by update after the child
             # was delete therefore just return here
             return unless @typelib_val
 
-            rows = if @direct_type
-                       0
-                   elsif @typelib_val.class.respond_to? :fields
-                       @typelib_val.class.fields.size
-                   elsif @typelib_val.respond_to? :raw_get
-                       r = @typelib_val.size
-                       if r > MAX_NUMBER_OF_CHILDS
-                           @truncated = true
-                           MAX_NUMBER_OF_CHILDS
-                       else
-                           @truncated = false
-                           r
-                       end
-                   else
-                       0
-                   end
             # we do not need to update the childs if the item is not a label
             # otherwise check all childs
             if @options[:item_type] != :label
@@ -331,44 +407,15 @@ module Vizkit
                 return
             end
 
+            rows = typelib_val_children_count
+
             # detect resizing
             if rows < @childs.size
-                @childs[rows..-1].each do |items|
-                   items[0].clear
-                   items[1].clear
-                   removeRow items[0].index.row
-                end
-                @childs = if rows < 1
-                              []
-                          else
-                              @childs[0, rows]
-                          end
+                downsize_children(rows)
             end
 
             0.upto(rows-1) do |row|
-                field = if @typelib_val.class.respond_to? :fields
-                            field = @typelib_val.class.fields[row]
-                            field.first
-                        else
-                            row
-                        end
-                val = @typelib_val.raw_get(field)
-                if row >= @childs.size
-                    field_item = TypelibItem.new(val,:text => field.to_s,:editable => @options[:editable])
-                    val_item = TypelibItem.new(val,:item_type => :value,:editable => @options[:editable])
-                    appendRow [field_item,val_item]
-                else
-                    field_item,val_item = @childs[row]
-                    if field_item.typelib_val.object_id != val.object_id
-                        field_item.clear
-                        val_item.clear
-                        field_item.update val
-                        val_item.update val
-                    else
-                        field_item.update
-                        val_item.update
-                    end
-                end
+                resolve_and_update_child(row)
             end
         end
     end
