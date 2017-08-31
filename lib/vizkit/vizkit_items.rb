@@ -129,21 +129,24 @@ module Vizkit
            super
         end
 
-        def from_variant(data,klass)
-            if klass == Integer || klass == Fixnum
-                data.to_i
-            elsif klass == Float
-                data.to_f
-            elsif klass == String
+        def from_variant(data, expected_value)
+            case expected_value
+            when Numeric
+                if expected_value.integer?
+                    data.to_i
+                else
+                    data.to_f
+                end
+            when String
                 data.toString.to_s
-            elsif klass == Time
+            when Time
                 Time.at(data.toDateTime.toTime_t)
-            elsif klass == Symbol
+            when Symbol
                 data.toString.to_sym
-            elsif klass == (FalseClass) || klass == (TrueClass)
+            when true, false
                 data.toBool
             else
-                raise "cannot convert #{data.toString} to #{klass} - no conversion"
+                raise "cannot convert #{data.toString} to #{expected_value.class} - no conversion"
             end
         end
     end
