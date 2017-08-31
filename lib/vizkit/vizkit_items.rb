@@ -231,8 +231,9 @@ module Vizkit
         def setData(data,role = Qt::UserRole+1)
             return super if role != Qt::EditRole || data.isNull
             item_val = @typelib_val.to_ruby
-            val = from_variant data,item_val.class
-            return false unless val != nil
+            val = from_variant data, item_val
+            return false if !val
+            val = Typelib.from_ruby(val, @typelib_val.class)
             update(val)
             modified!
         end
