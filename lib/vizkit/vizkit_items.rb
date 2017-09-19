@@ -807,7 +807,7 @@ module Vizkit
             return if value == @modified
             super(value,items,false)
             if !value
-                update @property.read
+                update @property.raw_read
             elsif direct_type?
                 write
             end
