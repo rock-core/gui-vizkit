@@ -20,6 +20,29 @@ module Vizkit
             @expanded = false
         end
 
+        def downsize_children(rows)
+            @childs[rows..-1].each do |items|
+                items[0].clear
+                items[1].clear
+                removeRow items[0].index.row
+            end
+
+            @childs =
+                if rows < 1 then []
+                else
+                    @childs[0, rows]
+                end
+        end
+
+        def clear
+            @childs.each do |items|
+                items[0].clear
+                items[1].clear
+                removeRow(items[0].index.row)
+            end
+            @childs = []
+        end
+
         def collapse(propagated = false)
             @expanded = false
             each_child do |item|
@@ -106,21 +129,24 @@ module Vizkit
            super
         end
 
-        def from_variant(data,klass)
-            if klass == Integer || klass == Fixnum
-                data.to_i
-            elsif klass == Float
-                data.to_f
-            elsif klass == String
+        def from_variant(data, expected_value)
+            case expected_value
+            when Numeric
+                if expected_value.integer?
+                    data.to_i
+                else
+                    data.to_f
+                end
+            when String
                 data.toString.to_s
-            elsif klass == Time
+            when Time
                 Time.at(data.toDateTime.toTime_t)
-            elsif klass == Symbol
+            when Symbol
                 data.toString.to_sym
-            elsif klass == (FalseClass) || klass == (TrueClass)
+            when true, false
                 data.toBool
             else
-                raise "cannot convert #{data.toString} to #{klass} - no conversion"
+                raise "cannot convert #{data.toString} to #{expected_value.class} - no conversion"
             end
         end
     end
@@ -179,20 +205,35 @@ module Vizkit
         MAX_NUMBER_OF_CHILDS = 20
         attr_reader :typelib_val
 
-        def initialize(typelib_val=nil,options = Hash.new)
+        def initialize(typelib_val=nil,bitfield_type: nil, **options)
             super()
-            @options = Kernel.validate_options options,:text => nil,:item_type => :label,:editable => false
+            @options = Kernel.validate_options options,:text => nil,:item_type => :label,:editable => false,bitfield_type: nil
             @typelib_val = nil
             @truncated = false
+            @bitfield_type = bitfield_type
             setEditable false
             update typelib_val if typelib_val
+        end
+
+        def resolve_bitfield_type(metadata)
+            if metadata.include?('bitfield')
+                if bitfield_typename = metadata.get('bitfield').first
+                    begin
+                        return Orocos.registry.get(bitfield_typename)
+                    rescue Typelib::NotFound
+                        Vizkit.warn "Could not find bitfield type #{bitfield_typename}"
+                    end
+                end
+            end
+            nil
         end
 
         def setData(data,role = Qt::UserRole+1)
             return super if role != Qt::EditRole || data.isNull
             item_val = @typelib_val.to_ruby
-            val = from_variant data,item_val.class
-            return false unless val != nil
+            val = from_variant data, item_val
+            return false if !val
+            val = Typelib.from_ruby(val, @typelib_val.class)
             update(val)
             modified!
         end
@@ -214,6 +255,8 @@ module Vizkit
                                        @options[:text]
                                    elsif !@typelib_val
                                        "no data"
+                                   elsif @bitfield_type
+                                       "bitfield #{@bitfield_type.name}"
                                    elsif !@direct_type
                                        if modified?
                                            @typelib_val.class.name + " (modified)"
@@ -266,64 +309,139 @@ module Vizkit
         end
 
         def clear
-            @childs.each do |items|
-                items[0].clear
-                items[1].clear
-                removeRow(items[0].index.row)
-            end
-            @childs = []
+            super
             @typelib_val = nil
         end
 
-        def update(data = nil)
-            if !data.nil?
-                if !@typelib_val.nil?
-                    begin
-                        Typelib.copy(@typelib_val,Typelib.from_ruby(data,@typelib_val.class))
-                    rescue ArgumentError => e
-                        Vizkit.error "error during copying #{@typelib_val.class.name}: #{e}"
-                        Vizkit.log_nest(2) do
-                            Vizkit.log_pp(:debug, e.backtrace)
-                        end
-                    end
-                else
-                    @typelib_val = data
-                    if @typelib_val.class.convertion_to_ruby
-                        rb_sample = @typelib_val.class.convertion_to_ruby[0]
-                        @direct_type = DIRECTLY_DISPLAYED_RUBY_TYPES.any? {|t| rb_sample <= t }
-                    elsif @typelib_val.kind_of?(Typelib::EnumType)
-                        @direct_type = true
-                    else
-                        @direct_type = false
-                    end
+        def updated_typelib_val
+            if @bitfield_type && @typelib_val.kind_of?(Typelib::NumericType) && @typelib_val.class.integer?
+                numeric = Typelib.to_ruby(typelib_val)
+                @bitfield_values = @bitfield_type.keys.map do |name, value|
+                    name if (numeric & value) != 0
+                end.compact
+            end
+        end
 
-                    if !@direct_type || @options[:item_type] == :label
-                        setEditable false
-                    else
-                        setEditable @options[:editable]
-                    end
+        def update_typelib_val(data)
+            Typelib.copy(@typelib_val, Typelib.from_ruby(data,@typelib_val.class))
+            updated_typelib_val
+
+        rescue ArgumentError => e
+            Vizkit.error "error during copying #{@typelib_val.class.name}: #{e}"
+            Vizkit.log_nest(2) do
+                Vizkit.log_pp(:debug, e.backtrace)
+            end
+        end
+
+        def initialize_from_first_sample(data)
+            @typelib_val = data
+            if @typelib_val.class.convertion_to_ruby
+                rb_sample = @typelib_val.class.convertion_to_ruby[0]
+                @direct_type = DIRECTLY_DISPLAYED_RUBY_TYPES.any? {|t| rb_sample <= t }
+            elsif @typelib_val.kind_of?(Typelib::EnumType)
+                @direct_type = true
+            else
+                @direct_type = false
+            end
+
+            updated_typelib_val
+
+            if !@direct_type || @options[:item_type] == :label
+                setEditable false
+            else
+                setEditable @options[:editable]
+            end
+        end
+
+        def typelib_val_children_count
+            if @bitfield_values
+                @bitfield_values.size
+            elsif @direct_type
+                0
+            elsif @typelib_val.class.respond_to? :fields
+                @typelib_val.class.fields.size
+            elsif @typelib_val.respond_to? :raw_get
+                r = @typelib_val.size
+                if r > MAX_NUMBER_OF_CHILDS
+                    @truncated = true
+                    MAX_NUMBER_OF_CHILDS
+                else
+                    @truncated = false
+                    r
+                end
+            else
+                0
+            end
+        end
+
+        def add_or_update_child(row, field, val, **add_options)
+            if row >= @childs.size
+                add_child(row, field, val, **add_options)
+            else
+                update_child(row, field, val)
+            end
+        end
+
+        def has_child_for_row?(row)
+            @childs[row]
+        end
+
+        def add_child(row, field, val, **options)
+            field_item = TypelibItem.new(val, text: field.to_s, editable: @options[:editable], **options)
+            val_item   = TypelibItem.new(val, item_type: :value, editable: @options[:editable], **options)
+            appendRow [field_item,val_item]
+        end
+
+        def update_child(row, field, val)
+            field_item, val_item = @childs[row]
+            field_item.update val
+            val_item.update val
+        end
+
+        def resolve_and_update_child(row)
+            if @bitfield_values
+                if row >= @childs.size
+                    field_item = VizkitItem.new("")
+                    val_item   = VizkitItem.new(@bitfield_values[row])
+                    appendRow [field_item,val_item]
+                else
+                    field_item, val_item = @childs[row]
+                    val_item.text = @bitfield_values[row]
+                end
+
+            elsif @typelib_val.class.respond_to? :fields
+                field_name, field_type = @typelib_val.class.fields[row]
+                field_value = @typelib_val.raw_get(field_name)
+
+                if has_child_for_row?(row)
+                    update_child(row, field_name, field_value)
+                else
+                    field_metadata = @typelib_val.class.field_metadata[field_name]
+                    bitfield_type  = resolve_bitfield_type(field_metadata)
+                    add_child(row, field_name, field_value, bitfield_type: bitfield_type)
+                end
+            else
+                add_or_update_child(row, row, @typelib_val.raw_get(row))
+            end
+        end
+
+        def update(data)
+            if @typelib_val
+                if @typelib_val.invalidated? || (@typelib_val.class != data.class)
+                    clear
                 end
             end
+
+            if @typelib_val
+                update_typelib_val(data)
+            else
+                initialize_from_first_sample(data)
+            end
+
             # this might be called by update after the child
             # was delete therefore just return here
             return unless @typelib_val
 
-            rows = if @direct_type
-                       0
-                   elsif @typelib_val.class.respond_to? :fields
-                       @typelib_val.class.fields.size
-                   elsif @typelib_val.respond_to? :raw_get
-                       r = @typelib_val.size
-                       if r > MAX_NUMBER_OF_CHILDS
-                           @truncated = true
-                           MAX_NUMBER_OF_CHILDS
-                       else
-                           @truncated = false
-                           r
-                       end
-                   else
-                       0
-                   end
             # we do not need to update the childs if the item is not a label
             # otherwise check all childs
             if @options[:item_type] != :label
@@ -331,44 +449,15 @@ module Vizkit
                 return
             end
 
+            rows = typelib_val_children_count
+
             # detect resizing
             if rows < @childs.size
-                @childs[rows..-1].each do |items|
-                   items[0].clear
-                   items[1].clear
-                   removeRow items[0].index.row
-                end
-                @childs = if rows < 1
-                              []
-                          else
-                              @childs[0, rows]
-                          end
+                downsize_children(rows)
             end
 
             0.upto(rows-1) do |row|
-                field = if @typelib_val.class.respond_to? :fields
-                            field = @typelib_val.class.fields[row]
-                            field.first
-                        else
-                            row
-                        end
-                val = @typelib_val.raw_get(field)
-                if row >= @childs.size
-                    field_item = TypelibItem.new(val,:text => field.to_s,:editable => @options[:editable])
-                    val_item = TypelibItem.new(val,:item_type => :value,:editable => @options[:editable])
-                    appendRow [field_item,val_item]
-                else
-                    field_item,val_item = @childs[row]
-                    if field_item.typelib_val.object_id != val.object_id
-                        field_item.clear
-                        val_item.clear
-                        field_item.update val
-                        val_item.update val
-                    else
-                        field_item.update
-                        val_item.update
-                    end
-                end
+                resolve_and_update_child(row)
             end
         end
     end
@@ -582,7 +671,7 @@ module Vizkit
 
         def initialize(port,options = Hash.new)
             super
-            @listener = port.on_data do |data|
+            @listener = port.on_raw_data do |data|
                 # depending on the type we receive none typelip objects
                 # therefore if have to initialize it with a new sample
                 begin 
@@ -653,7 +742,7 @@ module Vizkit
             @options.merge! options
 
             @property = property
-            @listener = @property.on_change do |data|
+            @listener = @property.on_raw_change do |data|
                 # depending on the type we receive none typelip objects
                 # therefore if have to initialize it with a new sample
                 begin
