@@ -859,15 +859,23 @@ module Vizkit
     end
 
     class NameServiceItem < VizkitItem
+        attr_reader :task_filter, :name_service
+
         def initialize(name_service,options = Hash.new)
             super()
+
+            @task_filter = ''
+            @name_service = name_service
             @options = Kernel.validate_options options,:item_type => :label
+
             if @options[:item_type] == :label
                 setText name_service.name
                 name_service.on_task_added do |task_name|
                     task = name_service.proxy task_name
                     next if child?(task.basename)
-                    appendRow([TaskContextItem.new(task,:basename => true),TaskContextItem.new(task,:item_type => :value)])
+                    if task.basename.include? task_filter
+                        appendRow([TaskContextItem.new(task,:basename => true),TaskContextItem.new(task,:item_type => :value)])
+                    end
                 end
             else
                 name_service.on_error do |error|
@@ -875,6 +883,25 @@ module Vizkit
                 end
                 name_service.on_reachable do
                     setText "reachable"
+                end
+            end
+        end
+
+        def set_task_filter(task_name)
+            @task_filter = task_name
+            to_remove = []
+            rowCount.times do |i|
+               item = child(i)
+               to_remove << i unless item.task.basename.include? task_filter
+            end
+            to_remove.reverse.each do |idx|
+                takeRow(idx)
+            end
+            name_service.names.each do |task_name|
+                task = name_service.proxy task_name
+                next if child?(task.basename)
+                if task.basename.include? task_filter
+                    appendRow([TaskContextItem.new(task,:basename => true),TaskContextItem.new(task,:item_type => :value)])
                 end
             end
         end
