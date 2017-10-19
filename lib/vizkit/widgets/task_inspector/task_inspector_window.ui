@@ -14,7 +14,14 @@
    <string>TaskInspector</string>
   </property>
   <widget class="QWidget" name="centralwidget">
-   <layout class="QHBoxLayout" name="horizontalLayout">
+   <layout class="QVBoxLayout" name="verticalLayout">
+    <item>
+     <widget class="QLineEdit" name="lineEdit">
+      <property name="placeholderText">
+       <string>Enter a task name to filter</string>
+      </property>
+     </widget>
+    </item>
     <item>
      <widget class="QTreeView" name="treeView">
       <property name="sizePolicy">
@@ -205,6 +212,10 @@
    </property>
   </action>
  </widget>
+ <tabstops>
+  <tabstop>treeView</tabstop>
+  <tabstop>lineEdit</tabstop>
+ </tabstops>
  <resources/>
  <connections/>
 </ui>

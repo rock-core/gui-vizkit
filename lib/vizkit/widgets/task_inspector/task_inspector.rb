@@ -31,7 +31,7 @@ class TaskInspector
     end
 
     module Functions
-        attr_reader :model,:treeView
+        attr_reader :model,:treeView, :proxyModel
         def init
             Vizkit.setup_tree_view treeView
             @model = Vizkit::VizkitItemModel.new
@@ -44,6 +44,28 @@ class TaskInspector
             @filter.on_hide do
                 treeView.disconnect
             end
+
+            lineEdit.connect(SIGNAL('returnPressed()')) do
+                proxyModel.setFilterFixedString(lineEdit.text)
+            end
+
+            @proxyModel = Qt::SortFilterProxyModel.new(self)
+            @proxyModel.setSourceModel(@model)
+            @proxyModel.setDynamicSortFilter(true)
+            @proxyModel.setFilterKeyColumn(0)
+
+            def @proxyModel.filterAcceptsRow(source_row, source_parent)
+                source_index = sourceModel.index(source_row, 0, source_parent)
+                return false unless source_index.isValid
+                item = sourceModel.itemFromIndex(source_index)
+                if item.is_a?(Vizkit::TaskContextItem) && !filterRegExp.pattern.nil?
+                    return item.task.basename.include? filterRegExp.pattern
+                end
+                return true
+            end
+
+            treeView.sortByColumn(0, Qt::AscendingOrder)
+            treeView.setModel(@proxyModel)
         end
 
         def add_task(task,options=Hash.new)
@@ -97,7 +119,7 @@ class TaskInspector
                 item2 = Vizkit::NameServiceItem.new service,:item_type => :value
                 @model.appendRow([item1,item2])
                 service.once_on_task_added do |name|
-                    treeView.expand(item1.index)
+                    treeView.expand(proxyModel.mapFromSource(item1.index))
                 end
             end
         end
