@@ -68,6 +68,14 @@ class TaskInspector
             treeView.setModel(@proxyModel)
         end
 
+        def show_menu_bar
+            menubar.show
+        end
+
+        def hide_menu_bar
+            menubar.hide
+        end
+
         def add_task(task,options=Hash.new)
             obj = if task.is_a? String
                       Orocos::Async.proxy task
