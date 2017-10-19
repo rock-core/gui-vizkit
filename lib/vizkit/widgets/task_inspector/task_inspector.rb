@@ -49,20 +49,10 @@ class TaskInspector
                 proxyModel.setFilterFixedString(lineEdit.text)
             end
 
-            @proxyModel = Qt::SortFilterProxyModel.new(self)
+            @proxyModel = Vizkit::TaskSortFilterProxyModel.new(self)
             @proxyModel.setSourceModel(@model)
             @proxyModel.setDynamicSortFilter(true)
             @proxyModel.setFilterKeyColumn(0)
-
-            def @proxyModel.filterAcceptsRow(source_row, source_parent)
-                source_index = sourceModel.index(source_row, 0, source_parent)
-                return false unless source_index.isValid
-                item = sourceModel.itemFromIndex(source_index)
-                if item.is_a?(Vizkit::TaskContextItem) && !filterRegExp.pattern.nil?
-                    return item.task.basename.include? filterRegExp.pattern
-                end
-                return true
-            end
 
             treeView.sortByColumn(0, Qt::AscendingOrder)
             treeView.setModel(@proxyModel)
