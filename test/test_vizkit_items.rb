@@ -72,6 +72,17 @@ describe Vizkit::TypelibItem do
         it "must call collapse on all children" do
         end
     end
+
+    describe "#setData" do
+        it "does update a false value" do
+            data = Qt::Variant.fromValue(false)
+            bool_t = Typelib::CXXRegistry.new.get('/bool')
+            v_false = Typelib.from_ruby(true, bool_t)
+            item = Vizkit::TypelibItem.new(v_false)
+            item.setData(data, Qt::EditRole)
+            assert_equal false, Typelib.to_ruby(item.typelib_val)
+        end
+    end
 end
 
 describe Vizkit::PortItem do
