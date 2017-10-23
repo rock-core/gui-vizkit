@@ -232,7 +232,7 @@ module Vizkit
             return super if role != Qt::EditRole || data.isNull
             item_val = @typelib_val.to_ruby
             val = from_variant data, item_val
-            return false if !val
+            return false if val.nil?
             val = Typelib.from_ruby(val, @typelib_val.class)
             update(val)
             modified!
