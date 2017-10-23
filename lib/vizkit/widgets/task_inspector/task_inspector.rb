@@ -31,7 +31,7 @@ class TaskInspector
     end
 
     module Functions
-        attr_reader :model,:treeView, :proxyModel
+        attr_reader :model,:treeView, :proxyModel, :filterTimer
         def init
             Vizkit.setup_tree_view treeView
             @model = Vizkit::VizkitItemModel.new
@@ -45,8 +45,8 @@ class TaskInspector
                 treeView.disconnect
             end
 
-            lineEdit.connect(SIGNAL('returnPressed()')) do
-                proxyModel.setFilterFixedString(lineEdit.text)
+            lineEdit.connect(SIGNAL('textChanged(const QString &)')) do
+                filterTimer.start
             end
 
             @proxyModel = Vizkit::TaskSortFilterProxyModel.new(self)
@@ -56,6 +56,13 @@ class TaskInspector
 
             treeView.sortByColumn(0, Qt::AscendingOrder)
             treeView.setModel(@proxyModel)
+
+            @filterTimer = Qt::Timer.new
+            filterTimer.setInterval 500
+            filterTimer.setSingleShot true
+            filterTimer.connect SIGNAL('timeout()') do
+                proxyModel.setFilterFixedString(lineEdit.text)
+            end
         end
 
         def show_menu_bar
