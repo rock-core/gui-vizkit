@@ -1,4 +1,5 @@
 require 'minitest/spec'
+require 'flexmock/minitest'
 
 begin
 require 'simplecov'
@@ -8,10 +9,10 @@ end
 
 def start_simple_cov(name)
     if defined? SimpleCov
-        if !defined? @@simple_cov_started
+        if !@simple_cov_started
             puts name
             SimpleCov.command_name name
-            @@simple_cov_started = true
+            @simple_cov_started = true
             SimpleCov.root(File.join(File.dirname(__FILE__),".."))
             SimpleCov.start do 
                 add_group "Vizkit.rb" do |src|
@@ -27,9 +28,10 @@ end
 # WORKAROUND
 # qt patches Module and expects that all classes have a name
 # fix missing name
-MiniTest::Unit::TestCase.test_suites.each do |suite|
+Minitest::Test.runnables.each do |suite|
     suite.instance_variable_set(:@__name__,"bl")
     def suite.name
         "suite"
     end
 end
+

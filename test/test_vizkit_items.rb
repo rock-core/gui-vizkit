@@ -1,14 +1,12 @@
 require File.join(File.dirname(__FILE__),"test_helper")
 start_simple_cov("test_vizkit_items")
-
 require 'vizkit'
 require 'vizkit/vizkit_items'
 require 'minitest/spec'
-require 'flexmock/test_unit'
+require 'minitest/autorun'
 
 Orocos.initialize
 Orocos.load_typekit "base"
-MiniTest::Unit.autorun
 
 describe Vizkit::VizkitItem do
     include FlexMock::MockContainer
