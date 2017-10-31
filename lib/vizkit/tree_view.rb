@@ -12,21 +12,37 @@ module Vizkit
         tree_view.connect(SIGNAL('customContextMenuRequested(const QPoint&)')) do |pos|
             index = tree_view.index_at(pos)
             next unless index.isValid
-            item = index.model.itemFromIndex index
+            item = tree_view.item_from_index(index)
             item.context_menu(pos,tree_view)
+        end
+
+        def tree_view.real_model
+            if model.is_a?(Qt::AbstractProxyModel)
+                return model.sourceModel
+            else
+                return model
+            end
+        end
+
+        def tree_view.item_from_index(index)
+            if index.model.is_a?(Qt::AbstractProxyModel)
+                return index.model.sourceModel.itemFromIndex(index.model.mapToSource(index))
+            else
+                return index.model.itemFromIndex(index)
+            end
         end
 
         def tree_view.setModel(model)
             raise ArgumentError,"wrong model type" unless model.is_a? Qt::AbstractItemModel
             super
             connect SIGNAL("collapsed(QModelIndex)") do |index|
-                index.model.itemFromIndex(index).collapse
-                item = index.model.itemFromIndex(index.sibling(index.row,1))
+                item_from_index(index).collapse
+                item = item_from_index(index.sibling(index.row,1))
                 item.collapse if item.is_a? VizkitItem
             end
             connect SIGNAL("expanded(QModelIndex)") do |index|
-                index.model.itemFromIndex(index).expand
-                item = index.model.itemFromIndex(index.sibling(index.row,1))
+                item_from_index(index).expand
+                item = item_from_index(index.sibling(index.row,1))
                 item.expand if item.is_a? VizkitItem
             end
         end
@@ -41,11 +57,11 @@ module Vizkit
         # warning: if the tree view is still visible it will reconnect
         # if a item gets expanded
         def tree_view.disconnect
-            0.upto(model.rowCount-1) do |i|
-                index = model.index(i,0)
-                next unless isExpanded(index)
-                model.item(i,0).collapse
-                model.item(i,1).collapse
+            0.upto(real_model.rowCount-1) do |i|
+                index = real_model.index(i,0)
+                next unless isExpanded(model.is_a?(Qt::AbstractProxyModel) ? model.mapFromSource(index) : index)
+                real_model.item(i,0).collapse
+                real_model.item(i,1).collapse
                 disconnected_items << i
             end
         end
@@ -53,10 +69,22 @@ module Vizkit
         # restores the state before disconnect was called
         def tree_view.reconnect
             disconnected_items.each do |i|
-                model.item(i,0).expand
-                model.item(i,1).expand
+                real_model.item(i,0).expand
+                real_model.item(i,1).expand
             end
             disconnected_items.clear
+        end
+    end
+
+    class TaskSortFilterProxyModel < Qt::SortFilterProxyModel
+        def filterAcceptsRow(source_row, source_parent)
+            source_index = sourceModel.index(source_row, 0, source_parent)
+            return false unless source_index.isValid
+            item = sourceModel.itemFromIndex(source_index)
+            if item.is_a?(Vizkit::TaskContextItem) && !filterRegExp.pattern.nil?
+                return item.task.basename.include? filterRegExp.pattern
+            end
+            return true
         end
     end
 
@@ -134,7 +162,7 @@ module Vizkit
             # :accept => true
             parent = index
             while (parent = parent.parent).isValid
-                item = model.itemFromIndex(parent)
+                item = @tree_view.item_from_index(parent)
                 if !!item.options[:accept]
                     parent = parent.sibling(parent.row,1)
                     break unless parent.isValid
