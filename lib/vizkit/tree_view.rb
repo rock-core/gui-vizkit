@@ -111,21 +111,23 @@ module Vizkit
             addButton("Reject",Qt::DialogButtonBox::RejectRole)
             setCenterButtons(true)
             setAutoFillBackground(true)
-
             self.connect SIGNAL('rejected()') do
                 data.modified!(false)
-                delegate.closeEditor(self)
+                deleteLater
+                delegate.tree_view.model.layoutChanged
             end
             self.connect SIGNAL('accepted()') do
                 data.write
                 delegate.commitData(self)
-                delegate.closeEditor(self)
+                deleteLater
+                delegate.tree_view.model.layoutChanged
             end
         end
     end
 
     # Delegate to select editor for editing tree view items
     class ItemDelegate < Qt::StyledItemDelegate
+        attr_reader :tree_view
         def initialize(tree_view,parent = nil)
             super(parent)
             @tree_view = tree_view
@@ -163,11 +165,11 @@ module Vizkit
             parent = index
             while (parent = parent.parent).isValid
                 item = @tree_view.item_from_index(parent)
-                if !!item.options[:accept]
+                if !!item.options[:accept] && item.modified?
                     parent = parent.sibling(parent.row,1)
                     break unless parent.isValid
                     @tree_view.setCurrentIndex(parent)
-                    @tree_view.edit(parent)
+                    @tree_view.openPersistentEditor(parent)
                     break
                 end
             end
