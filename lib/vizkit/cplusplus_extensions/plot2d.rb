@@ -64,11 +64,14 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "Plot2d" do
             @needs_update = false
         end
         @timer.start(1000*@options[:update_period])
-
+        @color_next_idx = 0
+        
         getLegend.setVisible(true)
         getXAxis.setLabel("Time in sec")
         setTitle("Rock-Plot2d")
-        self.connect(SIGNAL('mousePress(QMouseEvent*)')) do |event|
+        
+        
+        self.connect(SIGNAL('mousePressOnPlotArea(QMouseEvent*)')) do |event|
             if event.button() == Qt::RightButton 
                 #show pop up menue 
                 menu = Qt::Menu.new(self)
@@ -85,12 +88,12 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "Plot2d" do
                     action_use_y2.checkable = true
                     action_use_y2.checked = @options[:use_y_axis2]
                     menu.add_action(action_use_y2)
-		    action_plotdot = Qt::Action.new("'dot' style", self)
- 		    action_plotdot.checkable = true
+                    action_plotdot = Qt::Action.new("'dot' style", self)
+                    action_plotdot.checkable = true
                     action_plotdot.checked = @options[:plot_style] == :Dot
                     menu.add_action(action_plotdot)
-		    action_plotline = Qt::Action.new("'line' style", self)		    
- 		    action_plotline.checkable = true
+                    action_plotline = Qt::Action.new("'line' style", self)
+                    action_plotline.checkable = true
                     action_plotline.checked = @options[:plot_style] == :Line
                     menu.add_action(action_plotline)
                 end
@@ -122,9 +125,9 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "Plot2d" do
                         getYAxis2.setVisible(true)
                     end
                     update_zoom_range_flag(!@options[:auto_scrolling], @options[:use_y_axis2])
- 		elsif(action == action_plotdot)
+                 elsif(action == action_plotdot)
                     plot_style(:Dot)
-		elsif(action == action_plotline)
+                elsif(action == action_plotline)
                     plot_style(:Line)
                 elsif action == action_saving
                     file_path = Qt::FileDialog::getSaveFileName(nil,"Save Plot to Pdf",File.expand_path("."),"Pdf (*.pdf)")
@@ -134,6 +137,42 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "Plot2d" do
                 end
             end
         end
+        
+        
+        self.connect(SIGNAL('mousePressOnLegendItem(QMouseEvent*, QVariant)')) do |event, itemIdx|
+            if event.button() == Qt::RightButton 
+                #show pop up menue 
+                menu = Qt::Menu.new(self)
+                action_remove = Qt::Action.new("remove graph", self)
+                menu.add_action(action_remove)
+                
+                action = menu.exec(mapToGlobal(event.pos))
+                
+                if(action == action_remove)                    
+                    # note: we assume all graphs have a corresponding 
+                    # legend item with the same index (true for this widget)
+                    graph = getGraph(itemIdx.to_i())
+                    
+                    unless graph == 0 || graph.nil?
+                        
+                        while true
+                            cur_port = connection_manager().find_port_by_name(graph.name)
+                            
+                            if cur_port
+                                connection_manager().disconnect(cur_port)
+                                connection_manager().remove_port(cur_port)
+                            else
+                                break
+                            end 
+                        end
+                        
+                        @graphs.delete graph.name
+                        removeGraph(itemIdx.to_i())
+                    end
+                end
+            end
+        end
+        
     end
 
     def graph_style(graph,style)
@@ -185,7 +224,7 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "Plot2d" do
         graph2(value.full_name+subfield) if value.respond_to? :full_name
     end
 
-    def graph2(name)	
+    def graph2(name)        
         if(!@graphs.has_key?(name))
             axis = if @options[:use_y_axis2] then getYAxis2
                    else getYAxis
@@ -196,9 +235,13 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "Plot2d" do
             graph.setName(name)
             graph_style(graph,@options[:plot_style])
             graph.addToLegend
-            if color = @options[:colors][@graphs.size]
+            
+            if color = @options[:colors][@color_next_idx]
                 graph.setPen(Qt::Pen.new(Qt::Brush.new(color),1))
             end
+            
+            @color_next_idx = (@color_next_idx + 1) % @options[:colors].count            
+            
             @graphs[name] = graph
         end
 
@@ -291,15 +334,15 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "Plot2d" do
     end 
 
     def update_custom(name,values_x,values_y)
-	graph = graph2(name)
-	graph.addData(values_x,values_y)	
-	if @options[:auto_scrolling] || @options[:auto_scrolling_x]
-        	getXAxis.setRange(values_x-@options[:xaxis_window],values_x+@options[:pre_xaxis_window])
-        	graph.rescaleValueAxis(true)		
+        graph = graph2(name)
+        graph.addData(values_x,values_y)        
+        if @options[:auto_scrolling] || @options[:auto_scrolling_x]
+            getXAxis.setRange(values_x-@options[:xaxis_window],values_x+@options[:pre_xaxis_window])
+            graph.rescaleValueAxis(true)                
         end       
-	if @options[:auto_scrolling] || @options[:auto_scrolling_y]
-		getYAxis.setRange(values_y-@options[:yaxis_window],values_y+@options[:pre_yaxis_window])
-        	graph.rescaleValueAxis(true)		
+        if @options[:auto_scrolling] || @options[:auto_scrolling_y]
+            getYAxis.setRange(values_y-@options[:yaxis_window],values_y+@options[:pre_yaxis_window])
+            graph.rescaleValueAxis(true)                
         end       
         @needs_update = true
     end

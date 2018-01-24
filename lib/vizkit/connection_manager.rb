@@ -23,6 +23,19 @@ module Vizkit
             end
         end
 
+        def find_port_by_name(pname)
+            @on_data_listeners.keys.each do |key|
+                if key.full_name == pname 
+                    return key
+                end
+            end
+            return nil
+        end
+
+        def remove_port(port)
+            @on_data_listeners.delete(port)
+        end
+        
         def listening?(port = nil)
             if port
                 @on_data_listeners[port].find do |l|
