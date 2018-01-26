@@ -159,8 +159,7 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "Plot2d" do
                             cur_port = connection_manager().find_port_by_name(graph.name)
                             
                             if cur_port
-                                connection_manager().disconnect(cur_port)
-                                connection_manager().remove_port(cur_port)
+                                connection_manager().disconnect(cur_port, false)
                             else
                                 break
                             end 

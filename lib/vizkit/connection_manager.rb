@@ -31,10 +31,6 @@ module Vizkit
             end
             return nil
         end
-
-        def remove_port(port)
-            @on_data_listeners.delete(port)
-        end
         
         def listening?(port = nil)
             if port
@@ -48,17 +44,23 @@ module Vizkit
             end
         end
 
-        def disconnect(port=nil)
+        def disconnect(port=nil, keep_port=true)
             if port
                 @on_data_listeners[port].each do |l|
                     l.stop
                 end
+                
+                @on_data_listeners.delete(port) unless keep_port
+                
                 @on_reachable_listeners[port].each do |l|
                     l.stop
                 end
+                
+                @on_reachable_listeners.delete(port) unless keep_port
+                
             else
                 @on_data_listeners.keys.each do |key|
-                    disconnect(key)
+                    disconnect(key, keep_port)
                 end
             end
         end
