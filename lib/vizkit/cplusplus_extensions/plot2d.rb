@@ -159,7 +159,7 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "Plot2d" do
                             cur_port = connection_manager().find_port_by_name(graph.name)
                             
                             if cur_port
-                                connection_manager().disconnect(cur_port, false)
+                                connection_manager().disconnect(cur_port,  keep_port: false)
                             else
                                 break
                             end 
@@ -167,6 +167,7 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "Plot2d" do
                         
                         @graphs.delete graph.name
                         removeGraph(itemIdx.to_i())
+                        @needs_update = true
                     end
                 end
             end

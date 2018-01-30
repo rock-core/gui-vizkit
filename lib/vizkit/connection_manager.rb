@@ -44,7 +44,7 @@ module Vizkit
             end
         end
 
-        def disconnect(port=nil, keep_port=true)
+        def disconnect(port=nil, keep_port: true)
             if port
                 @on_data_listeners[port].each do |l|
                     l.stop
@@ -60,8 +60,11 @@ module Vizkit
                 
             else
                 @on_data_listeners.keys.each do |key|
-                    disconnect(key, keep_port)
+                    disconnect(key, keep_port: true)
                 end
+                
+                @on_data_listeners.clear unless keep_port
+                @on_reachable_listeners.clear unless keep_port
             end
         end
 
