@@ -132,7 +132,7 @@ module Vizkit
             return false
         end
     end
-    def self.exec()
+    def self.exec(async_period: 0.01)
         #install event filter
         obj = ShortCutFilter.new
         $qApp.installEventFilter(obj)
@@ -141,7 +141,7 @@ module Vizkit
         timer.connect SIGNAL("timeout()") do
             Orocos::Async.step
         end
-        timer.start 10
+        timer.start Integer(async_period * 1000)
 
         $qApp.exec
     end
