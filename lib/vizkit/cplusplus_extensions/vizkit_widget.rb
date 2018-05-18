@@ -351,6 +351,7 @@ module VizkitPluginLoaderExtension
             end
             data
         end
+        @connected_transformation_producers[trsf.producer] = true
     end
 
     def apply_transformer_configuration(conf, apply_examples: true)
@@ -361,7 +362,6 @@ module VizkitPluginLoaderExtension
         end
         conf.each_dynamic_transform do |trsf|
             listen_to_transformation_producer(trsf)
-            @connected_transformation_producers[trsf.producer] = true
         end
         if apply_examples
             conf.each_example_transform do |trsf|

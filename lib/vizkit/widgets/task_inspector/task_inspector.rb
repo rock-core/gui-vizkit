@@ -31,7 +31,7 @@ class TaskInspector
     end
 
     module Functions
-        attr_reader :model,:treeView
+        attr_reader :model,:treeView, :proxyModel, :filterTimer
         def init
             Vizkit.setup_tree_view treeView
             @model = Vizkit::VizkitItemModel.new
@@ -44,6 +44,33 @@ class TaskInspector
             @filter.on_hide do
                 treeView.disconnect
             end
+
+            lineEdit.connect(SIGNAL('textChanged(const QString &)')) do
+                filterTimer.start
+            end
+
+            @proxyModel = Vizkit::TaskSortFilterProxyModel.new(self)
+            @proxyModel.setSourceModel(@model)
+            @proxyModel.setDynamicSortFilter(true)
+            @proxyModel.setFilterKeyColumn(0)
+
+            treeView.sortByColumn(0, Qt::AscendingOrder)
+            treeView.setModel(@proxyModel)
+
+            @filterTimer = Qt::Timer.new
+            filterTimer.setInterval 500
+            filterTimer.setSingleShot true
+            filterTimer.connect SIGNAL('timeout()') do
+                proxyModel.setFilterFixedString(lineEdit.text)
+            end
+        end
+
+        def show_menu_bar
+            menubar.show
+        end
+
+        def hide_menu_bar
+            menubar.hide
         end
 
         def add_task(task,options=Hash.new)
@@ -56,6 +83,7 @@ class TaskInspector
                   end
             item1 = Vizkit::TaskContextItem.new obj
             item2 = Vizkit::TaskContextItem.new obj,:item_type => :value
+            treeView.disconnected_items.clear
             @model.appendRow([item1,item2])
         end
 
@@ -69,6 +97,7 @@ class TaskInspector
                 item.respond_to?(:task) && item.task.name == name
             end
             if idx
+                treeView.disconnected_items.clear
                 @model.takeRow(idx)
             end
         end
@@ -95,7 +124,7 @@ class TaskInspector
                 item2 = Vizkit::NameServiceItem.new service,:item_type => :value
                 @model.appendRow([item1,item2])
                 service.once_on_task_added do |name|
-                    treeView.expand(item1.index)
+                    treeView.expand(proxyModel.mapFromSource(item1.index))
                 end
             end
         end
