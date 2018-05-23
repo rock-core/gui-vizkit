@@ -151,7 +151,7 @@ module Vizkit
         end
     end
 
-    # Item which can be bind to a member variable of an object which 
+    # Item which can be bind to a member variable of an object which
     # have simple types as possible values
     class VizkitAccessorItem< VizkitItem
         def initialize(obj,variable_name)
@@ -503,7 +503,7 @@ module Vizkit
         end
 
         def append_port(port)
-            if port.input? 
+            if port.input?
                 appendRow([InputPortItem.new(port),InputPortItem.new(port,:item_type => :value)])
             elsif port.output?
                 p1 = OutputPortItem.new(port)
@@ -616,6 +616,7 @@ module Vizkit
                     if @options[:item_type] != :label
                         @options[:text] = "No typekit for: #{port.type.name}"
                     end
+                rescue Orocos::NotFound # port died before we actually accessed it
                 end
             end
         end
@@ -674,7 +675,7 @@ module Vizkit
             @listener = port.on_raw_data do |data|
                 # depending on the type we receive none typelip objects
                 # therefore if have to initialize it with a new sample
-                begin 
+                begin
                     update port.new_sample.zero! unless typelib_val
                     update data
                 rescue Orocos::NotFound
@@ -922,7 +923,7 @@ module Vizkit
         def initialize(task,options = Hash.new)
             super()
             @options = Kernel.validate_options options,:item_type => :label,:basename => false
-         
+
             @task = task
             if @options[:item_type] == :label
                 if @options[:basename]
@@ -1193,14 +1194,14 @@ module Vizkit
             end
         end
     end
-    
+
     class SyskitActionItem < VizkitItem
         attr_reader :name
         attr_reader :action
         attr_reader :arguments
         attr_reader :state
         attr_accessor :job_id
-        
+
         # Mapping from action states to colors
         STATE_COLORS = {
             :model   => Qt::Color.new("black"),
@@ -1211,21 +1212,21 @@ module Vizkit
             :successful => Qt::Color.new("silver"),
             :finalized  => Qt::Color.new("orangered")
         }
-        
+
         def initialize(action, arguments)
             @action = action
             @base_name = @action.name
             @arguments = arguments
-            
+
             @name = generate_name(@base_name, arguments)
             @state = :model
-            
+
             super(@name)
 
             set_selectable(false)
             update_view
         end
-        
+
         # Updates the item display. Checks for state change and updates color, tooltip, etc.
         def update_view
             set_foreground(Qt::Brush.new(STATE_COLORS[state]))
@@ -1246,13 +1247,13 @@ module Vizkit
             @state = roby_to_vizkit_states[new_state]
             update_view
         end
-        
+
         # Creates string of base name and arguments
         def generate_name(base_name, arguments)
             formatted_arguments = arguments.map do |key,value|
                 value = value.inspect if value.respond_to?(:to_str)
                 "#{key} => #{value || "(no default)"}"
-            end 
+            end
             "#{base_name}(#{formatted_arguments.join(", ")})"
         end
 

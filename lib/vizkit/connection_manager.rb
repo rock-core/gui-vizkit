@@ -23,6 +23,15 @@ module Vizkit
             end
         end
 
+        def find_port_by_name(pname)
+            @on_data_listeners.keys.each do |key|
+                if key.full_name == pname 
+                    return key
+                end
+            end
+            return nil
+        end
+        
         def listening?(port = nil)
             if port
                 @on_data_listeners[port].find do |l|
@@ -35,18 +44,27 @@ module Vizkit
             end
         end
 
-        def disconnect(port=nil)
+        def disconnect(port=nil, keep_port: true)
             if port
                 @on_data_listeners[port].each do |l|
                     l.stop
                 end
+                
+                @on_data_listeners.delete(port) unless keep_port
+                
                 @on_reachable_listeners[port].each do |l|
                     l.stop
                 end
+                
+                @on_reachable_listeners.delete(port) unless keep_port
+                
             else
                 @on_data_listeners.keys.each do |key|
-                    disconnect(key)
+                    disconnect(key, keep_port: true)
                 end
+                
+                @on_data_listeners.clear unless keep_port
+                @on_reachable_listeners.clear unless keep_port
             end
         end
 
