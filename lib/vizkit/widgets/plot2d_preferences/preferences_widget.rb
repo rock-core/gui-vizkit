@@ -122,6 +122,7 @@ module Vizkit
                     @preferences.save
                 end
                 bt_load.connect(SIGNAL('clicked()')) do
+                    @preferences.load(true)
                     load
                 end
                 bt_apply.connect(SIGNAL('clicked()')) do
@@ -165,6 +166,7 @@ module Vizkit
             end
 
             def show
+                @preferences.load(false)
                 load
                 super
             end

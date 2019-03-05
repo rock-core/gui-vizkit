@@ -70,6 +70,11 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "Plot2d" do
         getXAxis.setLabel("Time in sec")
         setTitle("Rock-Plot2d")
         
+        @preferences = Vizkit::Plot2D::Preferences.new('vizkit', 'plot2d', default_opts: @options)
+        @preferences.connect(SIGNAL('updated()')) do
+            update_options
+        end
+        update_options
         
         self.connect(SIGNAL('mousePressOnPlotArea(QMouseEvent*)')) do |event|
             if event.button() == Qt::RightButton 
@@ -98,6 +103,8 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "Plot2d" do
                     menu.add_action(action_plotline)
                 end
                 menu.addSeparator
+                action_preferences = Qt::Action.new("Preferences", self)
+                menu.add_action(action_preferences)
                 action_saving = Qt::Action.new("Save to File", self)
                 menu.add_action(action_saving)
                 if @options[:is_time_plot]
@@ -114,21 +121,17 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "Plot2d" do
 
                 action = menu.exec(mapToGlobal(event.pos))
                 if(action == action_scrolling)
-                    @options[:auto_scrolling] = !@options[:auto_scrolling]
-                    update_zoom_range_flag(!@options[:auto_scrolling], @options[:use_y_axis2])
+                    update_auto_scrolling !@options[:auto_scrolling]
                 elsif(action == action_reuse)
                     @options[:reuse] = !@options[:reuse]
                 elsif(action == action_use_y2)
-                    update_zoom_range_flag(false, @options[:use_y_axis2])
-                    @options[:use_y_axis2] = !@options[:use_y_axis2]
-                    if @options[:use_y_axis2]
-                        getYAxis2.setVisible(true)
-                    end
-                    update_zoom_range_flag(!@options[:auto_scrolling], @options[:use_y_axis2])
+                    update_use_y2 !@options[:use_y_axis2]
                  elsif(action == action_plotdot)
                     plot_style(:Dot)
                 elsif(action == action_plotline)
                     plot_style(:Line)
+                elsif action == action_preferences
+                    open_preferences
                 elsif action == action_saving
                     file_path = Qt::FileDialog::getSaveFileName(nil,"Save Plot to Pdf",File.expand_path("."),"Pdf (*.pdf)")
                     savePdf(file_path,false,0,0) if file_path
@@ -173,6 +176,37 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "Plot2d" do
             end
         end
         
+    end
+    
+    def update_auto_scrolling(value = @options[:auto_scrolling])
+        @options[:auto_scrolling] = value
+        update_zoom_range_flag(!@options[:auto_scrolling], @options[:use_y_axis2])
+    end
+
+    def update_use_y2(value = @options[:use_y_axis2])
+        update_zoom_range_flag(false, !value)
+        @options[:use_y_axis2] = value
+        if @options[:use_y_axis2]
+            getYAxis2.setVisible(true)
+        end
+        update_zoom_range_flag(!@options[:auto_scrolling], @options[:use_y_axis2])
+    end
+
+    def update_options
+        @options[:auto_scrolling]     = @preferences.autoscroll
+        @options[:reuse]              = @preferences.reuse_widget
+        @options[:use_y_axis2]        = @preferences.use_2yaxes
+        @options[:time_window]        = @preferences.time_window
+        @options[:cached_time_window] = @preferences.time_window_cache
+        @options[:pre_time_window]    = @options[:time_window] / 6
+
+        update_use_y2
+        update_auto_scrolling
+    end
+
+    def open_preferences
+        @preferences_widget ||= Vizkit::Plot2D::PreferencesWidget.new(@preferences)
+        @preferences_widget.show()
     end
 
     def graph_style(graph,style)
