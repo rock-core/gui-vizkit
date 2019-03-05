@@ -109,10 +109,21 @@ module Vizkit
                 layout_content.add_item( Qt::SpacerItem.new(1, 10) )
 
                 layout_buttons = Qt::HBoxLayout.new
+                layout_buttons.add_widget( bt_save = Qt::PushButton.new('Save', self) )
+                layout_buttons.add_widget( bt_load = Qt::PushButton.new('Load', self) )
+                layout_buttons.add_stretch
+                layout_buttons.add_spacing(20)
                 layout_buttons.add_stretch
                 layout_buttons.add_widget( bt_apply = Qt::PushButton.new('Apply', self) )
                 layout_buttons.add_widget( bt_ok = Qt::PushButton.new('Ok', self) )
                 layout_buttons.add_widget( bt_cancel = Qt::PushButton.new('Cancel', self) )
+                bt_save.connect(SIGNAL('clicked()')) do
+                    apply
+                    @preferences.save
+                end
+                bt_load.connect(SIGNAL('clicked()')) do
+                    load
+                end
                 bt_apply.connect(SIGNAL('clicked()')) do
                     apply
                 end
@@ -123,22 +134,24 @@ module Vizkit
                 bt_cancel.connect(SIGNAL('clicked()')) do
                     close
                 end
+                bt_save.toolTip   = 'Saves the settings for all future plot2d instances'
+                bt_apply.toolTip  = 'Applies the settings to the current plot2d instance'
+                bt_ok.toolTip     = 'Applies the settings and exit'
+                bt_cancel.toolTip = 'Exits without saving or applying changes'
+                layout_main.add_stretch
+                layout_main.add_spacing(10)
                 layout_main.add_stretch
                 layout_main.add_layout(layout_buttons, row)
             end
 
             def apply
-                @preferences.hold = true
-                begin
-                    @preferences.autoscroll        = @options_cb['auto_scroll'].selected
-                    @preferences.reuse_widget      = @options_cb['reuse'].selected
-                    @preferences.use_2yaxes        = @options_cb['2yaxes'].selected
-                    @preferences.time_window       = @options_slider['time_window'].value
-                    @preferences.time_window_cache = @options_slider['time_window_cache'].value
-                    @preferences.save
-                ensure
-                    @preferences.hold = false
-                end
+                @preferences.autoscroll        = @options_cb['auto_scroll'].selected
+                @preferences.reuse_widget      = @options_cb['reuse'].selected
+                @preferences.use_2yaxes        = @options_cb['2yaxes'].selected
+                @preferences.time_window       = @options_slider['time_window'].value
+                @preferences.time_window_cache = @options_slider['time_window_cache'].value
+
+                emit @preferences.updated()
             end
 
             def load

@@ -1,9 +1,10 @@
 module Vizkit
     module Plot2D
-        class Preferences
-            def initialize(name_org, name_app = "")
+        class Preferences < Qt::Object
+            def initialize(name_org, name_app = "", parent: nil)
+                super(parent)
 
-                @settings = Qt::Settings.new(name_org, name_app)
+                @settings = Qt::Settings.new(name_org, name_app, parent)
 
                 load
             end
@@ -35,6 +36,7 @@ module Vizkit
                     @options = @options_stash.dup
                 ensure
                     @settings.end_group
+                    emit updated()
                 end
             end
 
@@ -42,13 +44,13 @@ module Vizkit
                 @settings.begin_group('preferences')
                 begin
                     @options = Hash[
-                        'auto_scroll'             => load_bool('auto_scroll'),
-                        'reuse'                   => load_bool('reuse'),
-                        '2yaxes'                  => load_bool('2yaxes'),
-                        'time_window/value'       => load_int('time_window/value'),
-                        'time_window_cache/value' => load_int('time_window_cache/value'),
-                        'time_window/range'       => load_list('time_window/range', [0.1, 300]),
-                        'time_window_cache/range' => load_list('time_window_cache/range', [0.1, 300]),
+                        'auto_scroll'             => load_bool('auto_scroll', true),
+                        'reuse'                   => load_bool('reuse', true),
+                        '2yaxes'                  => load_bool('2yaxes', false),
+                        'time_window/value'       => load_int('time_window/value', 30),
+                        'time_window_cache/value' => load_int('time_window_cache/value', 60),
+                        'time_window/range'       => load_list('time_window/range', [1, 300]),
+                        'time_window_cache/range' => load_list('time_window_cache/range', [1, 300]),
                     ]
                     @options_stash = @options.dup
                 ensure
@@ -56,34 +58,16 @@ module Vizkit
                 end
             end
 
-            def hold=(value)
-                if [true, false].include? value
-                    @on_hold = value
-                else
-                    @on_hold = false
-                    stderr.puts '[Warning] Plot2D::Vizkit::Preferences.hold= received a nonboolean value and will default to false'
-                end
-            end
-
-            def on_hold?
-                @on_hold
-            end
-
             def set_value(tag, value)
                 @options_stash[tag] = value
-                if !on_hold?
-                    @settings.begin_group('preferences')
-                    begin
-                        save_value(tag, value)
-                        @options[tag] = @options_stash[tag]
-                    ensure
-                        @settings.end_group
-                    end
-                end
+            end
+
+            def load_value(tag)
+                @options_stash[tag]
             end
 
             def autoscroll
-                @options['auto_scroll']
+                load_value('auto_scroll')
             end
             
             def autoscroll=(value)
@@ -91,7 +75,7 @@ module Vizkit
             end
 
             def reuse_widget
-                @options['reuse']
+                load_value('reuse')
             end
 
             def reuse_widget=(value)
@@ -99,7 +83,7 @@ module Vizkit
             end
 
             def use_2yaxes
-                @options['2yaxes']
+                load_value('2yaxes')
             end
 
             def use_2yaxes=(value)
@@ -107,7 +91,7 @@ module Vizkit
             end
 
             def time_window
-                @options['time_window/value']
+                load_value('time_window/value')
             end
 
             def time_window=(value)
@@ -115,7 +99,7 @@ module Vizkit
             end
 
             def time_window_cache
-                @options['time_window_cache/value']
+                load_value('time_window_cache/value')
             end
 
             def time_window_cache=(value)
@@ -123,12 +107,14 @@ module Vizkit
             end
 
             def time_window_range
-                @options['time_window/range']
+                load_value('time_window/range')
             end
 
             def time_window_cache_range
-                @options['time_window_cache/range']
+                load_value('time_window_cache/range')
             end
+
+            signals 'updated()'
 
             private :load_bool, :load_int, :load_list, :save_value, :set_value
         end
