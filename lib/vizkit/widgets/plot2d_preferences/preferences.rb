@@ -1,5 +1,5 @@
 module Vizkit
-    module Plot2D
+    module Plot2d
         class Preferences < Qt::Object
             def initialize(name_org, name_app = "", parent: nil, default_opts: Hash.new)
                 super(parent)

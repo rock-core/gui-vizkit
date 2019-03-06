@@ -70,7 +70,7 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "Plot2d" do
         getXAxis.setLabel("Time in sec")
         setTitle("Rock-Plot2d")
         
-        @preferences = Vizkit::Plot2D::Preferences.new('vizkit', 'plot2d', default_opts: @options)
+        @preferences = Vizkit::Plot2d::Preferences.new('vizkit', 'plot2d', default_opts: @options)
         @preferences.connect(SIGNAL('updated()')) do
             update_options
         end
@@ -216,7 +216,7 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "Plot2d" do
     end
 
     def open_preferences
-        @preferences_widget ||= Vizkit::Plot2D::PreferencesWidget.new(@preferences)
+        @preferences_widget ||= Vizkit::Plot2d::PreferencesWidget.new(@preferences)
         @preferences_widget.show()
     end
 

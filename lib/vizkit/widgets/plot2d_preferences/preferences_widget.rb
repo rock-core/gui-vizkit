@@ -1,5 +1,5 @@
 module Vizkit
-    module Plot2D
+    module Plot2d
         class PreferencesWidget < Qt::Widget
             class PreferencesItemCB
                 def initialize(name, parent = nil)
@@ -95,14 +95,14 @@ module Vizkit
                 if preferences
                     @preferences = preferences
                 else
-                    @preferences = Vizkit::Plot2D::Preferences.new('vizkit', 'plot2d')
+                    @preferences = Vizkit::Plot2d::Preferences.new('vizkit', 'plot2d')
                 end
 
                 create_ui
             end
 
             def create_ui
-                set_window_title('Plot2D Preferences')
+                set_window_title('Plot2d Preferences')
 
                 layout_main = Qt::VBoxLayout.new(self)
                 layout_main.add_layout( layout_content = Qt::GridLayout.new )
