@@ -192,6 +192,11 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "Plot2d" do
         update_zoom_range_flag(!@options[:auto_scrolling], @options[:use_y_axis2])
     end
 
+    def update_timer(time_seconds = @options[:update_period])
+        @timer.stop
+        @timer.start(1000 * time_seconds)
+    end
+
     def update_options
         @options[:auto_scrolling]     = @preferences.autoscroll
         @options[:reuse]              = @preferences.reuse_widget
@@ -199,9 +204,11 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "Plot2d" do
         @options[:time_window]        = @preferences.time_window
         @options[:cached_time_window] = @preferences.time_window_cache
         @options[:pre_time_window]    = @options[:time_window] / 6
+        @options[:update_period]      = @preferences.update_period
 
         update_use_y2
         update_auto_scrolling
+        update_timer
     end
 
     def open_preferences

@@ -9,7 +9,8 @@ module Vizkit
                 @options = Hash.new
                 @options_stash = Hash.new
                 keys = [:auto_scrolling, :time_window, :cached_time_window, :reuse,
-                        :use_y_axis2, :time_window_range, :cached_time_window_range];
+                        :use_y_axis2, :time_window_range, :cached_time_window_range,
+                        :update_period, :update_period_range];
                 keys.each do |key|
                     value = default_opts[key]
                     @options[key] = value
@@ -20,8 +21,10 @@ module Vizkit
                 @options[:use_y_axis2]              ||= false
                 @options[:time_window]              ||= 30
                 @options[:cached_time_window]       ||= 60
+                @options[:update_period]            ||= 0.25
                 @options[:time_window_range]        ||= [1, 300]
                 @options[:cached_time_window_range] ||= [1, 300]
+                @options[:update_period_range]      ||= [0.02, 1]
                 
                 @tags = Hash[
                     :auto_scrolling           => 'auto_scrolling',
@@ -30,7 +33,9 @@ module Vizkit
                     :time_window              => 'time_window/value',
                     :cached_time_window       => 'time_window_cache/value',
                     :time_window_range        => 'time_window/range',
-                    :cached_time_window_range => 'time_window_cache/range'
+                    :cached_time_window_range => 'time_window_cache/range',
+                    :update_period            => 'update_period/value',
+                    :update_period_range      => 'update_period/range',
                 ]
 
                 load(true)
@@ -44,10 +49,20 @@ module Vizkit
                 load_value(key, default).to_int
             end
 
+            def load_float(key, default = @options[key])
+                load_value(key, default).to_float
+            end
+
             def load_list(key, default = @options[key], &filter_cast)
                 list = load_value(key, default).to_list
                 filter_cast ||= ->(elem) {elem.to_int}
                 list.map &filter_cast
+            end
+
+            def load_list_float(key, default = @options[key])
+                load_list(key, default) do |elem|
+                    elem.to_f
+                end
             end
 
             def load_value(key, default = @options[key])
@@ -79,8 +94,10 @@ module Vizkit
                     @options[:use_y_axis2]              = load_bool(:use_y_axis2)
                     @options[:time_window]              = load_int(:time_window)
                     @options[:cached_time_window]       = load_int(:cached_time_window)
+                    @options[:update_period]            = load_float(:update_period)
                     @options[:time_window_range]        = load_list(:time_window_range)
                     @options[:cached_time_window_range] = load_list(:cached_time_window_range)
+                    @options[:update_period_range]      = load_list_float(:update_period_range)
                     if reset_stash
                         @options_stash = @options.dup
                     else
@@ -137,6 +154,14 @@ module Vizkit
                 get_value(:cached_time_window)
             end
 
+            def update_period=(value)
+                set_value(:update_period, value)
+            end
+
+            def update_period
+                get_value(:update_period)
+            end
+
             def time_window_cache=(value)
                 set_value(:cached_time_window, value)
             end
@@ -147,6 +172,10 @@ module Vizkit
 
             def time_window_cache_range
                 get_value(:cached_time_window_range)
+            end
+
+            def update_period_range
+                get_value(:update_period_range)
             end
 
             signals 'updated()'

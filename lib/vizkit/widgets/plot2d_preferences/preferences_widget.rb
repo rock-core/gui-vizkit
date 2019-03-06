@@ -61,6 +61,34 @@ module Vizkit
                 signals 'valueChanged(int)'
             end
 
+            class PreferencesItemSpinner
+                def initialize(name, parent = nil)
+                    @label = Qt::Label.new(name, parent)
+                    @spinner = Qt::DoubleSpinBox.new(parent)
+                    @spinner.decimals = 2
+                    @spinner.single_step = 0.01
+                end
+
+                def range=(minmax)
+                    @spinner.minimum = minmax[0]
+                    @spinner.maximum = minmax[1]
+                end
+
+                def value=(value)
+                    @spinner.value = value
+                end
+
+                def value
+                    @spinner.value
+                end
+
+                def add_to_grid(layout, row=0, col=0)
+                    layout.add_widget(@label,   row, col)
+                    layout.add_widget(@spinner, row, col + 1)
+                    row = row + 1
+                end
+            end
+
             def initialize(preferences = nil, parent = nil)
                 super(parent)
 
@@ -87,7 +115,8 @@ module Vizkit
 
                 @options_slider = Hash[
                     'time_window'       => PreferencesItemSlider.new('Time window', self),
-                    'time_window_cache' => PreferencesItemSlider.new('Time window cache', self)
+                    'time_window_cache' => PreferencesItemSlider.new('Time window cache', self),
+                    'update_period'     => PreferencesItemSpinner.new('Update period', self)
                 ]
 
                 row = 0
@@ -151,6 +180,7 @@ module Vizkit
                 @preferences.use_2yaxes        = @options_cb['2yaxes'].selected
                 @preferences.time_window       = @options_slider['time_window'].value
                 @preferences.time_window_cache = @options_slider['time_window_cache'].value
+                @preferences.update_period     = @options_slider['update_period'].value
 
                 emit @preferences.updated()
             end
@@ -161,8 +191,10 @@ module Vizkit
                 @options_cb['2yaxes'].selected             = @preferences.use_2yaxes
                 @options_slider['time_window'].range       = @preferences.time_window_range
                 @options_slider['time_window_cache'].range = @preferences.time_window_cache_range
+                @options_slider['update_period'].range     = @preferences.update_period_range
                 @options_slider['time_window'].value       = @preferences.time_window
                 @options_slider['time_window_cache'].value = @preferences.time_window_cache
+                @options_slider['update_period'].value     = @preferences.update_period
             end
 
             def show
