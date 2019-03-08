@@ -1,6 +1,25 @@
 #prepares the c++ qt widget for the use in ruby with widget_grid
 
 Vizkit::UiLoader::extend_cplusplus_widget_class "Plot2d" do
+
+    class Plot2dEventFilter < ::Qt::Object
+        attr_accessor :preferences
+        
+        def initialize(preferences = nil)
+            super(nil)
+            @preferences = preferences
+        end
+
+        def eventFilter(obj,event)
+            if event.is_a?(Qt::CloseEvent)
+                if @preferences
+                    @preferences.close
+                end
+            end
+            return false
+        end
+    end
+
     attr_accessor :options
 
     def default_options()
@@ -216,7 +235,14 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "Plot2d" do
     end
 
     def open_preferences
-        @preferences_widget ||= Vizkit::Plot2d::PreferencesWidget.new(@preferences)
+        if !@preferences_widget
+            @preferences_widget = Vizkit::Plot2d::PreferencesWidget.new(@preferences)
+            if !@event_filter
+                installEventFilter(@event_filter = Plot2dEventFilter.new(@preferences_widget))
+            else
+                @event_filter.preferences = @preferences_widget
+            end
+        end
         @preferences_widget.show()
     end
 
