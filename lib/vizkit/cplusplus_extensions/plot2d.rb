@@ -143,7 +143,7 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "Plot2d" do
                 action = menu.exec(mapToGlobal(event.pos))
                 if(action == action_scrolling)
                     update_auto_scrolling !@options[:auto_scrolling]
-		elsif(action == action_clear)
+		        elsif(action == action_clear)
                     clearData()
                 elsif(action == action_reuse)
                     @options[:reuse] = !@options[:reuse]
@@ -161,6 +161,8 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "Plot2d" do
                 elsif ((action == action_timestamp) || (action == action_sample_period))
                     @options[:plot_timestamps] =! @options[:plot_timestamps]
                 end
+                @preferences.load_from_hash(@options)
+                @preferences_widget.load if @preferences_widget
             end
         end
         

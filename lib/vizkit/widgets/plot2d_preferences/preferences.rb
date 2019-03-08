@@ -6,26 +6,6 @@ module Vizkit
                 
                 @settings = Qt::Settings.new(name_org, name_app, parent)
 
-                @options = Hash.new
-                @options_stash = Hash.new
-                keys = [:auto_scrolling, :time_window, :cached_time_window, :reuse,
-                        :use_y_axis2, :time_window_range, :cached_time_window_range,
-                        :update_period, :update_period_range];
-                keys.each do |key|
-                    value = default_opts[key]
-                    @options[key] = value
-                    @options_stash[key] = value
-                end
-                @options[:auto_scrolling]           ||= true
-                @options[:reuse]                    ||= true
-                @options[:use_y_axis2]              ||= false
-                @options[:time_window]              ||= 30
-                @options[:cached_time_window]       ||= 60
-                @options[:update_period]            ||= 0.25
-                @options[:time_window_range]        ||= [1, 300]
-                @options[:cached_time_window_range] ||= [1, 300]
-                @options[:update_period_range]      ||= [0.02, 1]
-                
                 @tags = Hash[
                     :auto_scrolling           => 'auto_scrolling',
                     :reuse                    => 'reuse_widget',
@@ -37,8 +17,19 @@ module Vizkit
                     :update_period            => 'update_period/value',
                     :update_period_range      => 'update_period/range',
                 ]
+                @options = Hash.new
+                load_from_hash(default_opts)
+                @options[:auto_scrolling]           ||= true
+                @options[:reuse]                    ||= true
+                @options[:use_y_axis2]              ||= false
+                @options[:time_window]              ||= 30
+                @options[:cached_time_window]       ||= 60
+                @options[:update_period]            ||= 0.25
+                @options[:time_window_range]        ||= [1, 300]
+                @options[:cached_time_window_range] ||= [1, 300]
+                @options[:update_period_range]      ||= [0.02, 1]
 
-                load(true)
+                load
             end
 
             def load_bool(key, default = @options[key])
@@ -76,17 +67,23 @@ module Vizkit
             def save
                 @settings.begin_group('preferences')
                 begin
-                    @options_stash.each do |key,value|
+                    @options.each do |key,value|
                         save_value(key, value)
                     end
-                    @options = @options_stash.dup
+                    @options = @options.dup
                 ensure
                     @settings.end_group
                     emit updated()
                 end
             end
 
-            def load(reset_stash = false)
+            def load_from_hash(hash)
+                hash.each do |key,value|
+                    @options[key] = value if @tags.has_key?(key)
+                end
+            end
+
+            def load
                 @settings.begin_group('preferences')
                 begin
                     @options[:auto_scrolling]           = load_bool(:auto_scrolling)
@@ -98,24 +95,17 @@ module Vizkit
                     @options[:time_window_range]        = load_list(:time_window_range)
                     @options[:cached_time_window_range] = load_list(:cached_time_window_range)
                     @options[:update_period_range]      = load_list_float(:update_period_range)
-                    if reset_stash
-                        @options_stash = @options.dup
-                    else
-                        @options_stash = @options_stash.map { |key,value|
-                            [ key , value ||= @options[key] ]
-                        }.to_h
-                    end
                 ensure
                     @settings.end_group
                 end
             end
 
             def set_value(key, value)
-                @options_stash[key.to_sym] = value
+                @options[key.to_sym] = value
             end
 
             def get_value(key)
-                @options_stash[key]
+                @options[key]
             end
 
             def autoscroll
@@ -180,7 +170,8 @@ module Vizkit
 
             signals 'updated()'
 
-            private :load_bool, :load_int, :load_list, :load_value, :save_value, :set_value, :get_value
+            private :load_bool, :load_int, :load_list, :load_list_float,
+                    :load_value, :save_value, :set_value, :get_value
         end
     end
 end
