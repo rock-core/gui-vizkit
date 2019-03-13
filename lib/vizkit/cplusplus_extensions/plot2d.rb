@@ -105,6 +105,8 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "Plot2d" do
                 menu.add_action(action_scrolling)
                 action_clear = Qt::Action.new("Clear", self)
                 menu.add_action(action_clear)
+                action_autosize = Qt::Action.new("Autosize", self)
+                menu.add_action(action_autosize)
                 if @options[:multi_use_menu]
                     action_reuse = Qt::Action.new("Reuse Widget", self)
                     action_reuse.checkable = true
@@ -145,6 +147,8 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "Plot2d" do
                     update_auto_scrolling !@options[:auto_scrolling]
 		        elsif(action == action_clear)
                     clearData()
+                elsif(action == action_autosize)
+                    autosize()
                 elsif(action == action_reuse)
                     @options[:reuse] = !@options[:reuse]
                 elsif(action == action_use_y2)
@@ -319,6 +323,10 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "Plot2d" do
         end
 
         @graphs[name]
+    end
+
+    def autosize
+        rescaleAxes
     end
 
     def multi_value?

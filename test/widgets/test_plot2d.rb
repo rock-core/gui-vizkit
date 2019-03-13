@@ -18,6 +18,16 @@ module Vizkit
               'button and make sure it disappears before reappearing again'
         end
 
+        it "automatically changes the y-axis limits when the 'Autosize' context entry is chosen" do
+            last_value = 1
+            scale = 0.001
+            timer 100 do
+                @plot2d.update(last_value += scale*(rand - 0.5), 'test')
+            end
+            confirm 'A curve that looks like a constant value should appear, click the "Autosize" '\
+              'button to automatically detect its limits '
+        end
+
         it "starts a new plotting widget if 'Reuse Widget' is unchecked" do
             last_value = 0
             timer 100 do
