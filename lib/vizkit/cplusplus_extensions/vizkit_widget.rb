@@ -254,7 +254,7 @@ module VizkitPluginLoaderExtension
 		Kernel.raise "library #{lib_name} does not have any vizkit plugin called #{plugin_name}, available plugins are: #{plugin.getAvailablePlugins.join(", ")}"
 	    end
 	end
-	plugin = plugin.createPlugin(plugin_name)
+	plugin = plugin.createPlugin(plugin_name.dup)
 	addPlugin(plugin)
 
         plugin.extend VizkitPluginExtension
