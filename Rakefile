@@ -10,7 +10,7 @@ begin
         self.summary = 'Provides a Qt ruby based framework for visualisation of rock data items'
         self.readme_file = FileList['README*'].first
         self.description = paragraphs_of(history_file, 3..5).join("\n\n")
-        self.urls = ["http://rock-robotics.org"]
+        self.urls = {"home" => "http://rock-robotics.org"}
 
         self.extra_deps <<
             ['utilrb', ">= 1.1"] <<
