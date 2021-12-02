@@ -1,10 +1,9 @@
 #prepares the c++ qt widget for the use in ruby with widget_grid
 
 Vizkit::UiLoader::extend_cplusplus_widget_class "Plot2d" do
-
     class Plot2dEventFilter < ::Qt::Object
         attr_accessor :preferences
-        
+
         def initialize(preferences = nil)
             super(nil)
             @preferences = preferences
@@ -35,7 +34,7 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "Plot2d" do
         options[:yaxis_window] = 5
         options[:pre_yaxis_window] = 5
         options[:max_points] = 50000
-	
+
         options[:colors] = [Qt::red, Qt::green, Qt::blue, Qt::cyan, Qt::magenta, Qt::yellow, Qt::gray]
         options[:reuse] = true
         options[:use_y_axis2] = false
@@ -45,7 +44,7 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "Plot2d" do
                                          # this prevents repainting for each new sample
         options[:plot_timestamps] = true
         options[:is_time_plot] = false
-        return options 
+        options
     end
 
     def time 
@@ -96,8 +95,8 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "Plot2d" do
         update_options
         
         self.connect(SIGNAL('mousePressOnPlotArea(QMouseEvent*)')) do |event|
-            if event.button() == Qt::RightButton 
-                #show pop up menue 
+            if event.button() == Qt::RightButton
+                #show pop up menue
                 menu = Qt::Menu.new(self)
                 action_scrolling = Qt::Action.new("AutoScrolling", self)
                 action_scrolling.checkable = true
@@ -169,34 +168,34 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "Plot2d" do
                 @preferences_widget.load if @preferences_widget
             end
         end
-        
-        
+
+
         self.connect(SIGNAL('mousePressOnLegendItem(QMouseEvent*, QVariant)')) do |event, itemIdx|
-            if event.button() == Qt::RightButton 
-                #show pop up menue 
+            if event.button() == Qt::RightButton
+                #show pop up menue
                 menu = Qt::Menu.new(self)
                 action_remove = Qt::Action.new("remove graph", self)
                 menu.add_action(action_remove)
-                
+
                 action = menu.exec(mapToGlobal(event.pos))
-                
-                if(action == action_remove)                    
-                    # note: we assume all graphs have a corresponding 
+
+                if(action == action_remove)
+                    # note: we assume all graphs have a corresponding
                     # legend item with the same index (true for this widget)
                     graph = getGraph(itemIdx.to_i())
-                    
+
                     unless graph == 0 || graph.nil?
-                        
+
                         while true
                             cur_port = connection_manager().find_port_by_name(graph.name)
-                            
+
                             if cur_port
                                 connection_manager().disconnect(cur_port,  keep_port: false)
                             else
                                 break
-                            end 
+                            end
                         end
-                        
+
                         @graphs.delete graph.name
                         removeGraph(itemIdx.to_i())
                         @needs_update = true
@@ -204,9 +203,9 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "Plot2d" do
                 end
             end
         end
-        
+
     end
-    
+
     def update_auto_scrolling(value = @options[:auto_scrolling])
         @options[:auto_scrolling] = value
         update_zoom_range_flag(!@options[:auto_scrolling], @options[:use_y_axis2])
@@ -264,7 +263,7 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "Plot2d" do
     end
 
     def plot_style(style)
-        if @options[:plot_style] != style 
+        if @options[:plot_style] != style
             @options[:plot_style] = style
             @graphs.each_value do |graph|
                 graph_style(graph,style)
@@ -301,7 +300,7 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "Plot2d" do
         graph2(value.full_name+subfield) if value.respond_to? :full_name
     end
 
-    def graph2(name)        
+    def graph2(name)
         if(!@graphs.has_key?(name))
             axis = if @options[:use_y_axis2] then getYAxis2
                    else getYAxis
@@ -312,13 +311,13 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "Plot2d" do
             graph.setName(name)
             graph_style(graph,@options[:plot_style])
             graph.addToLegend
-            
+
             if color = @options[:colors][@color_next_idx]
                 graph.setPen(Qt::Pen.new(Qt::Brush.new(color),1))
             end
-            
-            @color_next_idx = (@color_next_idx + 1) % @options[:colors].count            
-            
+
+            @color_next_idx = (@color_next_idx + 1) % @options[:colors].count
+
             @graphs[name] = graph
         end
 
@@ -330,26 +329,30 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "Plot2d" do
     end
 
     def multi_value?
-        @options[:reuse] && @options[:multi_use_menu] 
+        @options[:reuse] && @options[:multi_use_menu]
     end
 
     def rename_graph(old_name,new_name)
         graph = @graphs[old_name]
-        if graph           
+        if graph
             graph.setName(new_name)
             @graphs[new_name] = @graphs[old_name]
             @graphs.delete old_name
         end
     end
 
-    #diplay is called each time new data are available on the orocos output port
-    #this functions translates the orocos data struct to the widget specific format
-    def update(sample,name,time: self.time)
+    # Add a new sample to a given graph on the plot
+    #
+    # @param [#to_f] sample the value to be added to the graph
+    # @param [String] name the name of the graph. It is created if needed
+    # @param [Time] time the sample time
+    def update(sample, name, time: self.time)
         graph = graph2(name)
         @time ||= time
         x = time-@time
-        graph.removeDataBefore(x-@options[:cached_time_window])
-        graph.addData(x,sample.to_f)
+
+        graph.removeDataBefore(x - @options[:cached_time_window])
+        graph.addData(x, sample.to_f)
         if @options[:auto_scrolling] || @options[:auto_scrolling_x]
             getXAxis.setRange(x-@options[:time_window],x+@options[:pre_time_window])
             graph.rescaleValueAxis(true)
@@ -370,7 +373,7 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "Plot2d" do
         update(sample[1],name+"_y")
         update(sample[2],name+"_z")
     end
-    
+
     def update_vectorXd(sample,name)
         if (sample.size() == 1)
             update(sample[0], name)
@@ -381,7 +384,7 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "Plot2d" do
             end
         end
     end
-  
+
     def update_time(sample, name)
         # So that the time related options of the right click menu are not shown for other types
         @options[:is_time_plot] = true
@@ -391,13 +394,13 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "Plot2d" do
             update_time_diff(sample, name)
         end
     end
-  
+
     def update_time_diff(sample, name)
         # For each data source an entry in the dictionary is created
         if @previous_time == nil
             @previous_time = {}
         end
-        if @previous_time[name] == nil 
+        if @previous_time[name] == nil
             @previous_time[name] = sample.to_f
         end
         difference = sample.to_f - @previous_time[name]
@@ -405,26 +408,26 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "Plot2d" do
         update(difference, name)
     end
 
- 
+
     def set_x_axis_scale(start,stop)
         getXAxis.setRange(start,stop)
-    end 
-    
+    end
+
     def set_y_axis_scale(start,stop)
         getYAxis.setRange(start,stop)
-    end 
+    end
 
     def update_custom(name,values_x,values_y)
         graph = graph2(name)
-        graph.addData(values_x,values_y)        
+        graph.addData(values_x,values_y)
         if @options[:auto_scrolling] || @options[:auto_scrolling_x]
             getXAxis.setRange(values_x-@options[:xaxis_window],values_x+@options[:pre_xaxis_window])
-            graph.rescaleValueAxis(true)                
-        end       
+            graph.rescaleValueAxis(true)
+        end
         if @options[:auto_scrolling] || @options[:auto_scrolling_y]
             getYAxis.setRange(values_y-@options[:yaxis_window],values_y+@options[:pre_yaxis_window])
-            graph.rescaleValueAxis(true)                
-        end       
+            graph.rescaleValueAxis(true)
+        end
         @needs_update = true
     end
 

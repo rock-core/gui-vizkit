@@ -205,9 +205,13 @@ module Vizkit
         MAX_NUMBER_OF_CHILDS = 20
         attr_reader :typelib_val
 
-        def initialize(typelib_val=nil,bitfield_type: nil, **options)
+        def initialize(typelib_val = nil, bitfield_type: nil, **options)
             super()
-            @options = Kernel.validate_options options,:text => nil,:item_type => :label,:editable => false,bitfield_type: nil
+            @options = Kernel.validate_options options,
+                                               text: nil,
+                                               item_type: :label,
+                                               editable: false,
+                                               bitfield_type: nil
             @typelib_val = nil
             @truncated = false
             @bitfield_type = bitfield_type
@@ -386,10 +390,14 @@ module Vizkit
             @childs[row]
         end
 
-        def add_child(row, field, val, **options)
-            field_item = TypelibItem.new(val, text: field.to_s, editable: @options[:editable], **options)
-            val_item   = TypelibItem.new(val, item_type: :value, editable: @options[:editable], **options)
-            appendRow [field_item,val_item]
+        def add_child(_row, field, val, **options)
+            field_item = TypelibItem.new(
+                val, text: field.to_s, editable: @options[:editable], **options
+            )
+            val_item = TypelibItem.new(
+                val, item_type: :value, editable: @options[:editable], **options
+            )
+            appendRow [field_item, val_item]
         end
 
         def update_child(row, field, val)
@@ -538,9 +546,10 @@ module Vizkit
     module PortItemUserInteraction
         def port_from_items(items = [])
             # do not show context menu if clicked on second column
-            return if items.find{|i|i.column == 1}
+            return if items.find { |i| i.column == 1 }
+
             sub_path = items.reverse.map(&:text)
-            #convert string to number if possible
+            # convert string to number if possible
             sub_path = sub_path.map do |s|
                 if s.to_i.to_s == s
                     s.to_i
@@ -548,8 +557,8 @@ module Vizkit
                     s
                 end
             end
-            if !sub_path.empty?
-                item = items.last
+
+            unless sub_path.empty?
                 port.sub_port(sub_path)
             else
                 port

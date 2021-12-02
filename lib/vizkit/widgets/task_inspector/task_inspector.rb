@@ -12,7 +12,7 @@ class TaskInspector
         corba_dialog.connect(SIGNAL("accepted()")) do
             form.add_name_service(Orocos::Async::CORBA::NameService.new(corba_dialog.ip.text))
         end
-        form.actionAdd_name_service.connect SIGNAL("triggered()") do 
+        form.actionAdd_name_service.connect SIGNAL("triggered()") do
             corba_dialog.show
         end
 

@@ -25,47 +25,63 @@ module Vizkit
 
         def find_port_by_name(pname)
             @on_data_listeners.keys.each do |key|
-                if key.full_name == pname 
+              puts "#{key.full_name} #{pname}"
+                if key.full_name == pname
                     return key
                 end
             end
             return nil
         end
-        
+
         def listening?(port = nil)
             if port
-                @on_data_listeners[port].find do |l|
-                    l.listening?
-                end
+                listening_to_port?(port)
             else
-                @on_data_listeners.keys.each do |key|
-                    return false if !listening?(key) 
-                end
+                listening_to_all_ports?
             end
         end
 
-        def disconnect(port=nil, keep_port: true)
-            if port
-                @on_data_listeners[port].each do |l|
-                    l.stop
-                end
-                
-                @on_data_listeners.delete(port) unless keep_port
-                
-                @on_reachable_listeners[port].each do |l|
-                    l.stop
-                end
-                
-                @on_reachable_listeners.delete(port) unless keep_port
-                
-            else
-                @on_data_listeners.keys.each do |key|
-                    disconnect(key, keep_port: true)
-                end
-                
-                @on_data_listeners.clear unless keep_port
-                @on_reachable_listeners.clear unless keep_port
+        def listening_to_port?(port)
+            @on_data_listeners[port].any?(&:listening?)
+        end
+
+        def listening_to_all_ports?
+            @on_data_listeners.keys.all? do |port|
+                listening_to_port?(port)
             end
+        end
+
+        def disconnect(port = nil, keep_port: true)
+            if port
+                disconnect_connections_from_port(port)
+                remove_port(port) unless keep_port
+            else
+                disconnect_connections_from_all_ports
+                remove_all_ports unless keep_port
+            end
+        end
+
+        def disconnect_connections_from_port(port)
+            @on_data_listeners[port].each(&:stop)
+            @on_reachable_listeners[port].each(&:stop)
+        end
+
+        def remove_port(port)
+            disconnect_connections_from_port(port)
+            @on_data_listeners.delete(port)
+            @on_reachable_listeners.delete(port)
+        end
+
+        def disconnect_connections_from_all_ports
+            @on_data_listeners.keys.each do |port|
+                disconnect_connections_from_port(port)
+            end
+        end
+
+        def remove_all_ports
+            disconnect_connections_from_all_ports
+            @on_data_listeners.clear
+            @on_reachable_listeners.clear
         end
 
         def reconnect(port=nil)
@@ -94,6 +110,6 @@ module Vizkit
             @on_data_listeners[port] << listener
             listener
         end
-        
+
     end
 end

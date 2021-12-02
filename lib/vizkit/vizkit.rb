@@ -61,8 +61,8 @@ module Vizkit
                         end
                 callback_fct = widget.plugin_spec.find_callback!(:argument => value,:callback_type => type)
                 if callback_fct && (!callback_fct.respond_to?(:to_sym) || callback_fct.to_sym != :config)
-                    callback_fct = callback_fct.bind(widget) 
-                    callback_fct.call(value, options, &block)  
+                    callback_fct = callback_fct.bind(widget)
+                    callback_fct.call(value, options, &block)
                 end
             end
         else
@@ -81,7 +81,7 @@ module Vizkit
             return result
         end
         opts,options = Kernel::filter_options(options,@vizkit_local_options)
-        widget = if opts[:widget].respond_to? :to_str 
+        widget = if opts[:widget].respond_to? :to_str
                      default_loader.create_plugin(opts[:widget],opts[:parent],opts[:reuse])
                  else
                      if opts[:widget]
@@ -173,7 +173,7 @@ module Vizkit
         end
     end
 
-    #disconnects all connections to widgets 
+    #disconnects all connections to widgets
     def self.disconnect_all
     end
 
@@ -189,7 +189,7 @@ module Vizkit
     #
     # Unlike Orocos::OutputPort#connect_to, this expects a task and port name,
     # i.e. can be called even though the remote task is not started yet
-    # This is use full if tasks are replayed from a logfile 
+    # This is use full if tasks are replayed from a logfile
     def self.connect_port_to(task_name, port_name, widget = nil, options = Hash.new, &block)
         if widget.kind_of?(Hash)
             widget, options = nil, widget
