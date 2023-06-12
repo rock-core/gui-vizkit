@@ -489,40 +489,34 @@ module Vizkit
 
     class PortsItem < VizkitItem
         attr_reader :task
-        def initialize(task,options = Hash.new)
+
+        def initialize(task, options = Hash.new)
             super()
             @options = Kernel.validate_options options,:item_type => :label
+
             @task = task
             setEditable false
-            if @options[:item_type] == :label
-                setText "Ports"
-                task.on_port_reachable do |port_name|
-                    next if child?(port_name)
-                    port = task.port(port_name)
-                    port.once_on_reachable do
-                        append_port(port) unless child?(port_name)
-                    end
-                    port.on_error do |e|
-                        # add port to display the error
-                        append_port(port) unless child?(port_name)
-                    end
-                end
-            end
+
+            return unless @options[:item_type] == :label
+
+            discover_ports(task)
         end
 
-        def append_port(port)
-            if port.input?
-                appendRow([InputPortItem.new(port),InputPortItem.new(port,:item_type => :value)])
-            elsif port.output?
-                p1 = OutputPortItem.new(port)
-                p2 = OutputPortItem.new(port,:item_type => :value)
-                appendRow([p1,p2])
-                if expanded?
-                    p1.expand
-                    p2.expand
+        def discover_ports(task)
+            task.on_port_reachable do |port_name|
+                puts "ON PORT REACHABLE #{port_name}"
+                next if child?(port_name)
+
+                port = task.port(port_name)
+                port.once_on_reachable do
+                    puts "P: #{port.object_id}"
+                    puts "self: #{object_id}"
+                    on_port_reachable(port) unless child?(port_name)
                 end
-            else
-                raise "Port #{port} is neither an input nor an output port"
+                port.on_error do |e|
+                    # add port to display the error
+                    on_port_reachable(port) unless child?(port_name)
+                end
             end
         end
 
@@ -530,16 +524,43 @@ module Vizkit
         end
     end
 
+    class OutputPortsItem < PortsItem
+        def initialize(task, options = Hash.new)
+            super
+
+            if @options[:item_type] == :label
+                setText "OutputPorts"
+            end
+        end
+
+        def on_port_reachable(port)
+            return unless port.output?
+
+            p1 = OutputPortItem.new(port)
+            p2 = OutputPortItem.new(port, item_type: :value)
+
+            appendRow([p1,p2])
+
+            if expanded?
+                p1.expand
+                p2.expand
+            end
+        end
+    end
+
     class InputPortsItem < PortsItem
         def initialize(task,options = Hash.new)
             super
+
             if @options[:item_type] == :label
                 setText "InputPorts"
             end
         end
 
-        def append_port(port)
-            super if port.input?
+        def on_port_reachable(port)
+            return unless port.input?
+
+            appendRow([InputPortItem.new(port),InputPortItem.new(port,:item_type => :value)])
         end
     end
 
@@ -718,25 +739,6 @@ module Vizkit
             @listener.start if !propagated || @stop_propagated
         end
 
-    end
-
-    class OutputPortsItem < PortsItem
-        def initialize(task,options = Hash.new)
-            super
-            if @options[:item_type] == :label
-                setText "OutputPorts"
-            end
-        end
-
-        def append_port(port)
-            super if port.output?
-        end
-        def expand(propagated = false)
-            @expanded = true
-            each_child do |item|
-                item.expand(propagated)
-            end
-        end
     end
 
     class PropertyItem < TypelibItem
@@ -1097,13 +1099,10 @@ module Vizkit
     end
 
     class LogOutputPortsItem < OutputPortsItem
-        def append_port(port)
-            if port.output?
-                raise ArgumentError, "port #{port.name} is already added" if child?(port.name)
-                appendRow([LogOutputPortItem.new(port),LogOutputPortItem.new(port,:item_type => :value)])
-            else
-                raise "Port #{port} is not an output port"
-            end
+        def on_port_reachable(port)
+            raise ArgumentError, "port #{port.name} is already added" if child?(port.name)
+
+            appendRow([LogOutputPortItem.new(port),LogOutputPortItem.new(port,:item_type => :value)])
         end
     end
 
