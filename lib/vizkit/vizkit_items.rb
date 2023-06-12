@@ -936,53 +936,57 @@ module Vizkit
             @options = Kernel.validate_options options,:item_type => :label,:basename => false
 
             @task = task
+
+            task.on_unreachable { enabled false }
+            task.on_reachable { enabled true }
+
             if @options[:item_type] == :label
-                if @options[:basename]
-                    setText task.basename
-                else
-                    setText task.name
-                end
-                @task_model = TaskModelItem.new(task)
-                @task_model2 = TaskModelItem.new(task, :item_type => :value)
-                @input_ports = InputPortsItem.new(task)
-                @input_ports2 = InputPortsItem.new(task,:item_type => :value)
-                @output_ports = OutputPortsItem.new(task)
-                @output_ports2 = OutputPortsItem.new(task,:item_type => :value)
-                @properties = PropertiesItem.new(task)
-                @properties2 = PropertiesItem.new(task,:item_type => :value)
-                @properties2.setEditable true
-
-                appendRow [@task_model, @task_model2]
-                appendRow [@input_ports,@input_ports2]
-                appendRow [@output_ports,@output_ports2]
-                appendRow [@properties,@properties2]
-
-                task.on_unreachable do
-                    enabled false
-                end
-                task.on_reachable do
-                    enabled true
-                end
-            else #just display the statues of the task
-                task.on_state_change do |state|
-                    setText state.to_s
-                end
-                task.on_unreachable do
-                    setText "UNREACHABLE"
-                    enabled false
-                end
-                task.on_reachable do
-                    setText "INITIALIZING"
-                    enabled true
-                end
+                display_task_interface(task, basename: options[:basename])
+            else
+                display_task_state(task)
             end
         end
 
-        def context_menu(pos,parent_widget,items = [])
-            if task.respond_to? :current_state
-                ContextMenu.task(task,parent_widget,pos)
-                true
+        def display_task_interface(task, basename:)
+            self.text =
+                if basename
+                    task.basename
+                else
+                    task.name
+                end
+
+            @categories = [
+                *create_label_value_pair(TaskModelItem, task),
+                *create_label_value_pair(InputPortsItem, task),
+                *create_label_value_pair(OutputPortsItem, task),
+                *create_label_value_pair(PropertiesItem, task)
+            ]
+            @categories.last.editable = true
+        end
+
+        def create_label_value_pair(klass, task)
+            items = [klass.new(task), klass.new(task, item_type: :value)]
+            appendRow items
+            items
+        end
+
+        def display_task_state(task)
+            task.on_state_change do |state|
+                setText state.to_s
             end
+            task.on_unreachable do
+                setText "UNREACHABLE"
+            end
+            task.on_reachable do
+                setText "INITIALIZING"
+            end
+        end
+
+        def context_menu(pos, parent_widget, _items = [])
+            return unless task.respond_to?(:current_state)
+
+            ContextMenu.task(task, parent_widget, pos)
+            true
         end
     end
 
