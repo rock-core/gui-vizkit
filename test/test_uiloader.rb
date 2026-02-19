@@ -16,8 +16,8 @@ class LoaderUiTest < Test::Unit::TestCase
     end
 
     def test_qt
-        assert defined? Qt
-        assert defined? Qt::Application
+        assert defined? Qt5
+        assert defined? Qt5::Application
     end
 
     def test_loader_exists
@@ -34,7 +34,7 @@ class LoaderUiTest < Test::Unit::TestCase
         assert_equal String, Vizkit::PluginHelper.class_from_string(String)
         assert_equal Array, Vizkit::PluginHelper.class_from_string("Array")
         assert_equal nil, Vizkit::PluginHelper.class_from_string("Array2")
-        assert_equal Qt::Widget, Vizkit::PluginHelper.class_from_string("Qt::Widget")
+        assert_equal Qt5::Widget, Vizkit::PluginHelper.class_from_string("Qt5::Widget")
         assert_equal Types::Base::Samples::RigidBodyState, Vizkit::PluginHelper.class_from_string("Types::Base::Samples::RigidBodyState")
         assert_equal Orocos.registry.get("/base/samples/RigidBodyState"), Vizkit::PluginHelper.class_from_string("/base/samples/RigidBodyState")
         assert_equal Types::Base::Samples::RigidBodyState, Vizkit::PluginHelper.class_from_string("/base/samples/RigidBodyState_m")
@@ -95,12 +95,12 @@ class LoaderUiTest < Test::Unit::TestCase
         assert_equal "/base/samples/RigidBodyState",names.first
 
         #test normale qt widgets
-        widget = Qt::Widget.new
+        widget = Qt5::Widget.new
         names = Vizkit::PluginHelper.normalize_obj(widget)
-        assert_equal "Qt::Widget",names.first
+        assert_equal "Qt5::Widget",names.first
 
-        names = Vizkit::PluginHelper.normalize_obj("Qt::Widget")
-        assert_equal "Qt::Widget",names.first
+        names = Vizkit::PluginHelper.normalize_obj("Qt5::Widget")
+        assert_equal "Qt5::Widget",names.first
 
         #test vizkit plugins
         spec = Vizkit::PluginSpec.new("my_widget")
@@ -370,7 +370,7 @@ class LoaderUiTest < Test::Unit::TestCase
     end
 
     def test_loader_register_ruby_widget
-        spec = Vizkit::UiLoader.register_ruby_widget("object",Qt::Object.method(:new))
+        spec = Vizkit::UiLoader.register_ruby_widget("object",Qt5::Object.method(:new))
         assert(spec)
         assert_equal(spec.plugin_type,:ruby_plugin)
         assert @loader.create_plugin("object")
@@ -379,8 +379,8 @@ class LoaderUiTest < Test::Unit::TestCase
         assert !@loader.widget?("object")
 
         #test name spaces
-        spec = Vizkit::UiLoader.register_ruby_widget("vizkit::object1",Qt::Object.method(:new))
-        spec = Vizkit::UiLoader.register_ruby_widget("envire.object2",Qt::Object.method(:new))
+        spec = Vizkit::UiLoader.register_ruby_widget("vizkit::object1",Qt5::Object.method(:new))
+        spec = Vizkit::UiLoader.register_ruby_widget("envire.object2",Qt5::Object.method(:new))
         assert(spec)
         assert @loader.vizkit.object1
         assert @loader.envire.object2
@@ -437,12 +437,12 @@ class LoaderUiTest < Test::Unit::TestCase
 
         plugin = @loader.create_plugin_for(Fixnum,:display)
         assert plugin
-        assert plugin.is_a? Qt::Widget
-        assert @loader.create_plugin_for(123,:display).is_a? Qt::Widget
+        assert plugin.is_a? Qt5::Widget
+        assert @loader.create_plugin_for(123,:display).is_a? Qt5::Widget
 
         plugin = @loader.create_plugin_for(String,:display)
         assert plugin
-        assert plugin.is_a? Qt::Widget
+        assert plugin.is_a? Qt5::Widget
 
         #test multi value registration 
         specs = Vizkit::UiLoader.register_plugin_for("QLabel",["String","Array","Hash"],:display) do 
@@ -451,7 +451,7 @@ class LoaderUiTest < Test::Unit::TestCase
         assert_equal specs.size,3
         plugin = @loader.create_plugin_for(Hash,:display)
         assert plugin
-        assert plugin.is_a? Qt::Label
+        assert plugin.is_a? Qt5::Label
         callback = plugin.plugin_spec.find_callback!(:argument => "Hash",:callback_type => :display)
         assert callback
         assert_equal 888,callback.call
@@ -468,19 +468,19 @@ class LoaderUiTest < Test::Unit::TestCase
 
         widget = @loader.create_plugin_for(Fixnum,:display)
         assert widget
-        assert widget.is_a? Qt::Widget
-        assert @loader.create_plugin_for(123,:display).is_a? Qt::Widget
+        assert widget.is_a? Qt5::Widget
+        assert @loader.create_plugin_for(123,:display).is_a? Qt5::Widget
 
         widget = @loader.create_plugin_for(String,:display)
         assert widget
-        assert widget.is_a? Qt::Widget
+        assert widget.is_a? Qt5::Widget
     end
 
     def test_loader_load_ui
         widget = @loader.load File.join(File.dirname(__FILE__),"test.ui")
         assert widget
         assert widget.textEdit
-        assert_equal widget.textEdit.class_name, "Qt::TextEdit"
+        assert_equal widget.textEdit.class_name, "Qt5::TextEdit"
 
         assert widget.plot2d
         assert_equal widget.plot2d.class_name, "Plot2d"
@@ -530,13 +530,13 @@ class LoaderUiTest < Test::Unit::TestCase
 
         #compatibility check
         widget = @loader.create_widget("QWidget",nil,true,true)
-        assert_equal widget.class_name, "Qt::Widget"
+        assert_equal widget.class_name, "Qt5::Widget"
 
         widget = @loader.create_widget("QWidget")
         assert_equal widget.class_name, "QWidget"
 
         widget = @loader.QLabel
-        assert_equal widget.class_name, "Qt::Label"
+        assert_equal widget.class_name, "Qt5::Label"
 
         #throw error message
         assert_raise NoMethodError do 

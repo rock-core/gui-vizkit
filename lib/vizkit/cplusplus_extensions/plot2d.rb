@@ -17,7 +17,7 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "Plot2d" do
         options[:pre_yaxis_window] = 5
         options[:max_points] = 50000
 	
-        options[:colors] = [Qt::red, Qt::green, Qt::blue, Qt::cyan, Qt::magenta, Qt::yellow, Qt::gray]
+        options[:colors] = [Qt5::red, Qt5::green, Qt5::blue, Qt5::cyan, Qt5::magenta, Qt5::yellow, Qt5::gray]
         options[:reuse] = true
         options[:use_y_axis2] = false
         options[:plot_style] = :Line  #:Dot
@@ -57,7 +57,7 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "Plot2d" do
         @options = default_options
         @graphs = Hash.new
         @time = nil 
-        @timer = Qt::Timer.new
+        @timer = Qt5::Timer.new
         @needs_update = false
         @timer.connect(SIGNAL"timeout()") do 
             replot if @needs_update
@@ -72,43 +72,43 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "Plot2d" do
         
         
         self.connect(SIGNAL('mousePressOnPlotArea(QMouseEvent*)')) do |event|
-            if event.button() == Qt::RightButton 
+            if event.button() == Qt5::RightButton
                 #show pop up menue 
-                menu = Qt::Menu.new(self)
-                action_scrolling = Qt::Action.new("AutoScrolling", self)
+                menu = Qt5::Menu.new(self)
+                action_scrolling = Qt5::Action.new("AutoScrolling", self)
                 action_scrolling.checkable = true
                 action_scrolling.checked = @options[:auto_scrolling]
                 menu.add_action(action_scrolling)
-                action_clear = Qt::Action.new("Clear", self)
+                action_clear = Qt5::Action.new("Clear", self)
                 menu.add_action(action_clear)
                 if @options[:multi_use_menu]
-                    action_reuse = Qt::Action.new("Reuse Widget", self)
+                    action_reuse = Qt5::Action.new("Reuse Widget", self)
                     action_reuse.checkable = true
                     action_reuse.checked = @options[:reuse]
                     menu.add_action(action_reuse)
-                    action_use_y2 = Qt::Action.new("Use 2. Y-Axis", self)
+                    action_use_y2 = Qt5::Action.new("Use 2. Y-Axis", self)
                     action_use_y2.checkable = true
                     action_use_y2.checked = @options[:use_y_axis2]
                     menu.add_action(action_use_y2)
-                    action_plotdot = Qt::Action.new("'dot' style", self)
+                    action_plotdot = Qt5::Action.new("'dot' style", self)
                     action_plotdot.checkable = true
                     action_plotdot.checked = @options[:plot_style] == :Dot
                     menu.add_action(action_plotdot)
-                    action_plotline = Qt::Action.new("'line' style", self)
+                    action_plotline = Qt5::Action.new("'line' style", self)
                     action_plotline.checkable = true
                     action_plotline.checked = @options[:plot_style] == :Line
                     menu.add_action(action_plotline)
                 end
                 menu.addSeparator
-                action_saving = Qt::Action.new("Save to File", self)
+                action_saving = Qt5::Action.new("Save to File", self)
                 menu.add_action(action_saving)
                 if @options[:is_time_plot]
                     menu.addSeparator
-                    action_timestamp = Qt::Action.new("Show timestamps", self)
+                    action_timestamp = Qt5::Action.new("Show timestamps", self)
                     action_timestamp.checkable = true
                     action_timestamp.checked = @options[:plot_timestamps]
                     menu.add_action(action_timestamp)
-                    action_sample_period = Qt::Action.new("Show sample period", self)
+                    action_sample_period = Qt5::Action.new("Show sample period", self)
                     action_sample_period.checkable = true
                     action_sample_period.checked = !@options[:plot_timestamps]
                     menu.add_action(action_sample_period)
@@ -134,7 +134,7 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "Plot2d" do
                 elsif(action == action_plotline)
                     plot_style(:Line)
                 elsif action == action_saving
-                    file_path = Qt::FileDialog::getSaveFileName(nil,"Save Plot to Pdf",File.expand_path("."),"Pdf (*.pdf)")
+                    file_path = Qt5::FileDialog::getSaveFileName(nil,"Save Plot to Pdf",File.expand_path("."),"Pdf (*.pdf)")
                     savePdf(file_path,false,0,0) if file_path
                 elsif ((action == action_timestamp) || (action == action_sample_period))
                     @options[:plot_timestamps] =! @options[:plot_timestamps]
@@ -144,10 +144,10 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "Plot2d" do
         
         
         self.connect(SIGNAL('mousePressOnLegendItem(QMouseEvent*, QVariant)')) do |event, itemIdx|
-            if event.button() == Qt::RightButton 
+            if event.button() == Qt5::RightButton
                 #show pop up menue 
-                menu = Qt::Menu.new(self)
-                action_remove = Qt::Action.new("remove graph", self)
+                menu = Qt5::Menu.new(self)
+                action_remove = Qt5::Action.new("remove graph", self)
                 menu.add_action(action_remove)
                 
                 action = menu.exec(mapToGlobal(event.pos))
@@ -181,11 +181,11 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "Plot2d" do
 
     def graph_style(graph,style)
         if style == :Dot
-            graph.setLineStyle(Qt::CPGraph::LSNone)
-            graph.setScatterStyle(Qt::CPGraph::SSDot)
+            graph.setLineStyle(Qt5::CPGraph::LSNone)
+            graph.setScatterStyle(Qt5::CPGraph::SSDot)
         else
-            graph.setLineStyle(Qt::CPGraph::LSLine)
-            graph.setScatterStyle(Qt::CPGraph::SSNone)
+            graph.setLineStyle(Qt5::CPGraph::LSLine)
+            graph.setScatterStyle(Qt5::CPGraph::SSNone)
         end
         @needs_update = true
     end
@@ -241,7 +241,7 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "Plot2d" do
             graph.addToLegend
             
             if color = @options[:colors][@color_next_idx]
-                graph.setPen(Qt::Pen.new(Qt::Brush.new(color),1))
+                graph.setPen(Qt5::Pen.new(Qt5::Brush.new(color),1))
             end
             
             @color_next_idx = (@color_next_idx + 1) % @options[:colors].count            

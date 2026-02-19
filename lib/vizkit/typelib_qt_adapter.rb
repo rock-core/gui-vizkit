@@ -29,14 +29,14 @@ module Vizkit
             meta_object = qt_object.metaObject
             meta_object.method_count.times do |i|
                 meta_method = meta_object.method(i)
-                name = meta_method.signature.gsub(/\(.*/, '')
+                name = meta_method.methodSignature.to_s.gsub(/\(.*/, '')
                 return_type = meta_method.type_name
                 return_type = nil if return_type.empty?
 
                 method_info[name] ||= Array.new
                 method_info[name] << MethodInfo.new(
                     name,
-                    meta_method.signature,
+                    meta_method.methodSignature,
                     return_type,
                     meta_method.parameter_types,
                     meta_method.methodType)
@@ -49,7 +49,7 @@ module Vizkit
 	def get_adapter(qt_object)
 	    adapter = ::TypelibQtAdapter.new()
 
-	    fetcher = $qApp.findChild(Qt::Object, "QObjectFetcherInstanceName")
+	    fetcher = $qApp.findChild(Qt5::Object, "QObjectFetcherInstanceName")
 	    fetcher.setObject(qt_object)
 	    adapter.getQtObject()
 	    
@@ -193,7 +193,7 @@ module Vizkit
                 return_type
             else
                 # check if any parameter is a typelib object because this would cause a segfault if 
-                # the superclass is a Qt::Object
+                # the superclass is a Qt5::Object
                 if args.any? { |arg| arg.is_a? Typelib::Type}
                     Kernel.raise NoMethodError.new "undefined method '#{m}' for #{self}"
                 else

@@ -74,7 +74,7 @@ end
 
 remaining = parser.parse(ARGV)
 if remaining.empty? 
-    remaining  = Qt::FileDialog::getOpenFileNames(nil,"Replay Log Files",File.expand_path("."),"Log Files (*.log)")
+    remaining  = Qt5::FileDialog::getOpenFileNames(nil,"Replay Log Files",File.expand_path("."),"Log Files (*.log)")
     if remaining.empty?
         puts parser
         exit(1)

@@ -1,6 +1,6 @@
 #!usr/bin/env ruby
 
-module Qt
+module Qt5
     class Application
         def self.new(*args)
             if $qApp
@@ -34,7 +34,7 @@ module Vizkit
         old_lang = ENV['LC_ALL']
         ENV['LC_ALL'] = 'C'
         if !$qApp
-            Qt::Application.new(ARGV)
+            Qt5::Application.new(ARGV)
         end
         ENV['LC_ALL'] = old_lang
     end
@@ -68,7 +68,7 @@ module Vizkit
         else
             value.connect_to widget,options ,&block
         end
-        widget.show if widget.is_a? Qt::Widget #respond_to is not working because qt is using method_missing
+        widget.show if widget.is_a? Qt5::Widget #respond_to is not working because qt is using method_missing
         widget
     end
 
@@ -120,11 +120,11 @@ module Vizkit
         widget
     end
 
-    class ShortCutFilter < Qt::Object
+    class ShortCutFilter < Qt5::Object
         def eventFilter(obj,event)
-            if event.is_a?(Qt::KeyEvent)
+            if event.is_a?(Qt5::KeyEvent)
                 #if someone is pressing ctrl i show a debug window
-                if event.key == 73 && event.modifiers == Qt::ControlModifier
+                if event.key == 73 && event.modifiers == Qt5::ControlModifier
                     @vizkit_info_viewer ||= Vizkit.default_loader.VizkitInfoViewer
                     @vizkit_info_viewer.show
                 end
@@ -137,7 +137,7 @@ module Vizkit
         obj = ShortCutFilter.new
         $qApp.installEventFilter(obj)
 
-        timer = Qt::Timer.new
+        timer = Qt5::Timer.new
         timer.connect SIGNAL("timeout()") do
             Orocos::Async.step
         end

@@ -2,13 +2,13 @@
 
 begin
 require 'thread'
-require 'Qt4'
+require 'Qt5'
 require  File.join(File.dirname(__FILE__),'qt_bugfix')
-require 'qtuitools'
+require 'qtuitools5'
 rescue Exception => e
     #no logger is available at this point so create one 
     log = Logger.new(STDOUT)
-    log.error "!!! Cannot load Qt4 ruby bindings !!!"
+    log.error "!!! Cannot load Qt5 ruby bindings !!!"
     raise e
 end
 require 'delegate'
@@ -17,7 +17,7 @@ require 'rexml/xpath'
 
 module Vizkit
     #because of the shadowed method load we have to use DelegateClass
-    class UiLoader < DelegateClass(Qt::UiLoader)
+    class UiLoader < DelegateClass(Qt5::UiLoader)
         include PluginAccessorCommon
         attr_accessor :plugin_specs
 
@@ -89,7 +89,7 @@ module Vizkit
             #this is needed because the qt loader does not set it right
             #after the widget was loaded
             def redefine_widget_class_name(widget,class_name)
-                if class_name && (widget.class_name == "Qt::Widget" || widget.class_name == "Qt::MainWindow")
+                if class_name && (widget.class_name == "Qt5::Widget" || widget.class_name == "Qt5::MainWindow")
                     widget.instance_variable_set(:@real_class_name,class_name)
                     def widget.class_name;@real_class_name;end
                     def widget.className;@real_class_name;end
@@ -106,7 +106,7 @@ module Vizkit
         end
         
         def initialize(parent = nil)
-            super(Qt::UiLoader.new(parent))
+            super(Qt5::UiLoader.new(parent))
             # This should NOT be here. If that is required, then one that wants
             # to use Vizkit should be required to load/initialize it FIRST
             #
@@ -258,12 +258,12 @@ module Vizkit
 
         #creates a widget and all its children from an ui file
         def load(ui_file,parent=nil)
-            if parent and not parent.is_a? Qt::Widget
+            if parent and not parent.is_a? Qt5::Widget
                 Kernel.raise("You can only set a QWidget as parent. You tried: #{parent}")
             end
             
-            file = Qt::File.new(ui_file)
-            file.open(Qt::File::ReadOnly)
+            file = Qt5::File.new(ui_file)
+            file.open(Qt5::File::ReadOnly)
 
             form = nil
             Dir.chdir File.dirname(ui_file) do 
@@ -313,7 +313,7 @@ module Vizkit
             #objectNames are unique for widgets if the ui file was 
             #generated with the qt designer therefore we can put them to the toplevel
             #warning: ruby objects have the wrong parent
-            children = widget.findChildren(Qt::Object)
+            children = widget.findChildren(Qt5::Object)
             children.each do |child|
                 if child.objectName && child.objectName.size > 0
                     extend_widgets child, mapping,false
@@ -339,7 +339,7 @@ module Vizkit
                 end
             end
             plugin = spec.create_plugin(parent)
-            plugin.setObjectName class_name if plugin.is_a?(Qt::Object) && !plugin.objectName
+            plugin.setObjectName class_name if plugin.is_a?(Qt5::Object) && !plugin.objectName
             plugin
         end
 

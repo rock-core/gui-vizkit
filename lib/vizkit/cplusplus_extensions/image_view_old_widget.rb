@@ -43,12 +43,12 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "ImageViewOld" do
       @options ||= default_options
       openGL(@options[:openGL])
       @time_overlay_object = addText(-150,-5,0,"")
-      @time_overlay_object.setColor(Qt::Color.new(255,255,0))
+      @time_overlay_object.setColor(Qt5::Color.new(255,255,0))
       @time_overlay_object.setPosFactor(1,1);
-      @time_overlay_object.setBackgroundColor(Qt::Color.new(0,0,0,40))
+      @time_overlay_object.setBackgroundColor(Qt5::Color.new(0,0,0,40))
       @fps_overlay_object = addText(5,-5,0,"   ")
-      @fps_overlay_object.setColor(Qt::Color.new(255,255,0))
-      @fps_overlay_object.setBackgroundColor(Qt::Color.new(0,0,0,40))
+      @fps_overlay_object.setColor(Qt5::Color.new(255,255,0))
+      @fps_overlay_object.setBackgroundColor(Qt5::Color.new(0,0,0,40))
       @fps_overlay_object.setPosFactor(0,1);
       @folder_path ||= nil
       @isMinimized = false

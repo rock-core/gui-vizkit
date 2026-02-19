@@ -13,7 +13,7 @@ class RigidBodyStateEditor
         def init
             @edited_sample = Types.base.samples.RigidBodyState.new
             @callback_fct = nil
-            @timer = Qt::Timer.new
+            @timer = Qt5::Timer.new
             start_value.connect(SIGNAL('clicked()')) do
                 begin
                     sample = generate_sample(edited_sample)

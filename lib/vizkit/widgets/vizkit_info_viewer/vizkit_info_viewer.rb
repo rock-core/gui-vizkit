@@ -51,26 +51,26 @@ class VizkitInfoViewer
             # Start them again to re-add them to the event loop.
             @cancelled_timers = []
 
-            update_timer = Qt::Timer.new
+            update_timer = Qt5::Timer.new
             update_timer.connect(SIGNAL('timeout()')) do
                 update
             end
             
             # Actions on tasks
-            @action_stop_task = Qt::Action.new("Stop", self)
+            @action_stop_task = Qt5::Action.new("Stop", self)
             
             # Actions on event timers
-            @action_cancel_timer = Qt::Action.new("Cancel", self)
-            @action_start_timer = Qt::Action.new("Start", self)
-            @action_delete_timer = Qt::Action.new("Delete", self)
+            @action_cancel_timer = Qt5::Action.new("Cancel", self)
+            @action_start_timer = Qt5::Action.new("Start", self)
+            @action_delete_timer = Qt5::Action.new("Delete", self)
             
             # Context menus
-            task_menu = Qt::Menu.new(self)
-            treeWidget.set_context_menu_policy(Qt::CustomContextMenu)
+            task_menu = Qt5::Menu.new(self)
+            treeWidget.set_context_menu_policy(Qt5::CustomContextMenu)
             task_menu.add_action(@action_stop_task)
             
-            event_timer_menu = Qt::Menu.new(self)
-            event_tree.set_context_menu_policy(Qt::CustomContextMenu)
+            event_timer_menu = Qt5::Menu.new(self)
+            event_tree.set_context_menu_policy(Qt5::CustomContextMenu)
             event_timer_menu.add_action(@action_cancel_timer)
             event_timer_menu.add_action(@action_start_timer)
             event_timer_menu.add_action(@action_delete_timer)
@@ -79,13 +79,13 @@ class VizkitInfoViewer
             task_column_headers = ["Task", "Time elapsed", "State"]
             treeWidget.set_column_count(task_column_headers.size)
             treeWidget.set_header_labels(task_column_headers)
-            treeWidget.set_edit_triggers(Qt::AbstractItemView::NoEditTriggers)
+            treeWidget.set_edit_triggers(Qt5::AbstractItemView::NoEditTriggers)
 
-            @active_task_item = Qt::TreeWidgetItem.new
+            @active_task_item = Qt5::TreeWidgetItem.new
             @active_task_item.set_text(0, "Active tasks")
             treeWidget.add_top_level_item(@active_task_item)
 
-            @waiting_task_item = Qt::TreeWidgetItem.new
+            @waiting_task_item = Qt5::TreeWidgetItem.new
             @waiting_task_item.set_text(0, "Waiting tasks")
             treeWidget.add_top_level_item(@waiting_task_item)
             
@@ -95,7 +95,7 @@ class VizkitInfoViewer
             event_column_headers = ["Timer","Period","State"]
             event_tree.set_column_count(event_column_headers.size)
             event_tree.set_header_labels(event_column_headers)
-            event_tree.set_edit_triggers(Qt::AbstractItemView::NoEditTriggers)
+            event_tree.set_edit_triggers(Qt5::AbstractItemView::NoEditTriggers)
             
             event_tree.connect(SIGNAL('itemDoubleClicked(QTreeWidgetItem*, int)')) do |item, col|
                 if column_editable?(col)
@@ -317,22 +317,22 @@ class VizkitInfoViewer
         # Packs needed task information into an item for the tree.
         def task_data_item(task)
             Kernel.raise "Not a task type: #{task}" if not task.is_a? Utilrb::ThreadPool::Task
-            item = Qt::TreeWidgetItem.new
-            item.set_flags(item.flags.to_i | Qt::ItemIsEditable.to_i)
+            item = Qt5::TreeWidgetItem.new
+            item.set_flags(item.flags.to_i | Qt5::ItemIsEditable.to_i)
             update_task_item(item, task)
             # Store timer object representation at item for 'direct access' from context menu
-            item.set_data(TIMER_DATA_COLUMN, Qt::UserRole, Qt::Variant.from_ruby(task))
+            item.set_data(TIMER_DATA_COLUMN, Qt5::UserRole, Qt5::Variant.from_ruby(task))
             item
         end
         
         # Packs needed event timer information into an item for the tree.
         def event_timer_data_item(timer, cancelled = false)
             Kernel.raise "Not a timer type: #{timer}" if not timer.is_a? Utilrb::EventLoop::Timer
-            item = Qt::TreeWidgetItem.new
-            item.set_flags(item.flags.to_i | Qt::ItemIsEditable.to_i)
+            item = Qt5::TreeWidgetItem.new
+            item.set_flags(item.flags.to_i | Qt5::ItemIsEditable.to_i)
             update_timer_item(item, timer, cancelled)
             # Store timer object representation at item for 'direct access' from context menu
-            item.set_data(TIMER_DATA_COLUMN, Qt::UserRole, Qt::Variant.from_ruby(timer))
+            item.set_data(TIMER_DATA_COLUMN, Qt5::UserRole, Qt5::Variant.from_ruby(timer))
             item
         end
 
@@ -385,7 +385,7 @@ class VizkitInfoViewer
         end
         
         def item_data(item)
-            return item.data(TIMER_DATA_COLUMN, Qt::UserRole)
+            return item.data(TIMER_DATA_COLUMN, Qt5::UserRole)
         end
         
         def last_char(str)

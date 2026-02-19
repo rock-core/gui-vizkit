@@ -1,4 +1,4 @@
-class TestWidget123 < Qt::Widget
+class TestWidget123 < Qt5::Widget
     def initialize(parent=nil)
         super
     end

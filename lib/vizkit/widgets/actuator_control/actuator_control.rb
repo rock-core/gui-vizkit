@@ -29,7 +29,7 @@ class ActuatorControl
       			@writer = task_context.actuator_command.writer 
 
 			# Timer for sending command to Motor
-			@send_timer = Qt::Timer.new(self)
+			@send_timer = Qt5::Timer.new(self)
 			@send_timer.connect(SIGNAL(:timeout),self,:send_GuiValue)
     		end
 

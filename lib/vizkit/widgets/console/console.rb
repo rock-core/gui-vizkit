@@ -41,7 +41,7 @@ module Vizkit
         alias :exit :close
     end
 
-    class Console < Qt::TextEdit
+    class Console < Qt5::TextEdit
         #used to flag QTextBlocks
         if !defined? COMMAND_TYPE
             COMMAND_TYPE = 1
@@ -55,12 +55,12 @@ module Vizkit
         def self.colors 
             if !@colors
                 @colors = Hash.new 
-                @colors[:black] = Qt::Color.new(0,0,0)
-                @colors[:gray] = Qt::Color.new(120,120,120)
-                @colors[:red] = Qt::Color.new(255,0,0)
-                @colors[:blue] = Qt::Color.new(0,0,255)
-                @colors[31] = Qt::Color.new(255,0,0)
-                @colors[35] = Qt::Color.new(0,255,0)
+                @colors[:black] = Qt5::Color.new(0,0,0)
+                @colors[:gray] = Qt5::Color.new(120,120,120)
+                @colors[:red] = Qt5::Color.new(255,0,0)
+                @colors[:blue] = Qt5::Color.new(0,0,255)
+                @colors[31] = Qt5::Color.new(255,0,0)
+                @colors[35] = Qt5::Color.new(0,255,0)
             end
             @colors
         end
@@ -74,10 +74,10 @@ module Vizkit
             @console_binding = @console_context.instance_eval("binding")
             @colors = Console.colors
             @cursor = "> "
-            @font = Qt::Font.new("Monospace",10)
+            @font = Qt5::Font.new("Monospace",10)
             setCursorWidth(10)
             setAcceptRichText(false)
-            setContextMenuPolicy Qt::NoContextMenu
+            setContextMenuPolicy Qt5::NoContextMenu
             append @console_context.help,:gray,Console::RESULT_TYPE
             new_command
             deselect
@@ -139,7 +139,7 @@ module Vizkit
         def insert_text(text,color=:blue)
             deselect
             cursor = textCursor
-            cursor.select(Qt::TextCursor::LineUnderCursor)
+            cursor.select(Qt5::TextCursor::LineUnderCursor)
             old_text = cursor.selectedText
             cursor.removeSelectedText
             append text,color,Console::TEXT_TYPE
@@ -155,7 +155,7 @@ module Vizkit
                 if $1
                     append(val,$1.to_i,type)
                 else
-                    color = if color.is_a?(Qt::Color)
+                    color = if color.is_a?(Qt5::Color)
                                 color
                             elsif color && @colors.has_key?(color)
                                 @colors[color]
@@ -213,14 +213,14 @@ module Vizkit
         def deselect
             #we have to set the cursor otherwise there will be no effect
             cursor = textCursor
-            cursor.movePosition(Qt::TextCursor::End,Qt::TextCursor::MoveAnchor)
+            cursor.movePosition(Qt5::TextCursor::End,Qt5::TextCursor::MoveAnchor)
             setTextCursor(cursor)
             ensureCursorVisible
         end
 
         def replace_current_command(val)
             cursor = textCursor
-            cursor.select(Qt::TextCursor::LineUnderCursor)
+            cursor.select(Qt5::TextCursor::LineUnderCursor)
             cursor.removeSelectedText
             cursor.insertText(@cursor+val)
             ensureCursorVisible
@@ -239,7 +239,7 @@ module Vizkit
         end
 
         def mouseReleaseEvent(event) 
-            if event.button == Qt::MidButton
+            if event.button == Qt5::MidButton
                 if textCursor.hasSelection
                     copy
                 end
@@ -252,7 +252,7 @@ module Vizkit
 
         def keyPressEvent(event)
             #block paste outside the last line
-            if event.modifiers == Qt::ControlModifier
+            if event.modifiers == Qt5::ControlModifier
                 case event.key
                 when 86  # ctrl-v
                     deselect
@@ -269,8 +269,8 @@ module Vizkit
                 else
                     if textCursor.blockNumber > 0
                         cursor = textCursor
-                        cursor.movePosition(Qt::TextCursor::Up,Qt::TextCursor::MoveAnchor)
-                        cursor.movePosition(Qt::TextCursor::EndOfLine,Qt::TextCursor::MoveAnchor)
+                        cursor.movePosition(Qt5::TextCursor::Up,Qt5::TextCursor::MoveAnchor)
+                        cursor.movePosition(Qt5::TextCursor::EndOfLine,Qt5::TextCursor::MoveAnchor)
                         setTextCursor(cursor)
                     end
                 end
@@ -280,9 +280,9 @@ module Vizkit
                 else
                     if textCursor.blockNumber < document.blockCount-1
                         cursor = textCursor
-                        cursor.movePosition(Qt::TextCursor::Down,Qt::TextCursor::MoveAnchor)
-                        cursor.movePosition(Qt::TextCursor::StartOfLine,Qt::TextCursor::MoveAnchor)
-                        cursor.movePosition(Qt::TextCursor::NextCharacter,Qt::TextCursor::MoveAnchor,@cursor.size)
+                        cursor.movePosition(Qt5::TextCursor::Down,Qt5::TextCursor::MoveAnchor)
+                        cursor.movePosition(Qt5::TextCursor::StartOfLine,Qt5::TextCursor::MoveAnchor)
+                        cursor.movePosition(Qt5::TextCursor::NextCharacter,Qt5::TextCursor::MoveAnchor,@cursor.size)
                         setTextCursor(cursor)
                     else
                         super
@@ -311,8 +311,8 @@ module Vizkit
                 end
             when 16777232 
                 cursor = textCursor
-                cursor.movePosition(Qt::TextCursor::StartOfLine,Qt::TextCursor::MoveAnchor)
-                cursor.movePosition(Qt::TextCursor::NextCharacter,Qt::TextCursor::MoveAnchor,@cursor.size)
+                cursor.movePosition(Qt5::TextCursor::StartOfLine,Qt5::TextCursor::MoveAnchor)
+                cursor.movePosition(Qt5::TextCursor::NextCharacter,Qt5::TextCursor::MoveAnchor,@cursor.size)
                 setTextCursor(cursor)
                 ensureCursorVisible
             when 16777233

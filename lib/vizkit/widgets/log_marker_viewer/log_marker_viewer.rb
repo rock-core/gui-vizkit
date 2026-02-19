@@ -1,9 +1,9 @@
 # Main Window setting up the ui
-class LogMarkerViewer < Qt::Widget 
+class LogMarkerViewer < Qt5::Widget
   def initialize(parent = nil)
     super
     @logger = nil
-    @layout = Qt::GridLayout.new
+    @layout = Qt5::GridLayout.new
     @widget = Vizkit.load File.join(File.dirname(__FILE__),'log_marker_viewer.ui'), self
     @layout.addWidget(@widget,0,0)
     @current_index = -1;

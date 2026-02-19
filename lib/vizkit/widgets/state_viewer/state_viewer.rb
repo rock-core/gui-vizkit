@@ -1,10 +1,10 @@
 #!/usr/bin/env ruby
 
-class StateViewer < Qt::Widget
+class StateViewer < Qt5::Widget
     def initialize(parent=nil)
         super
         #add layout to the widget
-        @layout = Qt::GridLayout.new(self)
+        @layout = Qt5::GridLayout.new(self)
         @layout.spacing = 0
 
         @hash_labels = Hash.new
@@ -13,14 +13,14 @@ class StateViewer < Qt::Widget
         @row = 0
         @col = 0
 
-        @red = Qt::Palette.new
-        @green = Qt::Palette.new
-        @blue = Qt::Palette.new
-        @red.setColor(Qt::Palette::Window,Qt::Color.new(0xFF,0x44,0x44))
-        @green.setColor(Qt::Palette::Window,Qt::Color.new(0x99,0xCC,0x00))
-        @blue.setColor(Qt::Palette::Window,Qt::Color.new(0x33,0xB5,0xE5))
+        @red = Qt5::Palette.new
+        @green = Qt5::Palette.new
+        @blue = Qt5::Palette.new
+        @red.setColor(Qt5::Palette::Window,Qt5::Color.new(0xFF,0x44,0x44))
+        @green.setColor(Qt5::Palette::Window,Qt5::Color.new(0x99,0xCC,0x00))
+        @blue.setColor(Qt5::Palette::Window,Qt5::Color.new(0x33,0xB5,0xE5))
 
-        self.set_size_policy(Qt::SizePolicy::Preferred, Qt::SizePolicy::Minimum)
+        self.set_size_policy(Qt5::SizePolicy::Preferred, Qt5::SizePolicy::Minimum)
     end
 
     def reachable_color; @blue end
@@ -63,7 +63,7 @@ class StateViewer < Qt::Widget
     end
 
     def self.create_state_label(task_name, task_inspector)
-        label = Qt::Label.new 
+        label = Qt5::Label.new
         label.margin = 5
         singleton_class = (class << label; self end)
         singleton_class.class_eval do
@@ -152,7 +152,7 @@ class StateViewer < Qt::Widget
     #
     # @param [#to_str] task_name the task name
     #
-    # @return [Qt::Label]
+    # @return [Qt5::Label]
     def label_for(task_name)
         if !(label = @hash_labels[task_name])
             label = self.class.create_state_label(task_name, task_inspector)
@@ -167,7 +167,7 @@ class StateViewer < Qt::Widget
     # @param [#to_s] data the label that should be displayed after the task
     #   name, usually the state name
     # @param [#to_str] task_name the name of the task that should be displayed
-    # @param [Qt::Palette,nil] color the label's color. If nil, it is left
+    # @param [Qt5::Palette,nil] color the label's color. If nil, it is left
     #   unchanged
     def update(data, task_name, color = unreachable_color)
         label = label_for(task_name)

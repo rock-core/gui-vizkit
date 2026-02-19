@@ -4,10 +4,10 @@ require 'orocos/uri'
 require 'vizkit/context_menu'
 
 module Vizkit
-    class VizkitItem < Qt::StandardItem
-        NormalBrush = Qt::Brush.new(Qt::black)
-        ModifiedBrush = Qt::Brush.new(Qt::red)
-        ErrorBrush = Qt::Brush.new(Qt::red)
+    class VizkitItem < Qt5::StandardItem
+        NormalBrush = Qt5::Brush.new(Qt5::black)
+        ModifiedBrush = Qt5::Brush.new(Qt5::red)
+        ErrorBrush = Qt5::Brush.new(Qt5::red)
 
         attr_reader :modified
         attr_reader :options
@@ -170,19 +170,19 @@ module Vizkit
                       end
         end
 
-        def data(role = Qt::UserRole+1)
+        def data(role = Qt5::UserRole+1)
             # workaround memeroy leak qt-ruby
-            # the returned Qt::Variant is never be deleted
+            # the returned Qt5::Variant is never be deleted
             @last_data.dispose if @last_data
-            @last_data = if role == Qt::DisplayRole || role == Qt::EditRole
-                             Qt::Variant.new @getter.call
+            @last_data = if role == Qt5::DisplayRole || role == Qt5::EditRole
+                             Qt5::Variant.new @getter.call
                          else
                              super
                          end
         end
 
-        def setData(data,role = Qt::UserRole+1)
-            if role == Qt::EditRole && !data.isNull && @setter
+        def setData(data,role = Qt5::UserRole+1)
+            if role == Qt5::EditRole && !data.isNull && @setter
                 @setter.call(from_variant(data,@getter.call.class))
             else
                 super
@@ -228,8 +228,8 @@ module Vizkit
             nil
         end
 
-        def setData(data,role = Qt::UserRole+1)
-            return super if role != Qt::EditRole || data.isNull
+        def setData(data,role = Qt5::UserRole+1)
+            return super if role != Qt5::EditRole || data.isNull
             item_val = @typelib_val.to_ruby
             val = from_variant data, item_val
             return false if val.nil?
@@ -246,11 +246,11 @@ module Vizkit
             @truncated
         end
 
-        def data(role = Qt::UserRole+1)
+        def data(role = Qt5::UserRole+1)
             # workaround memeroy leak qt-ruby
-            # the returned Qt::Variant is never be deleted
+            # the returned Qt5::Variant is never be deleted
             @last_data.dispose if @last_data
-            @last_data = if role == Qt::DisplayRole
+            @last_data = if role == Qt5::DisplayRole
                              val = if @options.has_key?(:text)
                                        @options[:text]
                                    elsif !@typelib_val
@@ -277,12 +277,12 @@ module Vizkit
                                        end
                                    end
                              begin
-                                 Qt::Variant.new(val)
+                                 Qt5::Variant.new(val)
                              rescue Exception => e
                                  setEditable(false)
-                                 Qt::Variant.new(e.message)
+                                 Qt5::Variant.new(e.message)
                              end
-                         elsif role == Qt::EditRole
+                         elsif role == Qt5::EditRole
                              val = if !@direct_type
                                        nil
                                    else
@@ -291,7 +291,7 @@ module Vizkit
                                            item_val.is_a?(TrueClass) || item_val.is_a?(FalseClass)
                                            item_val
                                        elsif item_val.is_a? Time
-                                           Qt::DateTime.new(item_val)
+                                           Qt5::DateTime.new(item_val)
                                        elsif item_val.is_a? Symbol
                                            #move current value to the front
                                            arr = @typelib_val.class.keys.keys
@@ -302,7 +302,7 @@ module Vizkit
                                            item_val.to_s
                                        end
                                    end
-                             Qt::Variant.new(val)
+                             Qt5::Variant.new(val)
                          else
                              super
                          end
@@ -577,7 +577,7 @@ module Vizkit
                 if widget_name
                     widget = Vizkit.display(port_temp, :widget => widget_name)
                     set_widget_title(widget, port_temp.full_name)
-                    widget.setAttribute(Qt::WA_QuitOnClose, false) if widget.is_a? Qt::Widget
+                    widget.setAttribute(Qt5::WA_QuitOnClose, false) if widget.is_a? Qt5::Widget
                 end
             else
                 widget_name = Vizkit::ContextMenu.control_widget_for(port.type_name,parent_widget,pos)
@@ -590,7 +590,7 @@ module Vizkit
         def mime_data(items=[])
             port_temp = port_from_items items
             return 0 unless port_temp
-            val = Qt::MimeData.new
+            val = Qt5::MimeData.new
             val.setText URI::Orocos.from_port(port_temp).to_s if defined? URI::DEFAULT_PARSER
             val
         end
@@ -621,16 +621,16 @@ module Vizkit
             end
         end
 
-        def data(role = Qt::UserRole+1)
-            if role == Qt::EditRole && !direct_type?
+        def data(role = Qt5::UserRole+1)
+            if role == Qt5::EditRole && !direct_type?
                 # we have to use the one from the first row
                 # the other one has a copy which was not changed
                 i = index.sibling(row,0)
                 if i.isValid
                     # workaround memeroy leak qt-ruby
-                    # the returned Qt::Variant is never be deleted
+                    # the returned Qt5::Variant is never be deleted
                     @last_value.dispose if @last_value
-                    @last_value = Qt::Variant.from_ruby i.model.itemFromIndex(i)
+                    @last_value = Qt5::Variant.from_ruby i.model.itemFromIndex(i)
                 else
                     super
                 end
@@ -786,16 +786,16 @@ module Vizkit
         def context_menu(pos,parent_widget,items = [])
         end
 
-        def data(role = Qt::UserRole+1)
-            if role == Qt::EditRole && !direct_type?
+        def data(role = Qt5::UserRole+1)
+            if role == Qt5::EditRole && !direct_type?
                 # we have to use the one from the first row
                 # the other one has a copy which was not changed
                 i = index.sibling(row,0)
                 if i.isValid
                     # workaround memeroy leak qt-ruby
-                    # the returned Qt::Variant is never be deleted
+                    # the returned Qt5::Variant is never be deleted
                     @last_value.dispose if @last_value
-                    @last_value = Qt::Variant.from_ruby i.model.itemFromIndex(i)
+                    @last_value = Qt5::Variant.from_ruby i.model.itemFromIndex(i)
                 else
                     super
                 end
@@ -862,15 +862,15 @@ module Vizkit
         def context_menu(pos,parent_widget,items = [])
         end
 
-        def data(role = Qt::UserRole+1)
+        def data(role = Qt5::UserRole+1)
             # workaround memeroy leak qt-ruby
-            # the returned Qt::Variant is never be deleted
+            # the returned Qt5::Variant is never be deleted
             @last_value.dispose if @last_value
-            @last_value = if role == Qt::EditRole
+            @last_value = if role == Qt5::EditRole
                               i = index.sibling(row,0)
                               if i.isValid
                                   item = i.model.itemFromIndex i
-                                  Qt::Variant.from_ruby item
+                                  Qt5::Variant.from_ruby item
                               else
                                   super
                               end
@@ -1018,7 +1018,7 @@ module Vizkit
                 fct = widget.plugin_spec.find_callback!(:argument => Orocos::Log::Annotations,:callback_type => :display)
                 fct = fct.bind(widget)
                 fct.call(annotation)
-                widget.setAttribute(Qt::WA_QuitOnClose, false) if widget.is_a? Qt::Widget
+                widget.setAttribute(Qt5::WA_QuitOnClose, false) if widget.is_a? Qt5::Widget
                 widget.show
             end
         end
@@ -1204,13 +1204,13 @@ module Vizkit
 
         # Mapping from action states to colors
         STATE_COLORS = {
-            :model   => Qt::Color.new("black"),
-            :pending => Qt::Color.new("dodgerblue"),
-            :planned => Qt::Color.new("dodgerblue"),
-            :running => Qt::Color.new("limegreen"),
-            :failed  => Qt::Color.new("orangered"),
-            :successful => Qt::Color.new("silver"),
-            :finalized  => Qt::Color.new("orangered")
+            :model   => Qt5::Color.new("black"),
+            :pending => Qt5::Color.new("dodgerblue"),
+            :planned => Qt5::Color.new("dodgerblue"),
+            :running => Qt5::Color.new("limegreen"),
+            :failed  => Qt5::Color.new("orangered"),
+            :successful => Qt5::Color.new("silver"),
+            :finalized  => Qt5::Color.new("orangered")
         }
 
         def initialize(action, arguments)
@@ -1229,7 +1229,7 @@ module Vizkit
 
         # Updates the item display. Checks for state change and updates color, tooltip, etc.
         def update_view
-            set_foreground(Qt::Brush.new(STATE_COLORS[state]))
+            set_foreground(Qt5::Brush.new(STATE_COLORS[state]))
             set_tool_tip("State: #{state}")
         end
 
