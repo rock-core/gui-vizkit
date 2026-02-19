@@ -130,7 +130,7 @@ module Vizkit
         end
 
         def populate_specs(signature)
-            @specs = find_method_specs(signature,Qt::MetaMethod::Slot)
+            @specs = find_method_specs(signature,Qt5::MetaMethod::Slot)
             raise ArgumentError,"#{signature} is not a valid slot signature for widget #{@widget}" if @specs.empty?
         end
 
@@ -145,7 +145,7 @@ module Vizkit
         end
 
         def normalize_signature(signature)
-            name = Qt::MetaObject.normalizedSignature(signature).to_s
+            name = Qt5::MetaObject.normalizedSignature(signature).to_s
             name =~ /.* (.*)$/     #remove return type
                 name = $1 || name
             name =~ /(.*)const$/  #remove const
@@ -170,9 +170,9 @@ module Vizkit
                     specs
                 end
             else
-                if @widget.respond_to?(name.to_sym) && (!type || type == Qt::MetaMethod::Slot)
+                if @widget.respond_to?(name.to_sym) && (!type || type == Qt5::MetaMethod::Slot)
                     arguments = Array.new([@widget.method(name).arity,0].max,:ruby)
-                    [TypelibQtAdapter::MethodInfo.new(name,name,:ruby,arguments,Qt::MetaMethod::Slot)]
+                    [TypelibQtAdapter::MethodInfo.new(name,name,:ruby,arguments,Qt5::MetaMethod::Slot)]
                 else
                     []
                 end
@@ -275,7 +275,7 @@ module Vizkit
 
     class ConnectorSignal < ConnectorSlot
         def populate_specs(signature)
-            @specs = find_method_specs(signature,Qt::MetaMethod::Signal)
+            @specs = find_method_specs(signature,Qt5::MetaMethod::Signal)
             raise ArgumentError,"#{signature} is not a valid signal signature for widget #{@widget}" if @specs.empty?
         end
 
@@ -364,7 +364,7 @@ module Vizkit
         def write(options,*args,&block)
             raise ArgumentError,"got #{args.size} number of arguments. Ports only support one argument for writing" unless args.size == 1
             arg = args.first
-            arg = if arg.is_a?(Qt::Variant) && arg.to_ruby?
+            arg = if arg.is_a?(Qt5::Variant) && arg.to_ruby?
                       arg.to_ruby
                   else
                       arg

@@ -21,7 +21,7 @@ class ExportToYaml
         if !sample
             Vizkit.warn "Cannot export sample to YAML: There is currently no sample available!"
         else
-            @@file_path = Qt::FileDialog::getSaveFileName(nil,"Save Type to YAML",@@file_path,"YAML-File (*.yml)")
+            @@file_path = Qt5::FileDialog::getSaveFileName(nil,"Save Type to YAML",@@file_path,"YAML-File (*.yml)")
             if @@file_path
                 temp = if sample.is_a?(Typelib::Type)
                            Orocos::TaskConfigurations::typelib_to_yaml_value(sample)

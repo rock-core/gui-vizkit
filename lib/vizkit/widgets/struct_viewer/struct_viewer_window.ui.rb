@@ -17,57 +17,57 @@ class Ui_Form
         form.objectName = "form"
     end
     form.resize(400, 473)
-    @sizePolicy = Qt::SizePolicy.new(Qt::SizePolicy::Expanding, Qt::SizePolicy::Expanding)
+    @sizePolicy = Qt5::SizePolicy.new(Qt5::SizePolicy::Expanding, Qt5::SizePolicy::Expanding)
     @sizePolicy.setHorizontalStretch(1)
     @sizePolicy.setVerticalStretch(1)
     @sizePolicy.heightForWidth = form.sizePolicy.hasHeightForWidth
     form.sizePolicy = @sizePolicy
-    form.minimumSize = Qt::Size.new(400, 200)
-    form.maximumSize = Qt::Size.new(16777215, 16777215)
-    form.baseSize = Qt::Size.new(0, 0)
-    @formLayout = Qt::FormLayout.new(form)
+    form.minimumSize = Qt5::Size.new(400, 200)
+    form.maximumSize = Qt5::Size.new(16777215, 16777215)
+    form.baseSize = Qt5::Size.new(0, 0)
+    @formLayout = Qt5::FormLayout.new(form)
     @formLayout.margin = 0
     @formLayout.objectName = "formLayout"
-    @formLayout.sizeConstraint = Qt::Layout::SetNoConstraint
-    @formLayout.fieldGrowthPolicy = Qt::FormLayout::ExpandingFieldsGrow
-    @formLayout.formAlignment = Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop
+    @formLayout.sizeConstraint = Qt5::Layout::SetNoConstraint
+    @formLayout.fieldGrowthPolicy = Qt5::FormLayout::ExpandingFieldsGrow
+    @formLayout.formAlignment = Qt5::AlignLeading|Qt5::AlignLeft|Qt5::AlignTop
     @formLayout.horizontalSpacing = 0
     @formLayout.verticalSpacing = 5
-    @verticalLayout = Qt::VBoxLayout.new()
+    @verticalLayout = Qt5::VBoxLayout.new()
     @verticalLayout.objectName = "verticalLayout"
-    @verticalLayout.sizeConstraint = Qt::Layout::SetDefaultConstraint
+    @verticalLayout.sizeConstraint = Qt5::Layout::SetDefaultConstraint
 
-    @formLayout.setLayout(0, Qt::FormLayout::LabelRole, @verticalLayout)
+    @formLayout.setLayout(0, Qt5::FormLayout::LabelRole, @verticalLayout)
 
-    @treeView = Qt::TreeView.new(form)
+    @treeView = Qt5::TreeView.new(form)
     @treeView.objectName = "treeView"
     @sizePolicy.heightForWidth = @treeView.sizePolicy.hasHeightForWidth
     @treeView.sizePolicy = @sizePolicy
-    @treeView.minimumSize = Qt::Size.new(0, 0)
-    @palette = Qt::Palette.new
-    brush = Qt::Brush.new(Qt::Color.new(255, 255, 219, 255))
-    brush.style = Qt::SolidPattern
-    @palette.setBrush(Qt::Palette::Active, Qt::Palette::Base, brush)
-    brush1 = Qt::Brush.new(Qt::Color.new(255, 255, 174, 255))
-    brush1.style = Qt::SolidPattern
-    @palette.setBrush(Qt::Palette::Active, Qt::Palette::AlternateBase, brush1)
-    @palette.setBrush(Qt::Palette::Inactive, Qt::Palette::Base, brush)
-    @palette.setBrush(Qt::Palette::Inactive, Qt::Palette::AlternateBase, brush1)
-    brush2 = Qt::Brush.new(Qt::Color.new(255, 255, 255, 255))
-    brush2.style = Qt::SolidPattern
-    @palette.setBrush(Qt::Palette::Disabled, Qt::Palette::Base, brush2)
-    @palette.setBrush(Qt::Palette::Disabled, Qt::Palette::AlternateBase, brush1)
+    @treeView.minimumSize = Qt5::Size.new(0, 0)
+    @palette = Qt5::Palette.new
+    brush = Qt5::Brush.new(Qt5::Color.new(255, 255, 219, 255))
+    brush.style = Qt5::SolidPattern
+    @palette.setBrush(Qt5::Palette::Active, Qt5::Palette::Base, brush)
+    brush1 = Qt5::Brush.new(Qt5::Color.new(255, 255, 174, 255))
+    brush1.style = Qt5::SolidPattern
+    @palette.setBrush(Qt5::Palette::Active, Qt5::Palette::AlternateBase, brush1)
+    @palette.setBrush(Qt5::Palette::Inactive, Qt5::Palette::Base, brush)
+    @palette.setBrush(Qt5::Palette::Inactive, Qt5::Palette::AlternateBase, brush1)
+    brush2 = Qt5::Brush.new(Qt5::Color.new(255, 255, 255, 255))
+    brush2.style = Qt5::SolidPattern
+    @palette.setBrush(Qt5::Palette::Disabled, Qt5::Palette::Base, brush2)
+    @palette.setBrush(Qt5::Palette::Disabled, Qt5::Palette::AlternateBase, brush1)
     @treeView.palette = @palette
-    @treeView.frameShape = Qt::Frame::StyledPanel
-    @treeView.setProperty("showDropIndicator", Qt::Variant.new(false))
+    @treeView.frameShape = Qt5::Frame::StyledPanel
+    @treeView.setProperty("showDropIndicator", Qt5::Variant.new(false))
     @treeView.alternatingRowColors = true
 
-    @formLayout.setWidget(1, Qt::FormLayout::FieldRole, @treeView)
+    @formLayout.setWidget(1, Qt5::FormLayout::FieldRole, @treeView)
 
 
     retranslateUi(form)
 
-    Qt::MetaObject.connectSlotsByName(form)
+    Qt5::MetaObject.connectSlotsByName(form)
     end # setupUi
 
     def setup_ui(form)
@@ -75,7 +75,7 @@ class Ui_Form
     end
 
     def retranslateUi(form)
-    form.windowTitle = Qt::Application.translate("Form", "StructViewer", nil, Qt::Application::UnicodeUTF8)
+    form.windowTitle = Qt5::Application.translate("Form", "StructViewer", nil, Qt5::Application::UnicodeUTF8)
     end # retranslateUi
 
     def retranslate_ui(form)

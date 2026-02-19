@@ -1,5 +1,5 @@
 
-module Qt
+module Qt5
     module WidgetVizkitIntegration
         def connect_to_task(task,options = Hash.new,&block)
             task = if task.is_a? String
@@ -77,7 +77,7 @@ module Orocos
             if widget.respond_to?(:connection_manager)
                 widget.connection_manager.connect_to(self,callback,options,&block)
             else
-                raise ArgumentError,"Cannot connect port #{full_name} to #{obj}. No connection manager found!" if obj.is_a?(Qt::Object)
+                raise ArgumentError,"Cannot connect port #{full_name} to #{obj}. No connection manager found!" if obj.is_a?(Qt5::Object)
                 # use global connection manager
                 Vizkit.connection_manager.connect_to(self,callback,options,&block)
             end

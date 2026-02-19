@@ -19,11 +19,11 @@ class TaskInspector
         #populate widget menu
         Vizkit.default_loader.plugin_specs.keys.sort.each do |name|
             # do not add qt base widgets
-            next if name[0] == "Q" && Qt.const_defined?(name[1..-1])
+            next if name[0] == "Q" && Qt5.const_defined?(name[1..-1])
             action = form.menuWidgets.addAction(name)
             action.connect SIGNAL("triggered()") do
                 w = Vizkit.default_loader.create_plugin name
-                w.show if w.respond_to?(:show) || w.kind_of?(Qt::Widget)
+                w.show if w.respond_to?(:show) || w.kind_of?(Qt5::Widget)
             end
         end
 
@@ -54,10 +54,10 @@ class TaskInspector
             @proxyModel.setDynamicSortFilter(true)
             @proxyModel.setFilterKeyColumn(0)
 
-            treeView.sortByColumn(0, Qt::AscendingOrder)
+            treeView.sortByColumn(0, Qt5::AscendingOrder)
             treeView.setModel(@proxyModel)
 
-            @filterTimer = Qt::Timer.new
+            @filterTimer = Qt5::Timer.new
             filterTimer.setInterval 500
             filterTimer.setSingleShot true
             filterTimer.connect SIGNAL('timeout()') do
@@ -122,6 +122,7 @@ class TaskInspector
             else
                 item1 = Vizkit::NameServiceItem.new service
                 item2 = Vizkit::NameServiceItem.new service,:item_type => :value
+
                 @model.appendRow([item1,item2])
                 service.once_on_task_added do |name|
                     treeView.expand(proxyModel.mapFromSource(item1.index))

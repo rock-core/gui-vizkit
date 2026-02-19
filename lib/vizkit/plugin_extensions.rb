@@ -60,11 +60,11 @@ module Vizkit
     # This module is included in all C++ and ruby Qt widgets to support
     # connection management for orocos ports
     module PluginConnections
-        class ShowHideEventFilter < ::Qt::Object
+        class ShowHideEventFilter < ::Qt5::Object
             def eventFilter(obj,event)
-                if event.is_a?(Qt::HideEvent)
+                if event.is_a?(Qt5::HideEvent)
                     @on_hide.call if @on_hide
-                elsif event.is_a?(Qt::WindowStateChangeEvent)
+                elsif event.is_a?(Qt5::WindowStateChangeEvent)
                     window = obj
                     # Some objects are not windows, but we do want the window
                     # state. Look for a window in the hierarchy
@@ -72,15 +72,15 @@ module Vizkit
                         window = window.parent
                     end
                     if window
-                        if Qt::WindowMinimized == window.windowState
+                        if Qt5::WindowMinimized == window.windowState
                             @on_hide.call if @on_hide
                         else
                             @on_show.call if @on_show
                         end
                     end
-                elsif event.is_a?(Qt::ShowEvent)
+                elsif event.is_a?(Qt5::ShowEvent)
                     @on_show.call if @on_show
-                elsif event.is_a?(Qt::CloseEvent)
+                elsif event.is_a?(Qt5::CloseEvent)
                     @on_hide.call if @on_hide
                 end
                 return false
@@ -105,7 +105,7 @@ module Vizkit
 
                 # we have to use an event filter because
                 # c++ widgets cannot be overloaded
-                owner.installEventFilter(@filter) if owner.is_a? Qt::Object
+                owner.installEventFilter(@filter) if owner.is_a? Qt5::Object
                 @filter.on_hide do
                     disconnect if @disconnect_on_hide
                 end

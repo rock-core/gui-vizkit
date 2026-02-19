@@ -2,9 +2,9 @@ require "vizkit/tree_view"
 require 'orocos/async/log/task_context'
 
 class LogControl
-  class StopAllTimer < Qt::Object
+  class StopAllTimer < Qt5::Object
     def eventFilter(obj,event)
-      if(obj.is_a? Qt::Timer)
+      if(obj.is_a? Qt5::Timer)
           obj.stop
           $qApp.quit
       end
@@ -12,14 +12,14 @@ class LogControl
     end
   end
 
-  class CloseAllFilter < Qt::Object
+  class CloseAllFilter < Qt5::Object
     def initialize(obj)
         @obj = obj
         super
     end
     
     def eventFilter(obj,event)
-      if event.is_a?(Qt::CloseEvent)
+      if event.is_a?(Qt5::CloseEvent)
          # close all is not compatible with ubuntu 10.04 
          # hole qt ruby will freeze 
          # $qApp.closeAllWindows
@@ -50,9 +50,9 @@ class LogControl
       @user_speed = @log_replay.speed
       
       dir = File.dirname(__FILE__)
-      @pause_icon =  Qt::Icon.new(File.join(dir,'pause.png'))
-      @play_icon = Qt::Icon.new(File.join(dir,'play.png'))
-      setAttribute(Qt::WA_QuitOnClose, true);
+      @pause_icon =  Qt5::Icon.new(File.join(dir,'pause.png'))
+      @play_icon = Qt5::Icon.new(File.join(dir,'play.png'))
+      setAttribute(Qt5::WA_QuitOnClose, true);
 
       connect(timeline, SIGNAL('indexSliderMoved(int)'), index, SLOT('setValue(int)'))
       connect(timeline, SIGNAL('endMarkerMoved(int)'), index, SLOT('setValue(int)'))
@@ -128,10 +128,10 @@ class LogControl
 
       actionExport.connect(SIGNAL("triggered()")) do 
         setDisabled(true)
-        file = Qt::FileDialog::getSaveFileName(nil,"Export Log File",File.expand_path("."),"Log Files (*.log)")
+        file = Qt5::FileDialog::getSaveFileName(nil,"Export Log File",File.expand_path("."),"Log Files (*.log)")
         if file
           bstop_clicked
-          progress = Qt::ProgressDialog.new
+          progress = Qt5::ProgressDialog.new
           progress.setLabelText "exporting streams"
           progress.show       
           @log_replay.export_to_file(file,timeline.getStartMarkerIndex, timeline.getEndMarkerIndex) do |index,max|
@@ -170,7 +170,7 @@ class LogControl
               end
           rescue Exception => e
               bplay_clicked
-              Qt::MessageBox::warning(nil,"Corrupted logfile", e.to_s)
+              Qt5::MessageBox::warning(nil,"Corrupted logfile", e.to_s)
               Vizkit.debug do
                   Vizkit.debug e.message
                   e.backtrace.each do |bt|
@@ -204,8 +204,8 @@ class LogControl
       rescue NoMethodError
         # Generic way to grab widgets, but we do it only on those that don't
         # have a parent
-        if object.kind_of?(Qt::Widget) && !object.parent
-          image = Qt::Image.new(object.size, Qt::Image::Format_RGB888)
+        if object.kind_of?(Qt5::Widget) && !object.parent
+          image = Qt5::Image.new(object.size, Qt5::Image::Format_RGB888)
           Grabber.new(object.objectName, lambda { object.render(image); image })
         end
       end
@@ -239,14 +239,14 @@ class LogControl
         FileUtils.mkdir_p File.dirname(p)
       end
 
-      destination_path ||= Qt::FileDialog.getExistingDirectory(self)
+      destination_path ||= Qt5::FileDialog.getExistingDirectory(self)
       if destination_path.empty?
           return
       end
 
       frame_count = Integer(@log_replay.duration / sampling_period)
-      progress = Qt::ProgressDialog.new(self)
-      bar = Qt::ProgressBar.new(progress)
+      progress = Qt5::ProgressDialog.new(self)
+      bar = Qt5::ProgressBar.new(progress)
       progress.bar = bar
 
       progress.setLabelText "Exporting #{frame_count} frames for #{setup.size} widgets in #{destination_path}\n" +
@@ -336,7 +336,7 @@ class LogControl
         @log_replay.seek(timeline.getSliderIndex)
         display_info
     rescue Exception => e
-        Qt::MessageBox::warning(nil,"Corrupted logfile",e.to_s)
+        Qt5::MessageBox::warning(nil,"Corrupted logfile",e.to_s)
         Vizkit.debug do
             Vizkit.debug e.message
             e.backtrace.each do |bt|
@@ -460,7 +460,7 @@ class LogControl
     #workaround 
     #it seems that widgets which are created by the UiLoader do not 
     #forward message calls to ruby
-    short = Qt::Shortcut.new(Qt::KeySequence.new("Ctrl+R"),form)
+    short = Qt5::Shortcut.new(Qt5::KeySequence.new("Ctrl+R"),form)
     short.connect(SIGNAL('activated()'))do
         form.refresh
     end

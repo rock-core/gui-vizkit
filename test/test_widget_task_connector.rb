@@ -15,9 +15,9 @@ describe WidgetTaskConnector do
         def self.prepare
             @@widget = Vizkit.default_loader.create_plugin("vizkit3d::Vizkit3DWidget")
             @@widget.extend Vizkit::QtTypelibExtension
-            @@widget.setTransformation("world","bla",Qt::Vector3D.new,Qt::Quaternion.new)
-            @@widget.setTransformation("world","world2",Qt::Vector3D.new,Qt::Quaternion.new)
-            @@widget.setTransformation("world","world3",Qt::Vector3D.new,Qt::Quaternion.new)
+            @@widget.setTransformation("world","bla",Qt5::Vector3D.new,Qt5::Quaternion.new)
+            @@widget.setTransformation("world","world2",Qt5::Vector3D.new,Qt5::Quaternion.new)
+            @@widget.setTransformation("world","world3",Qt5::Vector3D.new,Qt5::Quaternion.new)
 
             @@task = Orocos::Async.proxy "test_task"
             @@connector = Vizkit::WidgetTaskConnector.new(@@widget,@@task)

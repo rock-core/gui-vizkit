@@ -1,10 +1,10 @@
 # Main Window setting up the ui
-class LoggerControlWidget < Qt::Widget 
+class LoggerControlWidget < Qt5::Widget
 
   def initialize(parent = nil)
     super
     @logger = nil
-    @layout = Qt::GridLayout.new
+    @layout = Qt5::GridLayout.new
     @widget = Vizkit.load File.join(File.dirname(__FILE__),'logger_control.ui'), self
     @layout.addWidget(@widget,0,0)
     @current_index = -1;
@@ -13,7 +13,7 @@ class LoggerControlWidget < Qt::Widget
 
   def config(task,options=Hash.new)
     @logger = task
-    @timer = Qt::Timer.new
+    @timer = Qt5::Timer.new
     @timer.connect(SIGNAL('timeout()')) do
         if(@logger.reachable? && @logger.running?)
             @widget.button_send.setEnabled(true)

@@ -4,7 +4,7 @@ require 'vizkit'
 MiniTest::Unit.autorun
 Orocos.initialize
 
-class TestWidget < Qt::Object
+class TestWidget < Qt5::Object
     attr_accessor :sample
     def update(data,port_name)
         @sample = data
@@ -113,7 +113,7 @@ describe Vizkit do
             p = t1.port("position")
             p.wait
             w = Vizkit.display p
-            w.must_be_instance_of Qt::Widget
+            w.must_be_instance_of Qt5::Widget
         end
 
         it "should automatically find the right slot of a given widget" do 
@@ -170,7 +170,7 @@ describe Vizkit do
             assert data
 
             w = Vizkit.display sub
-            w.must_be_instance_of Qt::Widget
+            w.must_be_instance_of Qt5::Widget
         end
 
         it "should connect to ports when reachable" do 

@@ -12,7 +12,7 @@ module Vizkit
         end
         
         def initialize(sec,single_shot=false,&block)
-            @timer = Qt::Timer.new
+            @timer = Qt5::Timer.new
             @timer.setSingleShot(single_shot)
             @timer.connect(SIGNAL('timeout()'),&block)
             start(sec)

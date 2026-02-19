@@ -1,5 +1,5 @@
 # Main Window setting up the ui
-class CameraControlWidget < Qt::Widget 
+class CameraControlWidget < Qt5::Widget
   def initialize(parent = nil)
     super
     @camera = nil
@@ -20,7 +20,7 @@ class CameraControlWidget < Qt::Widget
     @triggerMap['FreeRun'] = :FrameStartTriggerModeToFreerun
     @triggerMap['SyncIn1'] =  :FrameStartTriggerModeToSyncIn1
 
-    @layout = Qt::GridLayout.new
+    @layout = Qt5::GridLayout.new
     @widget = Vizkit.load File.join(File.dirname(__FILE__),'camera_control.ui'), self
     @layout.addWidget(@widget,0,0)
     self.setLayout @layout

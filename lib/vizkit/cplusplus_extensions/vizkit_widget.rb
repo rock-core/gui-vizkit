@@ -16,7 +16,7 @@ module VizkitPluginExtension
         @adapter_collection.getListOfAvailableAdapter.each do |name|
             plugin = @adapter_collection.getAdapter(name)
             bridge = TypelibToQVariant.create_bridge
-            Qt::Object.connect(bridge, SIGNAL('changeVariant(QVariant&, bool)'), plugin, SLOT('update(QVariant&, bool)'))
+            Qt5::Object.connect(bridge, SIGNAL('changeVariant(QVariant&, bool)'), plugin, SLOT('update(QVariant&, bool)'))
             @bridges[plugin.getRubyMethod] = bridge
             @plugins[plugin.getRubyMethod] = plugin
             cxx_typename = plugin.getDataType
@@ -149,7 +149,7 @@ module VizkitPluginLoaderExtension
     end
 
     def load_plugin(path)
-        loader = Qt::PluginLoader.new(path)
+        loader = Qt5::PluginLoader.new(path)
         loader.load
         if !loader.isLoaded
             Vizkit.error "Cannot load Vizkit3D pluign #{path}. Library seems to be incompatible to the qt loader. Have you created a plugin factory?"
@@ -169,11 +169,11 @@ module VizkitPluginLoaderExtension
                    ENV['VIZKIT_PLUGIN_RUBY_PATH']
                end
         path.split(':').each do |path|
-            p = File.join(path, "lib#{plugin_name}-viz.so")
+            p = File.join(path, "lib#{plugin_name}-viz-qt5.so")
             return p if File.file?(p)
-            p = File.join(path, "lib#{plugin_name}-viz.bundle")
+            p = File.join(path, "lib#{plugin_name}-viz-qt5.bundle")
             return p if File.file?(p)
-            p = File.join(path, "lib#{plugin_name}-viz.dylib")
+            p = File.join(path, "lib#{plugin_name}-viz-qt5.dylib")
             return p if File.file?(p)
         end
         nil
@@ -192,7 +192,7 @@ module VizkitPluginLoaderExtension
         path.split(':').each do |path|
             next unless File::directory? path
             Dir::foreach(path) do |lib|
-                if lib =~ /^lib(.*)-viz.so$/
+                if lib =~ /^lib(.*)-viz-qt5.so$/
                     qt_plugin =
                         begin load_plugin(File.join(path, lib))
                         rescue Exception => e
@@ -223,8 +223,8 @@ module VizkitPluginLoaderExtension
     #   createPlugin(lib_name, plugin_name)
     #
     # Where +lib_name+  is the name of the plugin library without the "lib" and
-    # "-viz.so" parts. For instance, a package that installs a library called
-    # <tt>libvfh_star-viz.so</tt> will do
+    # "-viz-qt5.so" parts. For instance, a package that installs a library called
+    # <tt>libvfh_star-viz-qt5.so</tt> will do
     #
     #   createPlugin("vfh_star", "VFHTree")
     #
@@ -236,7 +236,7 @@ module VizkitPluginLoaderExtension
     def createPlugin(lib_name, plugin_name = nil, plugin_spec = PluginSpec.new(plugin_name))
 	path = findPluginPath(lib_name)
 	if !path
-	    Kernel.raise "cannot find lib#{lib_name}-viz.so in VIZKIT_PLUGIN_RUBY_PATH."
+	    Kernel.raise "cannot find lib#{lib_name}-viz-qt5.so in VIZKIT_PLUGIN_RUBY_PATH."
 	end
 	plugin = load_plugin(path)
 	if !plugin_name

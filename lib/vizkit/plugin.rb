@@ -82,7 +82,7 @@ module Vizkit
                     else
                         klasses = classes(object.class,include_super)
                         klasses.shift
-                        if object.is_a? Qt::Object
+                        if object.is_a? Qt5::Object
                             Array(object.class_name) + klasses
                         else
                             Array(object.class.name) + klasses 

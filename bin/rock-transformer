@@ -6,7 +6,7 @@ require 'optparse'
 
 # Edition class for the transformer. We aren't using Rock's default
 # RigidBodyStateEditor because it is really way too bloated
-class TransformEditor < Qt::Widget
+class TransformEditor < Qt5::Widget
     attr_reader :translation, :rotation
     attr_reader :translation_editors, :rotation_editors
     attr_reader :source_frame, :target_frame
@@ -24,7 +24,7 @@ class TransformEditor < Qt::Widget
     end
 
     def translation_vector
-        Qt::Vector3D.new(*translation)
+        Qt5::Vector3D.new(*translation)
     end
 
     def rotation_quat
@@ -32,31 +32,31 @@ class TransformEditor < Qt::Widget
     end
 
     def create_ui
-        header = Qt::VBoxLayout.new(self)
-        layout.add_widget Qt::Label.new("<b>Producer</b>: #{producer}")
-        layout.add_widget Qt::Label.new("<b>Source</b>: #{source_frame}")
-        layout.add_widget Qt::Label.new("<b>Target</b>: #{target_frame}")
+        header = Qt5::VBoxLayout.new(self)
+        layout.add_widget Qt5::Label.new("<b>Producer</b>: #{producer}")
+        layout.add_widget Qt5::Label.new("<b>Source</b>: #{source_frame}")
+        layout.add_widget Qt5::Label.new("<b>Target</b>: #{target_frame}")
 
-        layout = Qt::GridLayout.new
-        layout.add_widget Qt::Label.new("<b>Translation</b>"), 0, 0, 1, 2
-        layout.add_widget(Qt::Label.new("X"), 1, 0)
-        layout.add_widget(Qt::Label.new("Y"), 2, 0)
-        layout.add_widget(Qt::Label.new("Z"), 3, 0)
+        layout = Qt5::GridLayout.new
+        layout.add_widget Qt5::Label.new("<b>Translation</b>"), 0, 0, 1, 2
+        layout.add_widget(Qt5::Label.new("X"), 1, 0)
+        layout.add_widget(Qt5::Label.new("Y"), 2, 0)
+        layout.add_widget(Qt5::Label.new("Z"), 3, 0)
 
         @translation_editors = Array.new
-        layout.add_widget(translation_editors[0] = Qt::DoubleSpinBox.new, 1, 1)
-        layout.add_widget(translation_editors[1] = Qt::DoubleSpinBox.new, 2, 1)
-        layout.add_widget(translation_editors[2] = Qt::DoubleSpinBox.new, 3, 1)
+        layout.add_widget(translation_editors[0] = Qt5::DoubleSpinBox.new, 1, 1)
+        layout.add_widget(translation_editors[1] = Qt5::DoubleSpinBox.new, 2, 1)
+        layout.add_widget(translation_editors[2] = Qt5::DoubleSpinBox.new, 3, 1)
 
-        layout.add_widget Qt::Label.new("<b>Rotation</b>"), 0, 2, 1, 2
-        layout.add_widget(Qt::Label.new("X"), 1, 2)
-        layout.add_widget(Qt::Label.new("Y"), 2, 2)
-        layout.add_widget(Qt::Label.new("Z"), 3, 2)
+        layout.add_widget Qt5::Label.new("<b>Rotation</b>"), 0, 2, 1, 2
+        layout.add_widget(Qt5::Label.new("X"), 1, 2)
+        layout.add_widget(Qt5::Label.new("Y"), 2, 2)
+        layout.add_widget(Qt5::Label.new("Z"), 3, 2)
 
         @rotation_editors = Array.new
-        layout.add_widget(rotation_editors[0] = Qt::SpinBox.new, 1, 3)
-        layout.add_widget(rotation_editors[1] = Qt::SpinBox.new, 2, 3)
-        layout.add_widget(rotation_editors[2] = Qt::SpinBox.new, 3, 3)
+        layout.add_widget(rotation_editors[0] = Qt5::SpinBox.new, 1, 3)
+        layout.add_widget(rotation_editors[1] = Qt5::SpinBox.new, 2, 3)
+        layout.add_widget(rotation_editors[2] = Qt5::SpinBox.new, 3, 3)
 
         header.add_layout(layout)
 
@@ -95,7 +95,7 @@ class TransformEditor < Qt::Widget
     signals 'valueChanged(QVector3D, QQuaternion)'
 end
 
-class TransformerStatusWindow < Qt::Widget
+class TransformerStatusWindow < Qt5::Widget
     attr_reader :main_layout
     attr_reader :vizkit3d, :rbs_setter_toolbox, :reload_button
 
@@ -119,19 +119,19 @@ class TransformerStatusWindow < Qt::Widget
     attr_predicate :live?
 
     def create_ui
-        @main_layout = Qt::VBoxLayout.new(self)
-        splitter = Qt::Splitter.new
+        @main_layout = Qt5::VBoxLayout.new(self)
+        splitter = Qt5::Splitter.new
         main_layout.add_widget(splitter)
 
-        @rbs_setter_toolbox = Qt::ToolBox.new
+        @rbs_setter_toolbox = Qt5::ToolBox.new
         splitter.add_widget(rbs_setter_toolbox)
 
-        right_pane = Qt::Widget.new
-        layout   = Qt::VBoxLayout.new(right_pane)
+        right_pane = Qt5::Widget.new
+        layout   = Qt5::VBoxLayout.new(right_pane)
         @vizkit3d = Vizkit.vizkit3d_widget
         vizkit3d.use_transformer_broadcaster = false
         vizkit3d.setAxes(false)
-        @reload_button = Qt::PushButton.new("Reload")
+        @reload_button = Qt5::PushButton.new("Reload")
         reload_button.connect(SIGNAL("clicked()")) do
             reload
         end
@@ -156,7 +156,7 @@ class TransformerStatusWindow < Qt::Widget
             conf.load(path)
             bad_frame_warnings.clear
         rescue Exception => e
-            Qt::MessageBox.warning(nil, "Load Error", "Error loading #{path}: #{e.message}")
+            Qt5::MessageBox.warning(nil, "Load Error", "Error loading #{path}: #{e.message}")
             return
         end
 
@@ -189,8 +189,8 @@ class TransformerStatusWindow < Qt::Widget
 
             rbs_editor = rbs_editors[cache_key]
             if !rbs_editor
-                widget = Qt::Widget.new
-                layout = Qt::VBoxLayout.new(widget)
+                widget = Qt5::Widget.new
+                layout = Qt5::VBoxLayout.new(widget)
                 rbs_editor = TransformEditor.new(trsf.producer, trsf.from, trsf.to, widget)
                 layout.add_widget rbs_editor
                 layout.add_stretch
@@ -208,7 +208,7 @@ class TransformerStatusWindow < Qt::Widget
                 Orocos::Async.proxy(task).port(port).on_data do |sample|
                     if trsf.from != sample.sourceFrame || trsf.to != sample.targetFrame
                         if !bad_frame_warnings.include?(trsf.producer)
-                            Qt::MessageBox.warning(self, 'rock-transformer', "Received sample from #{task}.#{port} for #{sample.sourceFrame} => #{sample.targetFrame}.\nExpected #{trsf.from} => #{trsf.to} instead.\nThere will be no further warnings about this problem until you reload the configuration file.")
+                            Qt5::MessageBox.warning(self, 'rock-transformer', "Received sample from #{task}.#{port} for #{sample.sourceFrame} => #{sample.targetFrame}.\nExpected #{trsf.from} => #{trsf.to} instead.\nThere will be no further warnings about this problem until you reload the configuration file.")
                             bad_frame_warnings << trsf.producer
                         end
                     end

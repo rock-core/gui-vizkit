@@ -1,21 +1,21 @@
 #!/usr/bin/env ruby
 
-class PropertyControl < Qt::Widget
+class PropertyControl < Qt5::Widget
   slots 'val_changed(QString)','editing_finished(QString)','refresh_values()'
 
   def initialize(parent=nil)
     super
 
     @PropertyConfig = Struct.new(:name, :attribute, :type, :gui_object)
-    @gridLayout = Qt::GridLayout.new(self)
+    @gridLayout = Qt5::GridLayout.new(self)
     @gridLayout.objectName = "gridLayout"
     @hash = Hash.new
     @number_of_gui_objects = 0
     @timer_id = nil
-    @timer = Qt::Timer.new(self)
+    @timer = Qt5::Timer.new(self)
 
-    @signal_mapper_slider = Qt::SignalMapper.new(self)
-    @signal_mapper_line_edit = Qt::SignalMapper.new(self)
+    @signal_mapper_slider = Qt5::SignalMapper.new(self)
+    @signal_mapper_line_edit = Qt5::SignalMapper.new(self)
 
     @signal_mapper_slider.connect(SIGNAL('mapped(const QString&)'),self,:val_changed)
     @timer.connect(SIGNAL('timeout()'),self,:refresh_values)
@@ -66,18 +66,18 @@ class PropertyControl < Qt::Widget
     
     @number_of_gui_objects += 1
 
-    label = Qt::Label.new(self)
+    label = Qt5::Label.new(self)
     label.Text = attribute.name
     @gridLayout.addWidget(label, @number_of_gui_objects,1, 1, 1)
 
     if attribute.read.is_a?(Fixnum)||attribute.read.is_a?(Float)
-      gui_object = Qt::Slider.new(self)
-      gui_object.orientation = Qt::Horizontal
+      gui_object = Qt5::Slider.new(self)
+      gui_object.orientation = Qt5::Horizontal
       @gridLayout.addWidget(gui_object, @number_of_gui_objects,2, 1, 1)
       @signal_mapper_slider.setMapping(gui_object,name)
       connect(gui_object,SIGNAL('valueChanged(int)'),@signal_mapper_slider,SLOT('map()'))
     
-      spin_box = attribute.read.is_a?(Fixnum) ? Qt::SpinBox.new(self) : Qt::DoubleSpinBox.new(self)
+      spin_box = attribute.read.is_a?(Fixnum) ? Qt5::SpinBox.new(self) : Qt5::DoubleSpinBox.new(self)
       @gridLayout.addWidget(spin_box, @number_of_gui_objects,3, 1, 1)
       connect(spin_box,SIGNAL('valueChanged(int)'),gui_object,SLOT('setValue(int)'))
       connect(gui_object,SIGNAL('valueChanged(int)'),spin_box,SLOT('setValue(int)'))
@@ -88,7 +88,7 @@ class PropertyControl < Qt::Widget
       gui_object.value = attribute.read
       @hash[name] = @PropertyConfig.new(name,attribute,type,gui_object)
     elsif attribute.read.is_a?(String)
-      gui_object = Qt::LineEdit.new(self)
+      gui_object = Qt5::LineEdit.new(self)
       gui_object.text = attribute.read
       @gridLayout.addWidget(gui_object, @number_of_gui_objects,2, 1, 1)
       @signal_mapper_line_edit.setMapping(gui_object,name)

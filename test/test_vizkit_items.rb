@@ -75,11 +75,11 @@ describe Vizkit::TypelibItem do
 
     describe "#setData" do
         it "does update a false value" do
-            data = Qt::Variant.fromValue(false)
+            data = Qt5::Variant.fromValue(false)
             bool_t = Typelib::CXXRegistry.new.get('/bool')
             v_false = Typelib.from_ruby(true, bool_t)
             item = Vizkit::TypelibItem.new(v_false)
-            item.setData(data, Qt::EditRole)
+            item.setData(data, Qt5::EditRole)
             assert_equal false, Typelib.to_ruby(item.typelib_val)
         end
     end

@@ -1,33 +1,33 @@
 #!/usr/bin/env ruby
 
-class AngleEditor < Qt::Widget
+class AngleEditor < Qt5::Widget
 
     def initialize(parent=nil)
         super
         setWindowTitle("AngleEditor")
-        @layout = Qt::GridLayout.new
+        @layout = Qt5::GridLayout.new
         self.setLayout @layout
         @callback_angle = nil;
         @angle = nil
 
-        @label = Qt::Label.new
+        @label = Qt5::Label.new
         @label.setText("Angle[Deg]")
         @layout.addWidget(@label,0,0)
 
-        @spin_box = Qt::DoubleSpinBox.new
+        @spin_box = Qt5::DoubleSpinBox.new
         @spin_box.setMaximum(180.0)
         @spin_box.setMinimum(-180.0)
         @spin_box.setSingleStep(1.0)
         @layout.addWidget(@spin_box,0,1)
 
-        @button_cancel = Qt::PushButton.new(@widget)
+        @button_cancel = Qt5::PushButton.new(@widget)
         @button_cancel.setText("Cancel")
         @layout.addWidget(@button_cancel,1,0)
         @button_cancel.connect(SIGNAL("clicked()")) do 
             close()
         end
 
-        @button = Qt::PushButton.new(@widget)
+        @button = Qt5::PushButton.new(@widget)
         @button.setText("Ok")
         @layout.addWidget(@button,1,1)
         @button.connect(SIGNAL("clicked()")) do 

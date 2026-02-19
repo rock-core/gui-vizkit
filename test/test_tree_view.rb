@@ -92,24 +92,24 @@ describe Vizkit::TypelibDataModel do
     end
 
     describe "method data" do
-        it "must return the data for each field as Qt::Variant" do
+        it "must return the data for each field as Qt5::Variant" do
             sample = Types::Base::Samples::Frame::Frame.new
             sample.zero!
             model = Vizkit::TypelibDataModel.new sample
             sample.class.fields.each_with_index do |field,index|
                 child = model.child(index)
                 data = model.data(child)
-                data.must_be_kind_of Qt::Variant
+                data.must_be_kind_of Qt5::Variant
                 if field.first == "time"
-                    data = model.data(child,Qt::EditRole)
-                    data.value.must_be_kind_of Qt::DateTime
+                    data = model.data(child,Qt5::EditRole)
+                    data.value.must_be_kind_of Qt5::DateTime
                 end
             end
         end
     end
 
     describe "method set" do
-        it "must set the underlying data to the given Qt::Variant value" do
+        it "must set the underlying data to the given Qt5::Variant value" do
             sample = Types::Base::Samples::Frame::Frame.new
             sample.zero!
             model = Vizkit::TypelibDataModel.new sample
@@ -117,7 +117,7 @@ describe Vizkit::TypelibDataModel do
                 if field.first == "data_depth"
                     child = model.child(index)
                     assert 11 != sample.data_depth
-                    model.set(child,Qt::Variant.new(11))
+                    model.set(child,Qt5::Variant.new(11))
                     assert_equal 11,sample.data_depth
                     assert model.modified_by_user?
                 end
@@ -160,7 +160,7 @@ describe Vizkit::TypelibDataModel do
                 child = model.child(index)
                 assert_equal 37,model.flags(0,child)
                 if field.first == "time"
-                    assert_equal Qt::ItemIsEnabled | Qt::ItemIsEditable,model.flags(1,child)
+                    assert_equal Qt5::ItemIsEnabled | Qt5::ItemIsEditable,model.flags(1,child)
                 end
             end
         end

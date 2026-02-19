@@ -5,9 +5,9 @@ module Vizkit
         delegator = ItemDelegate.new(tree_view,nil)
         tree_view.setItemDelegate(delegator)
         tree_view.setSortingEnabled true
-        tree_view.sortByColumn(0, Qt::AscendingOrder)
+        tree_view.sortByColumn(0, Qt5::AscendingOrder)
         tree_view.setAlternatingRowColors(true)
-        tree_view.setContextMenuPolicy(Qt::CustomContextMenu)
+        tree_view.setContextMenuPolicy(Qt5::CustomContextMenu)
         tree_view.setDragEnabled(true)
         tree_view.connect(SIGNAL('customContextMenuRequested(const QPoint&)')) do |pos|
             index = tree_view.index_at(pos)
@@ -17,7 +17,7 @@ module Vizkit
         end
 
         def tree_view.real_model
-            if model.is_a?(Qt::AbstractProxyModel)
+            if model.is_a?(Qt5::AbstractProxyModel)
                 return model.sourceModel
             else
                 return model
@@ -25,7 +25,7 @@ module Vizkit
         end
 
         def tree_view.item_from_index(index)
-            if index.model.is_a?(Qt::AbstractProxyModel)
+            if index.model.is_a?(Qt5::AbstractProxyModel)
                 return index.model.sourceModel.itemFromIndex(index.model.mapToSource(index))
             else
                 return index.model.itemFromIndex(index)
@@ -33,7 +33,7 @@ module Vizkit
         end
 
         def tree_view.setModel(model)
-            raise ArgumentError,"wrong model type" unless model.is_a? Qt::AbstractItemModel
+            raise ArgumentError,"wrong model type" unless model.is_a? Qt5::AbstractItemModel
             super
             connect SIGNAL("collapsed(QModelIndex)") do |index|
                 item_from_index(index).collapse
@@ -59,7 +59,7 @@ module Vizkit
         def tree_view.disconnect
             0.upto(real_model.rowCount-1) do |i|
                 index = real_model.index(i,0)
-                next unless isExpanded(model.is_a?(Qt::AbstractProxyModel) ? model.mapFromSource(index) : index)
+                next unless isExpanded(model.is_a?(Qt5::AbstractProxyModel) ? model.mapFromSource(index) : index)
                 real_model.item(i,0).collapse
                 real_model.item(i,1).collapse
                 disconnected_items << i
@@ -76,7 +76,7 @@ module Vizkit
         end
     end
 
-    class TaskSortFilterProxyModel < Qt::SortFilterProxyModel
+    class TaskSortFilterProxyModel < Qt5::SortFilterProxyModel
         def filterAcceptsRow(source_row, source_parent)
             source_index = sourceModel.index(source_row, 0, source_parent)
             return false unless source_index.isValid
@@ -89,7 +89,7 @@ module Vizkit
     end
 
     # editor for enum values
-    class EnumEditor < Qt::ComboBox
+    class EnumEditor < Qt5::ComboBox
         def initialize(parent,data)
             super(parent)
             data.to_a.each do |val|
@@ -104,11 +104,11 @@ module Vizkit
     end
 
     # buttons for cancel or acknowledge a custom property change
-    class AcknowledgeEditor < Qt::DialogButtonBox
+    class AcknowledgeEditor < Qt5::DialogButtonBox
         def initialize(parent,data,delegate)
             super(parent)
-            addButton("Apply",Qt::DialogButtonBox::AcceptRole)
-            addButton("Reject",Qt::DialogButtonBox::RejectRole)
+            addButton("Apply",Qt5::DialogButtonBox::AcceptRole)
+            addButton("Reject",Qt5::DialogButtonBox::RejectRole)
             setCenterButtons(true)
             setAutoFillBackground(true)
             self.connect SIGNAL('rejected()') do
@@ -126,7 +126,7 @@ module Vizkit
     end
 
     # Delegate to select editor for editing tree view items
-    class ItemDelegate < Qt::StyledItemDelegate
+    class ItemDelegate < Qt5::StyledItemDelegate
         attr_reader :tree_view
         def initialize(tree_view,parent = nil)
             super(parent)
@@ -134,15 +134,15 @@ module Vizkit
         end
 
         def createEditor (parent, option,index)
-            data = index.data(Qt::EditRole)
-            if data.type == Qt::Variant::StringList
+            data = index.data(Qt5::EditRole)
+            if data.type == Qt5::Variant::StringList
                 Vizkit::EnumEditor.new(parent,data)
             elsif data.to_ruby?
                 model = data.to_ruby
                 Vizkit::AcknowledgeEditor.new(parent,model,self)
             else
                 editor = super
-                if editor.is_a? Qt::DoubleSpinBox
+                if editor.is_a? Qt5::DoubleSpinBox
                     editor.setDecimals 10
                 end
                 editor
@@ -153,9 +153,9 @@ module Vizkit
             # we cannot use user properties here 
             # there is no way to define some on the ruby side
             if editor.respond_to? :getData
-                model.setData(index,Qt::Variant.new(editor.getData),Qt::EditRole)
-            elsif editor.is_a? Qt::ComboBox
-                model.setData(index,Qt::Variant.new(editor.currentText),Qt::EditRole)
+                model.setData(index,Qt5::Variant.new(editor.getData),Qt5::EditRole)
+            elsif editor.is_a? Qt5::ComboBox
+                model.setData(index,Qt5::Variant.new(editor.currentText),Qt5::EditRole)
             else
                 super
             end
@@ -176,7 +176,7 @@ module Vizkit
         end
     end
 
-    class VizkitItemModel < Qt::StandardItemModel
+    class VizkitItemModel < Qt5::StandardItemModel
         def initialize(*args)
             super
             setColumnCount 2

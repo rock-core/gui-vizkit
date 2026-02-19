@@ -13,7 +13,7 @@ require 'orocos/uri'
 #   3 4 5
 #
 # @author Allan Conquest <allan.conquest@dfki.de>
-class CompoundDisplay < Qt::Widget
+class CompoundDisplay < Qt5::Widget
 
     slots 'configure_by_yaml(QString)', 'save_yaml(QString)'
 
@@ -27,7 +27,7 @@ class CompoundDisplay < Qt::Widget
         
         set_window_title("CompoundDisplay")
         resize(600,400)
-        layout = Qt::HBoxLayout.new
+        layout = Qt5::HBoxLayout.new
         set_layout(layout)
         @gui = Vizkit.load(File.join(File.dirname(__FILE__),'compound_display.ui'),self)
         @grid = @gui.grid_layout
@@ -161,7 +161,7 @@ class CompoundDisplay < Qt::Widget
     def configure_by_yaml(path=nil)
         unless path
             # Display file explorer
-            path = Qt::FileDialog.getOpenFileName(self, "Open configuration file", ".", "YAML Files (*.yml *.yaml)")
+            path = Qt5::FileDialog.getOpenFileName(self, "Open configuration file", ".", "YAML Files (*.yml *.yaml)")
         end
 
         begin   
@@ -178,7 +178,7 @@ class CompoundDisplay < Qt::Widget
             end
             
             if error
-                msg_box = Qt::MessageBox.new
+                msg_box = Qt5::MessageBox.new
                 msg_box.set_text("Problem with YAML import:")
                 msg_box.set_informative_text(error)
                 msg_box.exec
@@ -207,7 +207,7 @@ class CompoundDisplay < Qt::Widget
     def save_yaml(path=nil)
         unless path
             # Display file explorer
-            path = Qt::FileDialog.getSaveFileName(self, "Save configuration file", "./myconfig.yml", "YAML Files (*.yml *.yaml)")
+            path = Qt5::FileDialog.getSaveFileName(self, "Save configuration file", "./myconfig.yml", "YAML Files (*.yml *.yaml)")
         end
 
         begin
@@ -228,7 +228,7 @@ class CompoundDisplay < Qt::Widget
     end
     
     def sizeHint
-        return Qt::Size.new(700,700)
+        return Qt5::Size.new(700,700)
     end
     
     def resizeEvent(event)
@@ -253,7 +253,7 @@ class CompoundDisplayConfig
     end
 end
 
-class ContainerWidget < Qt::Widget
+class ContainerWidget < Qt5::Widget
     attr_reader :label_text
     attr_reader :content_widget
     attr_reader :position
@@ -262,8 +262,8 @@ class ContainerWidget < Qt::Widget
     def initialize(pos, config=nil, parent = nil)
         super(parent)
         @config = config
-        #set_size_policy(Qt::SizePolicy::Expanding, Qt::SizePolicy::Expanding)
-        set_size_policy(Qt::SizePolicy::MinimumExpanding, Qt::SizePolicy::MinimumExpanding)
+        #set_size_policy(Qt5::SizePolicy::Expanding, Qt5::SizePolicy::Expanding)
+        set_size_policy(Qt5::SizePolicy::MinimumExpanding, Qt5::SizePolicy::MinimumExpanding)
         @position = pos
         
         @listener = nil
@@ -274,19 +274,19 @@ class ContainerWidget < Qt::Widget
         @label_text = @default_label_text
         
         # Vertical Layout containing label bar and container widget
-        @layout = Qt::VBoxLayout.new(self)
+        @layout = Qt5::VBoxLayout.new(self)
         
         # Horizontal layout for the label bar
-        @label_layout = Qt::HBoxLayout.new(self)
+        @label_layout = Qt5::HBoxLayout.new(self)
         
-        @label = Qt::Label.new(label_text)
-        @label.set_size_policy(Qt::SizePolicy::Preferred, Qt::SizePolicy::Maximum)
+        @label = Qt5::Label.new(label_text)
+        @label.set_size_policy(Qt5::SizePolicy::Preferred, Qt5::SizePolicy::Maximum)
         @label.set_auto_fill_background(true)
         
-        @disconnect_button = Qt::PushButton.new("X")
+        @disconnect_button = Qt5::PushButton.new("X")
         @disconnect_button.set_minimum_width(20)
         @disconnect_button.set_maximum_width(20)
-        @disconnect_button.set_size_policy(Qt::SizePolicy::Maximum, Qt::SizePolicy::Fixed)
+        @disconnect_button.set_size_policy(Qt5::SizePolicy::Maximum, Qt5::SizePolicy::Fixed)
         @disconnect_button.setEnabled(false)
         
         @label_layout.add_widget(@label)
@@ -308,11 +308,11 @@ class ContainerWidget < Qt::Widget
         end
         
         # Define label palettes
-        @standard_palette = Qt::Palette.new
+        @standard_palette = Qt5::Palette.new
         @label.set_palette(@standard_palette)
         
-        @unreachable_palette = Qt::Palette.new
-        @unreachable_palette.set_color(Qt::Palette::Window, Qt::Color.new(223, 49, 49)); # red
+        @unreachable_palette = Qt5::Palette.new
+        @unreachable_palette.set_color(Qt5::Palette::Window, Qt5::Color.new(223, 49, 49)); # red
 
         self
     end
@@ -403,14 +403,14 @@ class ContainerWidget < Qt::Widget
     end
     
     def widget_selection(pos, type_name)
-        menu = Qt::Menu.new(self)
+        menu = Qt5::Menu.new(self)
 
         # Determine applicable widgets for the output port
         widgets = Vizkit.default_loader.find_all_plugin_names(:argument=>type_name, :callback_type => :display,:flags => {:deprecated => false})
 
         widgets.uniq!
         widgets.each do |w|
-            menu.add_action(Qt::Action.new(w, parent))
+            menu.add_action(Qt5::Action.new(w, parent))
         end
         # Display context menu at cursor position.
         action = menu.exec(pos)
@@ -423,9 +423,9 @@ class ContainerWidget < Qt::Widget
         #if @content_widget
         #    @content_widget.size_hint
         #else 
-        #    Qt::Size.new(100, 100)
+        #    Qt5::Size.new(100, 100)
         #end
-        Qt::Size.new(100, 100)
+        Qt5::Size.new(100, 100)
     end
     
     def dragEnterEvent(event)
@@ -433,9 +433,9 @@ class ContainerWidget < Qt::Widget
         if event.mime_data.has_format("text/plain")
             event.accept_proposed_action
         else
-            msg_box = Qt::MessageBox.new
+            msg_box = Qt5::MessageBox.new
             msg_box.set_text("Bad format!")
-            msg_box.set_standard_buttons(Qt::MessageBox::Ok)
+            msg_box.set_standard_buttons(Qt5::MessageBox::Ok)
             msg_box.set_informative_text("The only supported format is text/plain. Submit a valid Orocos URI.")
             event.ignore
         end
@@ -450,9 +450,9 @@ class ContainerWidget < Qt::Widget
         end
         
         begin
-            msg_box = Qt::MessageBox.new
+            msg_box = Qt5::MessageBox.new
             msg_box.set_text("Bad drop text!")
-            msg_box.set_standard_buttons(Qt::MessageBox::Ok)
+            msg_box.set_standard_buttons(Qt5::MessageBox::Ok)
 
             uri = URI.parse(text)
 

@@ -35,7 +35,7 @@ Vizkit::UiLoader::extend_cplusplus_widget_class "ImageView" do
           else
               time = Time.at(frame.time.seconds,frame.time.microseconds)
           end
-          addTextWrapper(time.strftime("%F %H:%M:%S"), :bottomright, Qt::Color.new(Qt::black), false)
+          addTextWrapper(time.strftime("%F %H:%M:%S"), :bottomright, Qt5::Color.new(Qt5::black), false)
       end
 
       if @fallback
